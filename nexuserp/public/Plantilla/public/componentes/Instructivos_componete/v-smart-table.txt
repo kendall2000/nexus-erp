@@ -1,0 +1,37 @@
+Guía de Uso: Componente v-smart-table
+Este componente automatiza la visualización, búsqueda y exportación de datos con un diseño profesional.
+
+1. Configuración en JavaScript
+Define las columnas vinculando la key (nombre del campo en tu JSON/BD) y el label (título que verá el usuario).
+
+JavaScript
+// En el data de tu instancia Vue
+cols: [
+    { key: "idVisita", label: "No. De Visita" },
+    { key: "linkFoto", label: "Foto" },
+    { key: "nombreVisitante", label: "Nombre" },
+    { key: "tipoIngreso", label: "Estado/Ingreso" }
+]
+2. Implementación en HTML
+Usa la etiqueta pasando los datos y configurando las llaves especiales para fotos y estados.
+
+HTML
+<v-smart-table 
+    title="Gestión de Visitas"
+    :columns="cols" 
+    :data="catalogoVisitas"
+    export-name="Reporte_Visitas"
+    status-key="tipoIngreso" 
+    photo-key="linkFoto"
+    @view="verDetalle"
+    @edit="abrirEditar"
+    @delete="confirmarEliminar">
+</v-smart-table>
+3. Características Incluidas
+Buscador Global: Filtra automáticamente en todas las columnas.
+
+Exportación Pro: Botones integrados para Excel (auto-ajuste) y PDF (Landscape).
+
+Acciones Dinámicas: Los botones de la derecha aparecen solo si declaras los eventos (@view, @edit, @delete).
+
+Inteligencia de Celdas: Detecta automáticamente fotos y badges de colores según la configuración enviada.

@@ -1,0 +1,1 @@
+1. BRAND DEL COLEGIO HTML|<a class="navbar-brand" href="index.php"><img src="../../../CONFIG/images/logo.png" alt="" width="20px"> &nbsp; C<small>olegio</small>&nbsp;B<small>iling&uuml;e</small>&nbsp;D<small>emo</small>&nbsp;S<small>chool</small></a>

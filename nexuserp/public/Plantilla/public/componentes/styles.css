@@ -1,0 +1,87 @@
+/* --- 1. Overlay General --- */
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85); 
+  backdrop-filter: blur(5px);
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+body.is-loading #global-loader {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- 2. Contenedor --- */
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px; 
+}
+
+/* --- 3. La Pista (INVISIBLE) --- */
+.loader-track {
+  width: 320px; 
+  height: 64px; /* Altura del objeto */
+  background: transparent; /* Sin línea de fondo */
+  position: relative;
+}
+
+/* --- 4. La Figura (GRANDE Y FLUIDA) --- */
+.loader-shape {
+  width: 64px;
+  height: 64px;
+  
+  /* Color suave */
+  background: #818cf8; 
+  /* Sombra para que resalte sobre el blanco */
+  box-shadow: 0 10px 25px rgba(129, 140, 248, 0.5);
+  
+  position: absolute;
+  top: 0;
+  left: 0;
+  
+  /* Animación continua (sin pausas) */
+  /* ease-in-out hace que frene un poquito al llegar a las esquinas para que se vea natural */
+  animation: shapePingPong 2.5s ease-in-out infinite;
+}
+
+/* --- 5. Animación: Ida y Vuelta inmediata --- */
+@keyframes shapePingPong {
+  /* INICIO: Izquierda / Cuadrado */
+  0% {
+    left: 0;
+    border-radius: 12px; 
+    transform: rotate(0deg);
+  }
+
+  /* MEDIO (50%): Llego al final / Círculo / Inmediatamente empieza a volver */
+  50% {
+    left: calc(100% - 64px); /* Límite derecho */
+    border-radius: 50%;      /* Círculo completo */
+    transform: rotate(180deg);
+  }
+
+  /* FINAL (100%): De regreso a la Izquierda / Cuadrado */
+  100% {
+    left: 0;
+    border-radius: 12px;
+    transform: rotate(0deg); /* Desenrolla hacia atrás */
+  }
+}
+
+/* --- 6. Texto --- */
+.loading-text {
+  font-family: sans-serif;
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}

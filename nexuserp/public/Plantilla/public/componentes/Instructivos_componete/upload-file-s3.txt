@@ -1,0 +1,37 @@
+Guía de Uso: Componente upload-file-s31. Implementación en HTML
+Solo necesitas colocar la etiqueta y vincularla a tu objeto de datos mediante v-model.
+
+HTML
+<upload-file-s3
+    v-model="visita.linkFoto"
+    name="linkAnexo"
+    id="linkAnexo"
+    carpeta="DocumentoIngresoCondominio"
+    :multiple="false"
+    @uploaded="ingresarDatosNotificaciones"
+    @error="mostrarError">
+</upload-file-s3>
+
+2. Configuración de Propiedades (Props)
+v-model: Se sincroniza automáticamente con la URL del archivo una vez subido con éxito.
+carpeta: Define la ruta de destino dentro del bucket de S3 (o cualquier almacenamiento).
+multiple: Define si se permiten subir varios archivos simultáneamente (true/false).
+max: Límite de tamaño por archivo en Megabytes (por defecto 5MB).
+3. Manejo de Eventos (Callbacks)
+Debes definir estas funciones en los methods de tu archivo JS principal:
+
+JavaScript
+methods: {
+    // Se ejecuta cuando la subida a S3 es exitosa y devuelve el array de URLs
+    ingresarDatosNotificaciones(data) {
+        console.log("Archivos subidos:", data);
+    },
+    // Captura errores de validación (formato o tamaño) o fallos de red
+    mostrarError(msg) {
+        Swal.fire("Error", msg, "error");
+    }
+}
+4. Características Pro
+Previsualización: Muestra una miniatura si es imagen o un icono de alerta si es PDF.
+Limpieza Automática: Si el usuario elimina la vista previa, el v-model se limpia automáticamente.
+Validación de Formatos: Solo permite los archivos definidos en la propiedad formatos (por defecto imágenes y PDF).

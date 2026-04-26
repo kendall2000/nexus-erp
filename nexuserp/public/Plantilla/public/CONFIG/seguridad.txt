@@ -1,0 +1,1 @@
+--Intentos permitidos para cambio de Contreseña: 5

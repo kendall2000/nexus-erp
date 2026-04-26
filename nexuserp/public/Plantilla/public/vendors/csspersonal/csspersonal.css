@@ -1,0 +1,49 @@
+/* Estilos para el contenedor del switch */
+.form-check.form-switch {
+    display: flex;
+    align-items: center;
+    margin: 20px;
+}
+
+/* Estilos para el input del switch */
+.form-check-swicth-input {
+    width: 60px;
+    height: 34px;
+    position: relative;
+    appearance: none;
+    background-color: #ccc;
+    outline: none;
+    cursor: pointer;
+    border-radius: 34px;
+    transition: background-color 0.3s;
+}
+
+/* Estilos para el círculo del switch */
+.form-check-swicth-input::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 30px;
+    height: 30px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+/* Estilos cuando el switch está activado */
+.form-check-swicth-input:checked {
+    background-color: #005b8f;
+}
+
+/* Mover el círculo cuando el switch está activado */
+.form-check-swicth-input:checked::before {
+    transform: translateX(26px);
+}
+
+/* Estilos para la etiqueta del switch */
+.form-check-label {
+    margin-left: 10px;
+    font-size: 18px;
+    color: #333;
+}
