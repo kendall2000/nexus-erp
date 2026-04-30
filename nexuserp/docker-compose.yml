@@ -15,7 +15,6 @@ services:
     env_file:
       - .env
     volumes:
-      - ./:/var/www/nexuserp
       - ./storage:/var/www/nexuserp/storage
       - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
     ports:
