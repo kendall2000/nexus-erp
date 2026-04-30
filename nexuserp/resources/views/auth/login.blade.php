@@ -7,7 +7,7 @@
     <title>NexusERP — Iniciar Sesión</title>
 
     <script>
-        const server = '{{ url('/') }}';
+        const server = '{{ str_replace("http://", "https://", url("/")) }}';
         const apiUrl = server + '/api/v1';
     </script>
 
