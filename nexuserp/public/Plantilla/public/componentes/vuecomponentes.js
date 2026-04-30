@@ -256,6 +256,187 @@ Vue.component("select3", {
     }
 });
 
+Vue.component("select4", {
+    props: {
+        value: [String, Number, null],
+        options: { type: Array, required: true },
+        placeholder: { type: String, default: "Seleccione un dato" },
+        id: String,
+        name: String,
+        valueField: { type: String, default: "id" },
+        labelField: { type: String, default: "name" },
+        fetchOptions: Function,
+        required: { type: Boolean, default: false },
+        autovalidar: { type: Boolean, default: true },
+        disabled: { type: Boolean, default: false }
+    },
+    template: `
+        <div>
+            <select ref="selectNode" :id="id" :name="name" style="width: 100%;"></select>
+            <div v-if="showError" class="invalid-feedback" style="display:block;color:#dc3545;margin-top:4px;">
+                Este campo es obligatorio.
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            choicesInstance: null,
+            showError: false
+        };
+    },
+    mounted() {
+        this.initChoices();
+        this.$emit("register-validation", this);
+
+        if (this.value === undefined) {
+            this.$emit("input", null);
+        }
+    },
+    watch: {
+        value(newVal) {
+            if (this.choicesInstance) {
+                const current = this.choicesInstance.getValue(true);
+                const valueStr = newVal != null ? String(newVal) : "";
+                if (String(current) !== valueStr) {
+                    this.choicesInstance.setChoiceByValue(valueStr);
+                }
+            }
+        },
+        options: {
+            handler() {
+                this.refreshChoices();
+            },
+            deep: true
+        },
+        disabled(newVal) {
+            if (this.choicesInstance) {
+                if (newVal) {
+                    this.choicesInstance.disable();
+                } else {
+                    this.choicesInstance.enable();
+                }
+            }
+        }
+    },
+    methods: {
+        initChoices() {
+            const vm = this;
+            const element = this.$refs.selectNode;
+
+            if (this.required) element.setAttribute("required", "required");
+            if (this.disabled) element.setAttribute("disabled", "disabled");
+
+            this.choicesInstance = new Choices(element, {
+                removeItemButton: true,
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: this.placeholder,
+                itemSelectText: "Presione para seleccionar",
+                searchEnabled: true,
+                searchChoices: !this.fetchOptions,
+                classNames: {
+                    containerOuter: "choices select3-wrapper"
+                }
+            });
+
+            this.refreshChoices();
+
+            element.addEventListener("change", function (e) {
+                const selectedValue = e.target.value;
+                vm.$emit("input", selectedValue !== "" ? selectedValue : null);
+                vm.onInput();
+            });
+
+            element.addEventListener("invalid", function (e) {
+                e.preventDefault();
+                vm.onInvalid();
+            });
+
+            element.addEventListener("search", async (e) => {
+                const keyword = e.detail?.value || e.target.value;
+                if (vm.fetchOptions && keyword.length >= 3) {
+                    const results = await vm.fetchOptions(keyword);
+                    vm.updateOptionsFromSearch(results);
+                }
+            });
+        },
+        refreshChoices() {
+            if (!this.choicesInstance) return;
+
+            const formattedOptions = this.formatOptions(this.options);
+
+            this.choicesInstance.clearChoices();
+            this.choicesInstance.setChoices(formattedOptions, "value", "label", true);
+
+            if (this.options.length === 1) {
+                const valueStr = String(this.options[0][this.valueField]);
+                this.choicesInstance.setChoiceByValue(valueStr);
+                if (String(this.value) !== valueStr) {
+                    this.$emit("input", valueStr);
+                }
+            } else {
+                const valueStr = this.value != null ? String(this.value) : "";
+                if (valueStr !== "") {
+                    this.choicesInstance.setChoiceByValue(valueStr);
+                }
+            }
+        },
+        updateOptionsFromSearch(newOptions) {
+            if (!this.choicesInstance) return;
+
+            const formattedOptions = this.formatOptions(newOptions);
+            this.choicesInstance.clearChoices();
+            this.choicesInstance.setChoices(formattedOptions, "value", "label", true);
+
+            if (newOptions.length === 1) {
+                const valueStr = String(newOptions[0][this.valueField]);
+                this.choicesInstance.setChoiceByValue(valueStr);
+                if (String(this.value) !== valueStr) {
+                    this.$emit("input", valueStr);
+                }
+            } else {
+                const valueStr = this.value != null ? String(this.value) : "";
+                if (valueStr !== "") {
+                    this.choicesInstance.setChoiceByValue(valueStr);
+                }
+            }
+        },
+        formatOptions(options) {
+            const isEmpty = this.value === null || this.value === undefined || this.value === "";
+
+            const baseOption = {
+                value: "",
+                label: this.placeholder,
+                disabled: true,
+                selected: isEmpty
+            };
+
+            const formatted = options.map(opt => ({
+                value: String(opt[this.valueField]),
+                label: String(opt[this.labelField]),
+                selected: String(opt[this.valueField]) === String(this.value)
+            }));
+
+            return [baseOption, ...formatted];
+        },
+        onInvalid() {
+            this.showError = true;
+        },
+        onInput() {
+            this.showError = false;
+        },
+        forceRefresh() {
+            this.refreshChoices();
+        }
+    },
+    destroyed() {
+        if (this.choicesInstance) {
+            this.choicesInstance.destroy();
+            this.choicesInstance = null;
+        }
+    }
+});
+
 Vue.component("base64-decode", {
     props: {
         value: {
@@ -1671,215 +1852,560 @@ Vue.component("upload-file-s3", {
     `
 });
 
+
 Vue.component("v-smart-table", {
     props: {
-        title: { type: String, default: "" },
-        data: { type: Array, required: true },
-        columns: { type: Array, required: true },
-        exportName: { type: String, default: "Reporte" },
-        photoKey: { type: String, default: "" },
-        statusKey: { type: String, default: "" },
-        rowsPerPageOptions: { type: Array, default: () => [5, 10, 15, 25, 50, 100] }
+        // ── Datos ───────────────────────────────────────────────
+        title:              { type: String,  default: "" },
+        data:               { type: Array,   required: true },
+        columns:            { type: Array,   required: true },
+        exportName:         { type: String,  default: "Reporte" },
+
+        // ── Claves especiales ────────────────────────────────────
+        photoKey:           { type: String,  default: "" },
+        statusKey:          { type: String,  default: "" },
+        actionsKey:         { type: String,  default: "" },
+
+        // ── Configuración visual ─────────────────────────────────
+        rowsPerPageOptions: { type: Array,   default: () => [5, 10, 25, 50, 100] },
+        striped:            { type: Boolean, default: true  },
+        compact:            { type: Boolean, default: false },
+        loading:            { type: Boolean, default: false },
+        emptyText:          { type: String,  default: "No se encontraron registros" },
+
+        // ── Funcionalidades opcionales ───────────────────────────
+        refreshable:        { type: Boolean, default: false },
+        selectable:         { type: Boolean, default: false },
+        resetPassword:      { type: Boolean, default: false },
+
+        // ── Totales al pie ───────────────────────────────────────
+        // Ej: [{ key: 'monto', prefix: 'Q ', decimals: 2 }]
+        totals:             { type: Array,   default: () => [] },
     },
+
     data() {
         return {
-            searchQuery: '',
-            currentPage: 1,
-            rowsPerPage: 10,
-            sortKey: '',
-            sortOrder: 1
+            searchQuery:    '',
+            currentPage:    1,
+            rowsPerPage:    10,
+            sortKey:        '',
+            sortOrder:      1,
+            selectedItems:  [],
+            allSelected:    false,
         };
     },
+
     watch: {
-        searchQuery() { this.currentPage = 1; },
-        rowsPerPage() { this.currentPage = 1; }
+        searchQuery()  { this.currentPage = 1; this.selectedItems = []; this.allSelected = false; },
+        rowsPerPage()  { this.currentPage = 1; },
+        data()         { this.currentPage = 1; this.selectedItems = []; this.allSelected = false; },
+        selectedItems(val) { this.$emit('selected', val); },
     },
+
     computed: {
-        // 🔥 ACTUALIZADO: Ahora detecta también el evento 'salida'
+        // ── Acciones disponibles ─────────────────────────────────
         hasActions() {
-            return !!(this.$listeners.edit || this.$listeners.delete || this.$listeners.view || this.$listeners.salida);
+            return !!(
+                this.$listeners.edit   ||
+                this.$listeners.delete ||
+                this.$listeners.view   ||
+                this.$listeners.salida ||
+                this.$listeners['reset-password']
+            );
         },
+
+        // ── Datos filtrados ──────────────────────────────────────
         filteredData() {
             let result = this.data;
-            if (this.searchQuery) {
-                const query = this.searchQuery.toLowerCase();
-                result = result.filter(item => 
-                    Object.values(item).some(val => String(val).toLowerCase().includes(query))
+            if (this.searchQuery.trim()) {
+                const query = this.searchQuery.trim().toLowerCase();
+                result = result.filter(item =>
+                    Object.values(item).some(val =>
+                        String(val ?? '').toLowerCase().includes(query)
+                    )
                 );
             }
             if (this.sortKey) {
                 result = [...result].sort((a, b) => {
-                    const valA = a[this.sortKey];
-                    const valB = b[this.sortKey];
-                    return (valA > valB ? 1 : -1) * this.sortOrder;
+                    const valA = a[this.sortKey] ?? '';
+                    const valB = b[this.sortKey] ?? '';
+                    if (valA < valB) return -1 * this.sortOrder;
+                    if (valA > valB) return  1 * this.sortOrder;
+                    return 0;
                 });
             }
             return result;
         },
+
+        // ── Paginación ───────────────────────────────────────────
         paginatedData() {
             const start = (this.currentPage - 1) * this.rowsPerPage;
             return this.filteredData.slice(start, start + this.rowsPerPage);
         },
         totalPages() {
-            return Math.ceil(this.filteredData.length / this.rowsPerPage) || 1;
-        }
+            return Math.max(1, Math.ceil(this.filteredData.length / this.rowsPerPage));
+        },
+        paginationInfo() {
+            if (this.filteredData.length === 0) return 'Sin registros';
+            const from = (this.currentPage - 1) * this.rowsPerPage + 1;
+            const to   = Math.min(this.currentPage * this.rowsPerPage, this.filteredData.length);
+            return `${from} – ${to} de ${this.filteredData.length}`;
+        },
+
+        // ── Páginas visibles ─────────────────────────────────────
+        visiblePages() {
+            const pages  = [];
+            const total  = this.totalPages;
+            const current = this.currentPage;
+            const delta  = 2;
+
+            for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+                pages.push(i);
+            }
+            return pages;
+        },
+
+        // ── Totales al pie ───────────────────────────────────────
+        computedTotals() {
+            if (!this.totals.length) return {};
+            const result = {};
+            this.totals.forEach(t => {
+                const sum = this.filteredData.reduce((acc, row) => {
+                    const val = parseFloat(String(row[t.key] || '0').replace(/[^0-9.-]/g, ''));
+                    return acc + (isNaN(val) ? 0 : val);
+                }, 0);
+                const decimals = t.decimals ?? 2;
+                result[t.key] = (t.prefix || '') + sum.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            });
+            return result;
+        },
     },
+
     methods: {
+        // ── Ordenamiento ─────────────────────────────────────────
         sortBy(key) {
-            if (this.sortKey === key) this.sortOrder *= -1;
-            else { this.sortKey = key; this.sortOrder = 1; }
+            if (this.sortKey === key) {
+                this.sortOrder *= -1;
+            } else {
+                this.sortKey   = key;
+                this.sortOrder = 1;
+            }
         },
+        getSortIcon(key) {
+            if (this.sortKey !== key) return 'fas fa-sort ms-1 text-400 fs--2';
+            return this.sortOrder === 1 ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
+        },
+
+        // ── Estado / Badge ───────────────────────────────────────
         getStatusClass(status) {
-            const s = String(status).toLowerCase();
-            if (['activo', 'completado', 'entrada', 'vehiculo', 'verificado','autorizado'].includes(s)) return 'badge-phoenix-success';
-            if (['inactivo', 'cancelado', 'salida', 'error'].includes(s)) return 'badge-phoenix-danger';
-            if (['denegado'].includes(s)) return 'badge-phoenix-secondary';
-            if (['pendiente'].includes(s)) return 'badge-phoenix-warning';
-            return 'badge-phoenix-warning';
+            const s = String(status ?? '').toLowerCase();
+            if (['activo','completado','entrada','verificado','autorizado','pagado','aprobado'].includes(s))
+                return 'badge-phoenix-success';
+            if (['inactivo','cancelado','salida','error','rechazado','baja'].includes(s))
+                return 'badge-phoenix-danger';
+            if (['pendiente','proceso','en_proceso','parcial'].includes(s))
+                return 'badge-phoenix-warning';
+            if (['denegado','bloqueado','suspendido'].includes(s))
+                return 'badge-phoenix-secondary';
+            return 'badge-phoenix-primary';
         },
+
+        // ── Highlight de búsqueda ────────────────────────────────
+        highlight(value) {
+            if (!this.searchQuery.trim() || !value) return String(value ?? '---');
+            const escaped = this.searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return String(value).replace(
+                new RegExp(escaped, 'gi'),
+                match => `<mark class="p-0 bg-warning rounded-1">${match}</mark>`
+            );
+        },
+
+        // ── Selección múltiple ───────────────────────────────────
+        toggleSelectAll() {
+            if (this.allSelected) {
+                this.selectedItems = [...this.paginatedData];
+            } else {
+                this.selectedItems = [];
+            }
+        },
+        isSelected(item) {
+            return this.selectedItems.some(s => JSON.stringify(s) === JSON.stringify(item));
+        },
+        toggleItem(item) {
+            if (this.isSelected(item)) {
+                this.selectedItems = this.selectedItems.filter(
+                    s => JSON.stringify(s) !== JSON.stringify(item)
+                );
+            } else {
+                this.selectedItems.push(item);
+            }
+        },
+
+        // ── Paginación ───────────────────────────────────────────
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+            }
+        },
+
+        // ── Exportar Excel ───────────────────────────────────────
         exportExcel() {
             const dataToExport = this.filteredData.map(item => {
-                let row = {};
+                const row = {};
                 this.columns.forEach(col => {
                     if (col.key !== this.photoKey) {
-                        row[col.label] = item[col.key] || '---';
+                        row[col.label] = item[col.key] ?? '---';
                     }
                 });
                 return row;
             });
             const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const colWidths = this.columns.map(col => ({ wch: col.label.length + 15 }));
-            ws['!cols'] = colWidths;
+            ws['!cols'] = this.columns.map(col => ({ wch: Math.max(col.label.length + 5, 15) }));
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Registros");
+            XLSX.utils.book_append_sheet(wb, ws, "Datos");
             const fileName = `${this.exportName}_${moment().format('DDMMYYYY_HHmm')}.xlsx`;
             XLSX.writeFile(wb, fileName);
         },
+
+        // ── Exportar PDF ─────────────────────────────────────────
         exportPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4');
             const totalPagesExp = "{total_pages_count_string}";
-            const tableColumn = this.columns.map(c => c.label);
-            const tableRows = this.filteredData.map(item => this.columns.map(c => item[c.key] || '---'));
+
+            const cols = this.columns.filter(c => c.key !== this.photoKey);
+            const head = [cols.map(c => c.label)];
+            const body = this.filteredData.map(item =>
+                cols.map(c => String(item[c.key] ?? '---'))
+            );
+
             doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 30,
+                head, body,
+                startY: 32,
                 theme: 'striped',
-                headStyles: { fillColor: [52, 73, 94], textColor: [255, 255, 255], fontSize: 10, halign: 'center' },
-                bodyStyles: { fontSize: 9 },
-                alternateRowStyles: { fillColor: [245, 247, 250] },
-                margin: { top: 30 },
+                headStyles:          { fillColor: [41, 65, 171], textColor: [255,255,255], fontSize: 9, halign: 'center' },
+                bodyStyles:          { fontSize: 8 },
+                alternateRowStyles:  { fillColor: [245, 247, 250] },
+                margin:              { top: 32 },
                 didDrawPage: (data) => {
-                    doc.setFontSize(18);
-                    doc.setTextColor(40);
-                    doc.text(this.title.toUpperCase(), data.settings.margin.left, 15);
+                    // Header
+                    doc.setFillColor(41, 65, 171);
+                    doc.rect(0, 0, doc.internal.pageSize.width, 28, 'F');
+                    doc.setFontSize(16);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('NexusERP', data.settings.margin.left, 12);
                     doc.setFontSize(10);
-                    doc.setTextColor(100);
-                    doc.text(`Reporte generado el: ${moment().format('DD/MM/YYYY HH:mm:ss')}`, data.settings.margin.left, 22);
-                    doc.setDrawColor(52, 73, 94);
-                    doc.setLineWidth(0.5);
-                    doc.line(data.settings.margin.left, 25, 280, 25);
-                    let str = "Página " + doc.internal.getNumberOfPages();
-                    if (typeof doc.putTotalPages === 'function') str = str + " de " + totalPagesExp;
+                    doc.setFont(undefined, 'normal');
+                    doc.text(this.title.toUpperCase(), data.settings.margin.left, 22);
                     doc.setFontSize(9);
-                    doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                    doc.text(`Generado: ${moment().format('DD/MM/YYYY HH:mm')}`, doc.internal.pageSize.width - 65, 22);
+                    // Footer
+                    let str = `Página ${doc.internal.getNumberOfPages()}`;
+                    if (typeof doc.putTotalPages === 'function') str += ` de ${totalPagesExp}`;
+                    doc.setFontSize(8);
+                    doc.setTextColor(150);
+                    doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 8);
                 }
             });
+
             if (typeof doc.putTotalPages === 'function') doc.putTotalPages(totalPagesExp);
             doc.save(`${this.exportName}_${moment().format('DDMMYYYY')}.pdf`);
-        }
+        },
     },
+
     template: `
     <div class="card shadow-none border border-300 my-3">
-        <div class="card-header border-bottom border-200 py-2">
-            <div class="row align-items-center justify-content-between">
-                <div class="col-auto"><h5 class="mb-0 text-900">{{ title }}</h5></div>
-                <div class="col-auto d-flex gap-2">
-                    <button @click="exportExcel" class="btn btn-link text-900 btn-sm px-2" title="Exportar Excel"><i class="fas fa-file-excel text-success fs-1"></i></button>
-                    <button @click="exportPDF" class="btn btn-link text-900 btn-sm px-2" title="Exportar PDF"><i class="fas fa-file-pdf text-danger fs-1"></i></button>
+
+        <div class="card-header border-bottom border-200 py-2 px-3">
+            <div class="row align-items-center g-2">
+                <div class="col">
+                    <h5 class="mb-0 text-900 fw-bold">
+                        <i class="fas fa-table me-2 text-primary fs--1"></i>
+                        {{ title }}
+                    </h5>
+                    <small v-if="selectedItems.length" class="text-primary fw-bold">
+                        {{ selectedItems.length }} seleccionado(s)
+                    </small>
+                </div>
+                <div class="col-auto d-flex align-items-center gap-2">
+                    <button v-if="refreshable"
+                            @click="$emit('refresh')"
+                            class="btn btn-sm btn-phoenix-secondary"
+                            title="Recargar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button @click="exportExcel"
+                            class="btn btn-sm btn-phoenix-success"
+                            title="Exportar Excel">
+                        <i class="fas fa-file-excel me-1"></i>
+                        <span class="d-none d-md-inline">Excel</span>
+                    </button>
+                    <button @click="exportPDF"
+                            class="btn btn-sm btn-phoenix-danger"
+                            title="Exportar PDF">
+                        <i class="fas fa-file-pdf me-1"></i>
+                        <span class="d-none d-md-inline">PDF</span>
+                    </button>
                 </div>
             </div>
         </div>
 
         <div class="card-body p-0">
-            <div class="p-3 bg-light border-bottom border-200">
-                <div class="row g-2 justify-content-between">
-                    <div class="col-12 col-md-4">
-                        <div class="search-box w-100">
-                            <input v-model="searchQuery" class="form-control form-control-sm" type="search" placeholder="Buscar..." />
+
+            <div class="p-3 border-bottom border-200 bg-light-subtle">
+                <div class="row g-2 align-items-center justify-content-between">
+                    <div class="col-12 col-md-5">
+                        <div class="search-box position-relative w-100">
+                            <input v-model="searchQuery"
+                                   class="form-control search-input form-control-sm pe-5"
+                                   type="search"
+                                   placeholder="Buscar en todos los campos..." />
                             <span class="fas fa-search search-box-icon"></span>
                         </div>
                     </div>
-                    <div class="col-auto d-flex align-items-center">
-                        <small class="me-2 fw-bold text-700">Ver:</small>
-                        <select v-model="rowsPerPage" class="form-select form-select-sm w-auto">
-                            <option v-for="o in rowsPerPageOptions" :value="o">{{o}}</option>
+                    <div class="col-auto d-flex align-items-center gap-2">
+                        <span class="text-600 fs--2 d-none d-sm-inline">Mostrar:</span>
+                        <select v-model="rowsPerPage"
+                                class="form-select form-select-sm w-auto">
+                            <option v-for="o in rowsPerPageOptions" :value="o" :key="o">{{ o }}</option>
                         </select>
+                        <span class="badge bg-soft-primary text-primary fs--2">
+                            {{ filteredData.length }} registros
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div class="table-responsive scrollbar">
-                <table class="table table-sm fs--1 mb-0 text-900">
+            <div v-if="loading" class="p-3">
+                <div v-for="n in 5" :key="n"
+                     class="d-flex gap-3 mb-3 align-items-center">
+                    <div style="height:36px;width:36px;background:#e8ecef;border-radius:50%;flex-shrink:0;
+                                animation:shimmer 1.5s infinite;background-size:200% 100%;
+                                background-image:linear-gradient(90deg,#e8ecef 25%,#f5f6f7 50%,#e8ecef 75%);">
+                    </div>
+                    <div style="flex:1;">
+                        <div style="height:12px;background:#e8ecef;border-radius:4px;margin-bottom:6px;width:60%;
+                                    animation:shimmer 1.5s infinite;background-size:200% 100%;
+                                    background-image:linear-gradient(90deg,#e8ecef 25%,#f5f6f7 50%,#e8ecef 75%);">
+                        </div>
+                        <div style="height:10px;background:#e8ecef;border-radius:4px;width:40%;
+                                    animation:shimmer 1.5s infinite;background-size:200% 100%;
+                                    background-image:linear-gradient(90deg,#e8ecef 25%,#f5f6f7 50%,#e8ecef 75%);">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else class="table-responsive scrollbar">
+                <table :class="['table mb-0 text-900 fs--1', striped ? 'table-striped' : '', compact ? 'table-sm' : '']">
                     <thead>
-                        <tr class="bg-200">
-                            <th v-for="col in columns" :key="col.key" @click="sortBy(col.key)" class="white-space-nowrap align-middle ps-3 cursor-pointer py-2">
-                                {{ col.label }} 
-                                <i v-if="sortKey === col.key" :class="sortOrder === 1 ? 'fa-sort-up' : 'fa-sort-down'" class="fas ms-1 text-primary"></i>
-                                <i v-else class="fas fa-sort ms-1 text-400 fs--2"></i>
+                        <tr class="bg-200 text-700">
+
+                            <th v-if="selectable" class="align-middle text-center ps-3" style="width:40px;">
+                                <div class="form-check mb-0 d-flex justify-content-center">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           v-model="allSelected"
+                                           @change="toggleSelectAll" />
+                                </div>
                             </th>
-                            <th v-if="hasActions" class="text-end align-middle pe-3 py-2">ACCIONES</th>
+
+                            <th v-for="col in columns"
+                                :key="col.key"
+                                class="align-middle white-space-nowrap ps-3 py-2"
+                                :class="col.key !== photoKey ? 'cursor-pointer' : ''"
+                                @click="col.key !== photoKey ? sortBy(col.key) : null"
+                                :style="col.width ? 'width:'+col.width : ''">
+                                {{ col.label }}
+                                <i v-if="col.key !== photoKey" :class="getSortIcon(col.key)"></i>
+                            </th>
+
+                            <th v-if="hasActions"
+                                class="text-end align-middle pe-3 py-2"
+                                style="width:160px;">
+                                ACCIONES
+                            </th>
                         </tr>
                     </thead>
+
                     <tbody class="list">
-                        <tr v-for="(item, i) in paginatedData" :key="i" class="hover-actions-trigger">
-                            <td v-for="col in columns" :key="col.key" class="align-middle ps-3">
-                                <div v-if="col.key === photoKey" class="avatar avatar-m">
-                                    <img v-if="item[col.key]" :src="item[col.key]" class="rounded-circle border border-200 shadow-sm" />
-                                    <div v-else class="avatar-name rounded-circle"><span>?</span></div>
+                        <tr v-for="(item, i) in paginatedData"
+                            :key="i"
+                            class="hover-actions-trigger"
+                            :class="isSelected(item) ? 'table-active' : ''">
+
+                            <td v-if="selectable" class="align-middle text-center ps-3">
+                                <div class="form-check mb-0 d-flex justify-content-center">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           :checked="isSelected(item)"
+                                           @change="toggleItem(item)" />
                                 </div>
-                                <span v-else-if="col.key === statusKey" class="badge badge-phoenix fs--2" :class="getStatusClass(item[col.key])">
-                                    {{ item[col.key] }}
-                                </span>
-                                <span v-else class="fw-semi-bold text-800">{{ item[col.key] || '---' }}</span>
                             </td>
 
-                            <td v-if="hasActions" class="align-middle text-end pe-3">
-                                <div class="btn-group">
-                                    <button v-if="$listeners.salida" class="btn btn-sm btn-phoenix-danger me-1" @click="$emit('salida', item)" title="Marcar Salida">
+                            <td v-for="col in columns"
+                                :key="col.key"
+                                class="align-middle ps-3"
+                                :class="compact ? 'py-1' : 'py-2'">
+
+                                <div v-if="col.key === photoKey" class="avatar avatar-m">
+                                    <img v-if="item[col.key]"
+                                         :src="item[col.key]"
+                                         class="rounded-circle border border-200 shadow-sm"
+                                         style="object-fit:cover;" />
+                                    <div v-else class="avatar-name rounded-circle bg-soft-primary">
+                                        <span class="text-primary fw-bold">
+                                            {{ (item['nombre_completo'] || item['nombre'] || '?').charAt(0).toUpperCase() }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <span v-else-if="col.key === statusKey"
+                                      class="badge badge-phoenix fs--2"
+                                      :class="getStatusClass(item[col.key])">
+                                    {{ item[col.key] || '—' }}
+                                </span>
+
+                                <span v-else
+                                      class="fw-semi-bold text-800"
+                                      v-html="highlight(item[col.key])">
+                                </span>
+
+                            </td>
+
+                            <td v-if="hasActions"
+                                class="align-middle text-end pe-3"
+                                :class="compact ? 'py-1' : 'py-2'">
+                                <div class="d-flex justify-content-end gap-1">
+
+                                    <button v-if="$listeners['reset-password']"
+                                            class="btn btn-sm btn-phoenix-warning"
+                                            @click="$emit('reset-password', item)"
+                                            title="Restablecer contraseña"
+                                            data-bs-toggle="tooltip">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+
+                                    <button v-if="$listeners.view"
+                                            class="btn btn-sm btn-phoenix-secondary"
+                                            @click="$emit('view', item)"
+                                            title="Ver detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+
+                                    <button v-if="$listeners.edit"
+                                            class="btn btn-sm btn-phoenix-primary"
+                                            @click="$emit('edit', item)"
+                                            title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+
+                                    <button v-if="$listeners.salida"
+                                            class="btn btn-sm btn-phoenix-danger"
+                                            @click="$emit('salida', item)"
+                                            title="Marcar salida">
                                         <i class="fas fa-sign-out-alt"></i>
                                     </button>
 
-                                    <button v-if="$listeners.view" class="btn btn-sm btn-phoenix-secondary me-1" @click="$emit('view', item)" title="Ver Detalle">
-                                        <i class="fas fa-eye"></i>
+                                    <button v-if="$listeners.toggle"
+                                            class="btn btn-sm btn-phoenix-warning"
+                                            @click="$emit('toggle', item)"
+                                            :title="item[statusKey] === 'Activo' ? 'Desactivar' : 'Activar'">
+                                        <i :class="item[statusKey] === 'Activo' ? 'fas fa-toggle-on text-success' : 'fas fa-toggle-off text-danger'"></i>
                                     </button>
-                                    <button v-if="$listeners.edit" class="btn btn-sm btn-phoenix-primary me-1" @click="$emit('edit', item)" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button v-if="$listeners.delete" class="btn btn-sm btn-phoenix-danger" @click="$emit('delete', item)" title="Eliminar">
+
+                                    <button v-if="$listeners.delete"
+                                            class="btn btn-sm btn-phoenix-danger"
+                                            @click="$emit('delete', item)"
+                                            title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </button>
+
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr v-if="paginatedData.length === 0">
+                            <td :colspan="columns.length + (hasActions ? 1 : 0) + (selectable ? 1 : 0)"
+                                class="text-center py-5">
+                                <div class="text-400 d-flex flex-column align-items-center justify-content-center">
+                                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                                    <span class="fs--1">{{ emptyText }}</span>
                                 </div>
                             </td>
                         </tr>
                     </tbody>
+
+                    <tfoot v-if="totals.length && filteredData.length">
+                        <tr class="bg-soft-primary border-top border-primary">
+                            <td v-if="selectable"></td>
+                            <td v-for="col in columns"
+                                :key="'t-'+col.key"
+                                class="align-middle ps-3 py-2 fw-bold text-900">
+                                <span v-if="computedTotals[col.key]">
+                                    {{ computedTotals[col.key] }}
+                                </span>
+                                <span v-else-if="col.key === columns[0].key" class="text-primary">
+                                    TOTALES
+                                </span>
+                            </td>
+                            <td v-if="hasActions"></td>
+                        </tr>
+                    </tfoot>
+
                 </table>
             </div>
 
-            <div class="d-flex align-items-center justify-content-between p-3 border-top border-200 bg-light-subtle">
-                <span class="fs--1 text-700">Mostrando registros del <b>{{ (currentPage-1)*rowsPerPage + 1 }}</b> al <b>{{ Math.min(currentPage*rowsPerPage, filteredData.length) }}</b> de <b>{{filteredData.length}}</b></span>
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage === 1" @click="currentPage--">Anterior</button>
-                    <div class="fs--1 fw-bold text-primary">{{currentPage}} / {{totalPages}}</div>
-                    <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage === totalPages" @click="currentPage++">Siguiente</button>
-                </div>
+            <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between p-3 border-top border-200 bg-light-subtle gap-2">
+
+                <span class="fs--1 text-600">
+                    <b>{{ paginationInfo }}</b>
+                </span>
+
+                <nav v-if="totalPages > 1">
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+
+                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                            <button class="page-link rounded" @click="goToPage(1)" :disabled="currentPage === 1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </button>
+                        </li>
+
+                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                            <button class="page-link rounded" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">
+                                <i class="fas fa-angle-left"></i>
+                            </button>
+                        </li>
+
+                        <li v-for="page in visiblePages"
+                            :key="page"
+                            class="page-item"
+                            :class="{ active: page === currentPage }">
+                            <button class="page-link rounded" @click="goToPage(page)">{{ page }}</button>
+                        </li>
+
+                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                            <button class="page-link rounded" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages">
+                                <i class="fas fa-angle-right"></i>
+                            </button>
+                        </li>
+
+                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                            <button class="page-link rounded" @click="goToPage(totalPages)" :disabled="currentPage === totalPages">
+                                <i class="fas fa-angle-double-right"></i>
+                            </button>
+                        </li>
+
+                    </ul>
+                </nav>
+
             </div>
+
         </div>
     </div>
     `
 });
-
 //////////// -----MODALES-------- ////////////
 Vue.component("v-modal", {
     props: {

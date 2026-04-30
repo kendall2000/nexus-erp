@@ -17,34 +17,32 @@ class MenuController extends Controller
     {
         $usuario   = $request->user();
         $idEmpresa = $usuario->id_empresa;
+        $idRoles   = $usuario->roles()->pluck('rol.id_rol')->toArray();
 
-        // Obtiene los roles del usuario
-        $idRoles = $usuario->roles()->pluck('rol.id_rol')->toArray();
+        // Verifica si es admin — ve todo sin filtro
+        $esAdmin = $usuario->roles()
+                        ->where('nombre', 'Administrador')
+                        ->exists();
 
-        // Trae todos los grupos principales con sus hijos
-        $grupos = Menu::with(['hijos' => function ($q) use ($idRoles) {
-                        // Filtra hijos por rol del usuario
-                        // Si el ítem no tiene roles asignados = visible para todos
-                        $q->where('activo', true)
-                          ->orderBy('orden')
-                          ->where(function ($subQ) use ($idRoles) {
-                              $subQ->whereDoesntHave('roles')
-                                   ->orWhereHas('roles', fn($r) =>
-                                       $r->whereIn('menu_rol.id_rol', $idRoles)
-                                   );
-                          });
+        $grupos = Menu::with(['hijos' => function ($q) use ($idRoles, $esAdmin) {
+                        $q->where('activo', true)->orderBy('orden');
+
+                        // Si NO es admin, filtra por menu_rol
+                        if (!$esAdmin) {
+                            $q->where(function ($subQ) use ($idRoles) {
+                                $subQ->whereDoesntHave('roles')
+                                    ->orWhereHas('roles', fn($r) =>
+                                        $r->whereIn('menu_rol.id_rol', $idRoles)
+                                    );
+                            });
+                        }
                     }])
-                    ->grupos($idEmpresa)
-                    ->where(function ($q) use ($idRoles) {
-                        // Grupos visibles si no tienen restricción de rol
-                        $q->whereDoesntHave('roles')
-                          ->orWhereHas('roles', fn($r) =>
-                              $r->whereIn('menu_rol.id_rol', $idRoles)
-                          );
-                    })
+                    ->whereNull('id_padre')          // solo grupos padre
+                    ->where('id_empresa', $idEmpresa)
+                    ->where('activo', true)
+                    ->orderBy('orden')
                     ->get();
 
-        // Formatea la respuesta para el frontend Vue
         $menuFormateado = $grupos->map(function ($grupo) {
             return [
                 'id'     => $grupo->id_menu,
@@ -55,12 +53,12 @@ class MenuController extends Controller
                         'nombre'   => $item->nombre,
                         'icono'    => $item->icono ?? 'chevrons-right',
                         'ruta'     => $item->ruta ?? '#',
-                        'subitems' => [], // Futuro: tercer nivel
+                        'subitems' => [],
                     ];
                 })->values(),
             ];
-        })->filter(fn($g) => $g['items']->count() > 0) // Oculta grupos vacíos
-          ->values();
+        })->filter(fn($g) => $g['items']->count() > 0) // oculta grupos vacíos
+        ->values();
 
         return response()->json([
             'success' => true,
@@ -76,9 +74,10 @@ class MenuController extends Controller
         $idEmpresa = $request->user()->id_empresa;
 
         $grupos = Menu::with(['hijos' => fn($q) =>
-                        $q->where('activo', true)->orderBy('orden')
+                        $q->orderBy('orden')
                     ])
                     ->grupos($idEmpresa)
+                    ->orderBy('orden') 
                     ->get();
 
         $menuFormateado = $grupos->map(fn($grupo) => [
@@ -89,7 +88,7 @@ class MenuController extends Controller
                 'nombre'   => $item->nombre,
                 'icono'    => $item->icono ?? 'chevrons-right',
                 'ruta'     => $item->ruta ?? '#',
-                'activo'   => $item->activo,
+                'activo'   => (bool) $item->activo,
                 'orden'    => $item->orden,
                 'subitems' => [],
             ])->values(),
