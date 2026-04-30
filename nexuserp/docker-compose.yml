@@ -20,25 +20,21 @@ services:
     ports:
       - "${APP_PORT:-8080}:80"
     networks:
-      - nexuserp_net
+      - red-external-network
 
   # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
   queue:
     image: nexuserp-app
-    pull_policy: never
     container_name: nexuserp_queue
     restart: unless-stopped
     working_dir: /var/www/nexuserp
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     env_file:
       - .env
-    volumes:
-      - ./:/var/www/nexuserp
-      - ./storage:/var/www/nexuserp/storage
     depends_on:
       - app
     networks:
-      - nexuserp_net
+      - red-external-network
 
   # ── Scheduler (opcional, puedes comentar si no lo usas) ──────
   scheduler:
@@ -53,14 +49,11 @@ services:
       done"
     env_file:
       - .env
-    volumes:
-      - ./:/var/www/nexuserp
-      - ./storage:/var/www/nexuserp/storage
     depends_on:
       - app
     networks:
-      - nexuserp_net
+      - red-external-network
 
 networks:
-  nexuserp_net:
+  red-external-network:
     driver: bridge
