@@ -10,7 +10,7 @@
     <base href="{{ url('/') }}/Plantilla/public/">
 
     <script>
-        const server     = '{{ url('/') }}';
+        const server     = '{{ str_replace("http://", "https://", url("/")) }}';
         const basePath   = '';
         const servidor   = server + basePath;
         const apiUrl     = server + '/api/v1';
