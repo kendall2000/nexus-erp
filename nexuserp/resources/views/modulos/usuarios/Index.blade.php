@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Catálogos para selects
             catalogos: { sucursales: [], roles: [] },
 
-            // Modal crear/editar
+            // Modal crear/editar 
             mostrarModal:   false,
             modoEditar:     false,
             guardando:      false,
