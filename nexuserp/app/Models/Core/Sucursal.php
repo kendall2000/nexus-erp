@@ -13,6 +13,7 @@ class Sucursal extends Model
     protected $fillable = [
         'id_empresa',
         'id_pais',
+        'id_division',
         'id_municipio',
         'nombre',
         'direccion',
@@ -37,6 +38,11 @@ class Sucursal extends Model
     public function pais()
     {
         return $this->belongsTo(Pais::class, 'id_pais');
+    }
+
+    public function division()
+    {
+        return $this->belongsTo(DivisionGeografica::class, 'id_division');
     }
 
     public function municipio()

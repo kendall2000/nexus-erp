@@ -91,40 +91,104 @@
 
 @if(file_exists(public_path('Plantilla/public/componentes/apis_service.js')))
     <script src="{{ url('/') }}/Plantilla/public/componentes/apis_service.js?v={{ time() }}"></script>
+    <script src="{{ url('/') }}/Plantilla/public/componentes/api.js?v={{ time() }}"></script>
 @endif
-
-{{-- Configuración Phoenix navbar --}}
+{{-- ============================================================
+     CONFIGURACIÓN GLOBAL — Auth + Phoenix
+     ============================================================ --}}
 <script>
-    // Navbar top style
-    var navbarTopStyle = window.config?.config?.phoenixNavbarTopStyle;
-    var navbarTop = document.querySelector('.navbar-top');
+(function() {
+    // ── 1. Interceptor global de fetch ──────────────────────────
+    const originalFetch = window.fetch;
+
+    window.fetch = async function(url, options) {
+        options = options || {};
+        options.headers = options.headers || {};
+
+        const token = sessionStorage.getItem('nexus_token');
+        if (token && typeof url === 'string' && url.indexOf('/api/v1') !== -1) {
+            options.headers['Authorization'] = 'Bearer ' + token;
+        }
+
+        const response = await originalFetch(url, options);
+
+        if (response.status === 401 && !window.location.pathname.includes('/login')) {
+            sessionStorage.removeItem('nexus_token');
+            sessionStorage.removeItem('nexus_usuario');
+            window.location.href = '/login';
+        }
+
+        return response;
+    };
+
+    // ── 2. Función de validación reutilizable ───────────────────
+    function validarSesion() {
+        if (window.location.pathname.includes('/login')) return;
+
+        const token = sessionStorage.getItem('nexus_token');
+
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
+
+        fetch(apiUrl + '/auth/me')
+            .then(res => {
+                if (!res.ok) {
+                    sessionStorage.clear();
+                    window.location.href = '/login';
+                }
+            })
+            .catch(() => {
+                sessionStorage.clear();
+                window.location.href = '/login';
+            });
+    }
+
+    // ── 3. Validar al cargar página ─────────────────────────────
+    document.addEventListener('DOMContentLoaded', validarSesion);
+
+    // ── 4. Validar al volver con back/forward (bfcache) ─────────
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            validarSesion();
+        }
+    });
+
+    // ── 5. Configuración visual de Phoenix ──────────────────────
+    const navbarTopStyle = window.config?.config?.phoenixNavbarTopStyle;
+    const navbarTop = document.querySelector('.navbar-top');
     if (navbarTopStyle === 'darker' && navbarTop) {
         navbarTop.classList.add('navbar-darker');
     }
 
-    // Navbar vertical style
-    var navbarVerticalStyle = window.config?.config?.phoenixNavbarVerticalStyle;
-    var navbarVertical = document.querySelector('.navbar-vertical');
+    const navbarVerticalStyle = window.config?.config?.phoenixNavbarVerticalStyle;
+    const navbarVertical = document.querySelector('.navbar-vertical');
     if (navbarVertical && navbarVerticalStyle === 'darker') {
         navbarVertical.classList.add('navbar-darker');
     }
-
-    // Axios global config para API NexusERP
-    var _originalFetch = window.fetch;
-    window.fetch = function(url, options) {
-        options = options || {};
-        options.headers = options.headers || {};
-
-        var nexusToken = sessionStorage.getItem('nexus_token');
-        if (nexusToken && typeof url === 'string' && url.indexOf('/api/v1') !== -1) {
-            options.headers['Authorization'] = 'Bearer ' + nexusToken;
-        }
-        return _originalFetch(url, options);
-    };
+})();
 </script>
+{{-- ── JS automático del módulo actual ───────────────────────── --}}
+@php
+    $segmentos = array_values(array_filter(explode('/', request()->path())));
+    $jsUrl     = null;
 
-{{-- Scripts específicos del módulo actual --}}
+    if (count($segmentos) >= 2 && $segmentos[0] === 'sistema') {
+        $modulo  = strtolower($segmentos[1]);
+        $archivo = isset($segmentos[2]) ? strtolower($segmentos[2]) : 'index';
+        $ruta    = resource_path("views/modulos/{$modulo}/{$archivo}.js");
+
+        if (file_exists($ruta)) {
+            $jsUrl = url("/modulos-js/{$modulo}/{$archivo}.js") . '?v=' . filemtime($ruta);
+        }
+    }
+@endphp
+
+@if($jsUrl)
+    <script src="{{ $jsUrl }}"></script>
+@endif
+
 @stack('scripts')
-
 </body>
 </html>
