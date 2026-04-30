@@ -12,103 +12,35 @@ services:
     container_name: nexuserp_app
     restart: unless-stopped
     working_dir: /var/www/nexuserp
-    environment:
-      APP_NAME: NexusERP
-      APP_ENV: production
-      APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-http://localhost}
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-nexus_erp}
-      DB_USERNAME: ${DB_USERNAME:-nexuserp}
-      DB_PASSWORD: ${DB_PASSWORD:-NexusERP2025*}
-      CACHE_DRIVER: redis
-      SESSION_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    env_file:
+      - .env
     volumes:
+      - ./:/var/www/nexuserp
       - ./storage:/var/www/nexuserp/storage
       - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
     ports:
       - "${APP_PORT:-8080}:80"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - nexuserp_net
 
-  # ── MySQL ─────────────────────────────────────────────────────
-  db:
-    image: mysql:9.0
-    container_name: nexuserp_db
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-nexus_erp}
-      MYSQL_USER: ${DB_USERNAME:-nexuserp}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-NexusERP2025*}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-RootNexus2025*}
-      MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
-    volumes:
-      - nexuserp_mysql:/var/lib/mysql
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
-    ports:
-      - "${DB_PORT:-3307}:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-RootNexus2025*}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - nexuserp_net
-
-  # ── Redis ─────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: nexuserp_redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-RedisNexus2025}
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-RedisNexus2025}
-    volumes:
-      - nexuserp_redis:/data
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-RedisNexus2025}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - nexuserp_net
-
-  # ── Queue Worker ─────────────────────────────────────────────
+  # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
   queue:
     image: nexuserp-app
     container_name: nexuserp_queue
     restart: unless-stopped
     working_dir: /var/www/nexuserp
-    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
-    environment:
-      DB_HOST: db
-      DB_DATABASE: ${DB_DATABASE:-nexus_erp}
-      DB_USERNAME: ${DB_USERNAME:-nexuserp}
-      DB_PASSWORD: ${DB_PASSWORD:-NexusERP2025*}
-      REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-RedisNexus2025}
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    env_file:
+      - .env
     volumes:
+      - ./:/var/www/nexuserp
       - ./storage:/var/www/nexuserp/storage
     depends_on:
       - app
-      - redis
     networks:
       - nexuserp_net
 
-  # ── Scheduler ────────────────────────────────────────────────
+  # ── Scheduler (opcional, puedes comentar si no lo usas) ──────
   scheduler:
     image: nexuserp-app
     container_name: nexuserp_scheduler
@@ -116,28 +48,18 @@ services:
     working_dir: /var/www/nexuserp
     command: >
       sh -c "while true; do
-        php artisan schedule:run --verbose --no-interaction &
-        sleep 60
+        php artisan schedule:run --verbose --no-interaction;
+        sleep 60;
       done"
-    environment:
-      DB_HOST: db
-      DB_DATABASE: ${DB_DATABASE:-nexus_erp}
-      DB_USERNAME: ${DB_USERNAME:-nexuserp}
-      DB_PASSWORD: ${DB_PASSWORD:-NexusERP2025*}
-      REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-RedisNexus2025}
+    env_file:
+      - .env
     volumes:
+      - ./:/var/www/nexuserp
       - ./storage:/var/www/nexuserp/storage
     depends_on:
       - app
     networks:
       - nexuserp_net
-
-volumes:
-  nexuserp_mysql:
-    driver: local
-  nexuserp_redis:
-    driver: local
 
 networks:
   nexuserp_net:
