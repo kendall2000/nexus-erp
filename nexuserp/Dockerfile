@@ -44,4 +44,6 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && chown -R $USER:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+RUN chown -R www-data:www-data /var/www/nexuserp
+
 EXPOSE 80
