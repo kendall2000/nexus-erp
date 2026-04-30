@@ -26,6 +26,7 @@ services:
   # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
   queue:
     image: nexuserp-app
+    pull_policy: never
     container_name: nexuserp_queue
     restart: unless-stopped
     working_dir: /var/www/nexuserp
