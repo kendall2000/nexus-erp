@@ -19,8 +19,9 @@ services:
       - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
     ports:
       - "${APP_PORT:-8080}:80"
-    networks:
-      - red-external-network
+  networks:
+    red-external-network:
+      external: true
 
   # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
   queue:
