@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
         data: {
             // Tabla
             usuarios: [],
-            columnas: [
+            columnas: [ 
                 { key: 'avatar_url',      label: 'Foto'         },
                 { key: 'nombre_completo', label: 'Nombre'       },
                 { key: 'username',        label: 'Usuario'      },
