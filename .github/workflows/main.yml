@@ -1,0 +1,48 @@
+name: Despliegue automatico
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Imagen base Node
+        run: |
+          docker pull node:20-bookworm-slim
+          docker tag node:20-bookworm-slim cce-node-base:20-bookworm-slim
+
+      - name: Red externa requerida
+        run: docker network create red-external-network 2>/dev/null || true
+
+      - name: docker compose build
+        env:
+          NODE_BASE_IMAGE: cce-node-base:20-bookworm-slim
+        # IMPORTANTE: Se eliminaron los nombres "web" y "agent-gateway" de aquí:
+        run: docker compose build
+
+  deploy:
+    needs: build-docker
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Desplegar en Contabo por SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script_stop: true
+          script: |
+            cd ~/documentos/proyectos/php/nexus-erp/nexuserp#
+            git pull
+            docker compose up -d --build --remove-orphans
+            docker image prune -f
