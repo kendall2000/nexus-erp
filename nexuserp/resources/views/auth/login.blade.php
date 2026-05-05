@@ -7,11 +7,11 @@
     <title>NexusERP — Iniciar Sesión</title>
 
     <script>
-        const server = '{{ url("/") }}';
+        const server = window.location.protocol + '//' + window.location.host;
         const apiUrl = server + '/api/v1';
     </script>
 
-    <base href="{{ url('/') }}/Plantilla/public/pages/login/">
+    <base href="/Plantilla/public/pages/login/">
 
     <link rel="icon" type="image/png" href="{{ url('/') }}/Plantilla/public/assets/img/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
