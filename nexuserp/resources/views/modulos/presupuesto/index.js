@@ -407,13 +407,29 @@ new Vue({
                 inputLabel:      `Total anual (${this.form.moneda})`,
                 inputAttributes: { min: '0', step: '0.01' },
                 showCancelButton: true,
+                confirmButtonText: 'Distribuir',
+                cancelButtonText:  'Cancelar',
+                // ── Clave: aumentar z-index y forzar foco ──
+                backdrop:        true,
+                allowOutsideClick: false,
+                heightAuto:      false,
+                didOpen: () => {
+                    const input = Swal.getInput();
+                    if (input) {
+                        input.focus();
+                        input.removeAttribute('readonly');
+                    }
+                },
+                customClass: {
+                    container: 'swal-on-modal', // CSS para z-index
+                },
             });
             if (!value) return;
             const mensual = parseFloat(value) / 12;
             this.nombresMeses.forEach(m => {
                 this.form['pre_' + m] = +mensual.toFixed(4);
             });
-        },
+            },
 
         copiarMesAnterior() {
             const enero = this.form.pre_enero || 0;
