@@ -122,9 +122,10 @@ class PagoController extends Controller
             'notas'            => 'nullable|string|max:500',
         ]);
 
-        // Verificar que la factura pertenece a la empresa y tiene saldo
+        // ── CORRECCIÓN: estados correctos del enum ────────────────
         $factura = Factura::where('id_empresa', $idEmpresa)
-            ->whereIn('estado', ['PENDIENTE', 'PARCIAL'])
+            ->whereIn('estado', ['EMITIDA', 'ENVIADA', 'PARCIAL', 'VENCIDA'])
+            ->where('saldo_pendiente', '>', 0)
             ->findOrFail($request->id_factura);
 
         // Regla de negocio: no pagar más del saldo pendiente
@@ -137,8 +138,6 @@ class PagoController extends Controller
         }
 
         return DB::transaction(function () use ($request, $idEmpresa, $factura) {
-            // El hook booted() del modelo Pago llama automáticamente
-            // a $factura->registrarPago($monto) al crearse
             $pago = Pago::create([
                 'id_empresa'       => $idEmpresa,
                 'id_factura'       => $factura->id_factura,
@@ -154,7 +153,6 @@ class PagoController extends Controller
                 'created_by'       => $request->user()->id_usuario,
             ]);
 
-            // Refrescar para obtener estado actualizado por el hook
             $factura->refresh();
 
             return response()->json([
@@ -178,18 +176,20 @@ class PagoController extends Controller
         $pago = Pago::porEmpresa($request->user()->id_empresa)->findOrFail($id);
 
         return DB::transaction(function () use ($pago) {
-            $factura    = $pago->factura;
-            $nuevoSaldo = (float) $factura->saldo_pendiente + (float) $pago->monto;
+            $factura      = $pago->factura;
+            $nuevoSaldo   = (float) $factura->saldo_pendiente + (float) $pago->monto;
             $totalFactura = (float) $factura->total;
+            $nuevoPagado  = (float) $factura->total_pagado - (float) $pago->monto;
 
-            // Recalcular estado al revertir
+            // ── CORRECCIÓN: estado EMITIDA en vez de PENDIENTE ──
             $nuevoEstado = match (true) {
-                $nuevoSaldo <= 0              => 'PAGADA',
-                $nuevoSaldo >= $totalFactura  => 'PENDIENTE',
-                default                       => 'PARCIAL',
+                $nuevoPagado <= 0           => 'EMITIDA',
+                $nuevoSaldo  <= 0           => 'PAGADA',
+                default                     => 'PARCIAL',
             };
 
             $factura->update([
+                'total_pagado'    => max(0, $nuevoPagado),
                 'saldo_pendiente' => $nuevoSaldo,
                 'estado'          => $nuevoEstado,
             ]);

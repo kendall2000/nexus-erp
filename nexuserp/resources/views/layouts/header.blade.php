@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NexusERP</title>
-    <base href="{{ url('/') }}/Plantilla/public/">
+    <base href="/Plantilla/public/">
+    <!-- <base href="{{ url('/') }}/Plantilla/public/"> -->
 
     <script>
         const server     = window.location.protocol + '//' + window.location.host;

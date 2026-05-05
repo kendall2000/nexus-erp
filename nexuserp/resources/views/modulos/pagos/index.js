@@ -148,19 +148,24 @@ new Vue({
                 });
                 const data = await res.json();
 
-                if (data.success) {
-                    toastr.success(data.message || 'Pago registrado correctamente.');
+                if (res.ok && data.success) {
                     this.mostrarModal = false;
+                    await Swal.fire({
+                        icon: 'success',
+                        title: data.message || 'Pago registrado correctamente.',
+                        timer: 1800,
+                        showConfirmButton: false,
+                    });
                     await Promise.all([this.cargarDatos(), this.cargarCatalogos()]);
                 } else if (res.status === 422) {
                     this.errores = data.errors || {};
-                    toastr.warning(data.message || 'Revisa los datos ingresados.');
+                    Swal.fire('Aviso', data.message || 'Revisa los datos ingresados.', 'warning');
                 } else {
-                    toastr.error(data.message || 'Error al registrar el pago.');
+                    Swal.fire('Error', data.message || 'Error al registrar el pago.', 'error');
                 }
             } catch (e) {
                 console.error('Error al guardar pago:', e);
-                toastr.error('Error de conexión.');
+                Swal.fire('Error', 'Error de conexión: ' + (e.message || 'desconocido'), 'error');
             } finally {
                 this.guardando = false;
             }
