@@ -48,9 +48,15 @@ Route::get('/login', fn() => view('auth.login'))->name('login');
 
     //clientes
     Route::get('/sistema/clientes',  fn() => view('modulos.clientes.index'));
-    Route::get('/sistema/facturas',  fn() => view('modulos.facturas.index'));
-    Route::get('/sistema/pagos',     fn() => view('modulos.pagos.index'));
-    Route::get('/sistema/cuentas-cobrar', fn() => view('modulos.cuentas-cobrar.index'));
+
+    //finzansas
+    Route::get('/sistema/facturas',       fn() => view('modulos.facturas.index'));
+    Route::get('/sistema/pagos',          fn() => view('modulos.pagos.index'));
+    Route::get('/sistema/presupuesto',    fn() => view('modulos.presupuesto.index'));
+    Route::get('/sistema/centros-costo', fn() => view('modulos.centros-costo.index'));
+    Route::get('/sistema/cuentas-contables', fn() => view('modulos.cuentas-contables.index'));
+    // Route::get('/sistema/cuentas-cobrar', fn() => view('modulos.cuentas-cobrar.index')); // -- no esta creado
+
 
 // ── Catch-all (DEBE ir SIEMPRE al final) ────────────────────────
     Route::get('/sistema/{any}', fn() => view('modulos.dashboard.index'))
