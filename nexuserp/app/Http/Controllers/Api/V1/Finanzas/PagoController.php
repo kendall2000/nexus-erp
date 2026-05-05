@@ -23,7 +23,7 @@ class PagoController extends Controller
         $pagos = Pago::with([
                 'factura:id_factura,numero_completo,estado',
                 'cliente:id_cliente,razon_social',
-                'creadoPor:id_usuario,nombre',
+                // 'creadoPor' eliminado temporalmente — columna 'nombre' no existe
             ])
             ->porEmpresa($idEmpresa)
             ->when($request->id_factura,  fn($q, $v) => $q->where('id_factura', $v))
@@ -48,11 +48,12 @@ class PagoController extends Controller
                 'fecha_pago'       => $p->fecha_pago?->format('d/m/Y'),
                 'fecha_acreditado' => $p->fecha_acreditado?->format('d/m/Y') ?? '—',
                 'notas'            => $p->notas,
-                'creado_por'       => $p->creadoPor?->nombre ?? '—',
+                'creado_por'       => '—', // se llenará una vez sepamos el nombre real
             ]);
 
         return response()->json(['success' => true, 'data' => $pagos]);
     }
+
 
     /**
      * Catálogos para el formulario.
