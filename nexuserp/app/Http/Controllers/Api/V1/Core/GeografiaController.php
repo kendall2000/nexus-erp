@@ -103,6 +103,20 @@ class GeografiaController extends Controller
         return response()->json(['success' => true, 'message' => 'País eliminado.']);
     }
 
+    // Dado un id_municipio, devuelve su id_division e id_pais
+    public function datosParaCascada(int $idMunicipio): JsonResponse
+    {
+        $municipio = \App\Models\Core\Municipio::with('division')->findOrFail($idMunicipio);
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'id_municipio' => $municipio->id_municipio,
+                'id_division'  => $municipio->id_division,
+                'id_pais'      => $municipio->division?->id_pais,
+            ],
+        ]);
+    }
     // ════════════════════════════════════════════════════════════
     // DIVISIONES (Departamentos)
     // ════════════════════════════════════════════════════════════

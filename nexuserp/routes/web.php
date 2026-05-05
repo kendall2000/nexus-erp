@@ -43,6 +43,15 @@ Route::get('/login', fn() => view('auth.login'))->name('login');
     //orden compra
     Route::get('/sistema/ordenes-compra', fn() => view('modulos.ordenes-compra.index'));
 
+    //recepcion compra
+    Route::get('/sistema/recepciones', fn() => view('modulos.recepciones.index'));
+
+    //clientes
+    Route::get('/sistema/clientes',  fn() => view('modulos.clientes.index'));
+    Route::get('/sistema/facturas',  fn() => view('modulos.facturas.index'));
+    Route::get('/sistema/pagos',     fn() => view('modulos.pagos.index'));
+    Route::get('/sistema/cuentas-cobrar', fn() => view('modulos.cuentas-cobrar.index'));
+
 // ── Catch-all (DEBE ir SIEMPRE al final) ────────────────────────
     Route::get('/sistema/{any}', fn() => view('modulos.dashboard.index'))
         ->where('any', '.*');
