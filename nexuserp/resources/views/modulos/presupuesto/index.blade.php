@@ -298,24 +298,58 @@
 
             {{-- ── ACCIONES RÁPIDAS ── --}}
             <div class="col-12">
-                <div class="bg-soft-info rounded p-2 d-flex flex-wrap gap-2 align-items-center">
-                    <small class="text-700 fw-semi-bold me-2">
-                        <span data-feather="zap" style="width:13px;height:13px" class="me-1"></span>
-                        Acciones rápidas:
-                    </small>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                            @click="distribuirIgual">
-                        <span data-feather="divide" style="width:13px;height:13px"></span>
-                        Distribuir total entre 12 meses
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                            @click="copiarMesAnterior">
-                        <span data-feather="copy" style="width:13px;height:13px"></span>
-                        Replicar Enero a todos
-                    </button>
-                    <span class="ms-auto fw-bold text-primary fs-0">
-                        Total: @{{ form.moneda }} @{{ formatear(totalPresupuestado) }}
-                    </span>
+                <div class="bg-soft-info rounded p-2">
+                    {{-- Modo botones --}}
+                    <div v-if="!mostrarInputDistribuir" class="d-flex flex-wrap gap-2 align-items-center">
+                        <small class="text-700 fw-semi-bold me-2">
+                            <span data-feather="zap" style="width:13px;height:13px" class="me-1"></span>
+                            Acciones rápidas:
+                        </small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                @click="toggleInputDistribuir">
+                            <span data-feather="divide" style="width:13px;height:13px"></span>
+                            Distribuir total entre 12 meses
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                @click="copiarMesAnterior">
+                            <span data-feather="copy" style="width:13px;height:13px"></span>
+                            Replicar Enero a todos
+                        </button>
+                        <span class="ms-auto fw-bold text-primary fs-0">
+                            Total: @{{ form.moneda }} @{{ formatear(totalPresupuestado) }}
+                        </span>
+                    </div>
+
+                    {{-- Modo input --}}
+                    <div v-else class="d-flex flex-wrap gap-2 align-items-center">
+                        <small class="text-700 fw-semi-bold">
+                            Total anual (@{{ form.moneda }}):
+                        </small>
+                        <input id="input-distribuir"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="form-control form-control-sm"
+                            style="max-width:200px"
+                            v-model="montoDistribuir"
+                            @keyup.enter="distribuirIgual"
+                            @keyup.esc="toggleInputDistribuir"
+                            placeholder="Ej: 120000.00">
+                        <button type="button" class="btn btn-sm btn-success"
+                                @click="distribuirIgual">
+                            <span data-feather="check" style="width:13px;height:13px"></span>
+                            Distribuir
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                @click="toggleInputDistribuir">
+                            <span data-feather="x" style="width:13px;height:13px"></span>
+                            Cancelar
+                        </button>
+                        <small class="text-muted ms-2">
+                            Cada mes recibirá: <strong>@{{ form.moneda }}
+                            @{{ formatear((parseFloat(montoDistribuir) || 0) / 12) }}</strong>
+                        </small>
+                    </div>
                 </div>
             </div>
 
