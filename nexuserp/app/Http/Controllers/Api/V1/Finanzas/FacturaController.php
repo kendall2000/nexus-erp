@@ -460,4 +460,46 @@ class FacturaController extends Controller
             'saldo_pendiente' => $total - $factura->total_pagado,
         ]);
     }
+    
+    public function cambiarEstado(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'estado' => 'required|in:EMITIDA,ENVIADA,VENCIDA',
+        ]);
+
+        $factura = Factura::where('id_empresa', $request->user()->id_empresa)
+                        ->findOrFail($id);
+
+        // Reglas de transición de estado
+        $transicionesValidas = [
+            'EMITIDA' => ['ENVIADA', 'VENCIDA'],
+            'ENVIADA' => ['VENCIDA'],
+            'PARCIAL' => ['VENCIDA'],
+        ];
+
+        $estadoActual = $factura->estado;
+        $nuevoEstado  = $request->estado;
+
+        if (in_array($estadoActual, ['BORRADOR', 'PAGADA', 'ANULADA'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "No se puede cambiar el estado desde {$estadoActual}.",
+            ], 422);
+        }
+
+        if (!isset($transicionesValidas[$estadoActual])
+            || !in_array($nuevoEstado, $transicionesValidas[$estadoActual])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Transición no permitida: {$estadoActual} → {$nuevoEstado}.",
+            ], 422);
+        }
+
+        $factura->update(['estado' => $nuevoEstado]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Factura marcada como {$nuevoEstado} correctamente.",
+        ]);
+    }
 }
