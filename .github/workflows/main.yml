@@ -1,4 +1,4 @@
-name: Despliegue automatico
+name: Deploy
 
 on:
   push:
@@ -6,39 +6,10 @@ on:
       - main
 
 jobs:
-  build-docker:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Imagen base Node
-        run: |
-          docker pull node:20-bookworm-slim
-          docker tag node:20-bookworm-slim cce-node-base:20-bookworm-slim
-
-      - name: Red externa requerida
-        run: docker network create red-external-network 2>/dev/null || true
-
-      - name: docker compose build
-        env:
-          NODE_BASE_IMAGE: cce-node-base:20-bookworm-slim
-        # SOLUCIÓN: Agregamos cd a la subcarpeta correcta antes de hacer el build.
-        # IMPORTANTE: Cambia 'nexuserp' por el nombre real de la carpeta donde está tu docker-compose.yml dentro de GitHub.
-        # Si el archivo SÍ está en la raíz, entonces asegúrate de que se llame exactamente 'docker-compose.yml' y no '.yaml' o similar.
-        run: |
-          cd nexuserp 
-          docker compose build
-
   deploy:
-    needs: build-docker
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Desplegar en Contabo por SSH
+      - name: SSH deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
