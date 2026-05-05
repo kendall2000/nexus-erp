@@ -191,16 +191,17 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('clientes/clientes/{id}',         [ClienteController::class, 'destroy']);
 
     // ── Facturas ───────────────────────────────────────────────────
-    Route::get('finanzas/facturas/catalogos',   [FacturaController::class, 'catalogos']);
-    Route::get('finanzas/facturas',             [FacturaController::class, 'index']);
-    Route::post('finanzas/facturas',             [FacturaController::class, 'store']);
-    Route::get('finanzas/facturas/{id}',        [FacturaController::class, 'show']);
-    Route::put('finanzas/facturas/{id}',        [FacturaController::class, 'update']);
-    Route::patch('finanzas/facturas/{id}/emitir', [FacturaController::class, 'emitir']);
-    Route::patch('finanzas/facturas/{id}/anular', [FacturaController::class, 'anular']);
-    Route::delete('finanzas/facturas/{id}',        [FacturaController::class, 'destroy']);
-    Route::get('finanzas/facturas/contrato/{id}/lineas', [FacturaController::class, 'lineasContrato']);
-
+    Route::get   ('finanzas/facturas/catalogos',           [FacturaController::class, 'catalogos']);
+    Route::get   ('finanzas/facturas/contrato/{id}/lineas',[FacturaController::class, 'lineasContrato']);
+    Route::get   ('finanzas/facturas',                     [FacturaController::class, 'index']);
+    Route::post  ('finanzas/facturas',                     [FacturaController::class, 'store']);
+    Route::get   ('finanzas/facturas/{id}',                [FacturaController::class, 'show']);
+    Route::put   ('finanzas/facturas/{id}',                [FacturaController::class, 'update']);
+    Route::patch ('finanzas/facturas/{id}/emitir',         [FacturaController::class, 'emitir']);
+    Route::patch ('finanzas/facturas/{id}/anular',         [FacturaController::class, 'anular']);
+    Route::patch ('finanzas/facturas/{id}/estado',         [FacturaController::class, 'cambiarEstado']);
+    Route::delete('finanzas/facturas/{id}',                [FacturaController::class, 'destroy']);
+    
     // ── Pagos ──────────────────────────────────────────────────────
     Route::prefix('finanzas/pagos')->group(function () {
         Route::get('catalogos', [PagoController::class, 'catalogos']);
