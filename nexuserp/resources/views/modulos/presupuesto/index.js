@@ -50,6 +50,10 @@ new Vue({
                        'julio','agosto','septiembre','octubre','noviembre','diciembre'],
         form: {},
 
+        // ── Distribución inline (NUEVO) ────────────────────────────
+        mostrarInputDistribuir: false,
+        montoDistribuir:        '',
+
         // ── Modal Clonar ───────────────────────────────────────────
         mostrarModalClonar: false,
         clonando:           false,
@@ -80,7 +84,6 @@ new Vue({
     },
 
     beforeDestroy() {
-        // Limpiar gráficos y listener para evitar memory leaks
         window.removeEventListener('resize', this.redimensionarGraficos);
         if (this.chartMensual)     this.chartMensual.dispose();
         if (this.chartComparativo) this.chartComparativo.dispose();
@@ -124,14 +127,12 @@ new Vue({
             return 'bg-success';
         },
 
-        // ── Formato compacto para ejes (1.5K, 2M, etc) ──
         formatoCompacto(v) {
-            if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-            if (v >= 1_000)     return (v / 1_000).toFixed(0) + 'K';
+            if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+            if (v >= 1000)    return (v / 1000).toFixed(0) + 'K';
             return v;
         },
 
-        // ── Formato monetario para tooltips ──
         formatoMoneda(v) {
             return 'Q ' + this.formatear(v || 0);
         },
@@ -209,13 +210,12 @@ new Vue({
         },
 
         // ════════════════════════════════════════════════════════════
-        // ECHARTS — RENDER MENSUAL (presupuestado vs ejecutado)
+        // ECHARTS
         // ════════════════════════════════════════════════════════════
         renderChartMensual(serie) {
             const dom = document.getElementById('chart-mensual');
             if (!dom) return;
 
-            // Reutilizar instancia existente (animación entre datasets)
             if (!this.chartMensual) {
                 this.chartMensual = echarts.init(dom);
             }
@@ -241,21 +241,19 @@ new Vue({
                     type: 'value',
                     axisLine:  { lineStyle: { color: '#cbd0dd' } },
                     axisLabel: {
-                        color:     '#748194',
+                        color: '#748194',
                         formatter: (v) => this.formatoCompacto(v),
                     },
                     splitLine: { lineStyle: { color: '#eaedf2', type: 'dashed' } },
                 },
                 series: [
                     {
-                        name:       'Presupuestado',
-                        type:       'line',
-                        smooth:     true,
-                        symbol:     'circle',
-                        symbolSize: 7,
-                        data:       serie.map(s => s.presupuestado),
-                        lineStyle:  { width: 3, color: '#2c7be5' },
-                        itemStyle:  { color: '#2c7be5' },
+                        name: 'Presupuestado',
+                        type: 'line', smooth: true,
+                        symbol: 'circle', symbolSize: 7,
+                        data: serie.map(s => s.presupuestado),
+                        lineStyle: { width: 3, color: '#2c7be5' },
+                        itemStyle: { color: '#2c7be5' },
                         areaStyle: {
                             color: {
                                 type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -267,14 +265,12 @@ new Vue({
                         },
                     },
                     {
-                        name:       'Ejecutado',
-                        type:       'line',
-                        smooth:     true,
-                        symbol:     'circle',
-                        symbolSize: 7,
-                        data:       serie.map(s => s.ejecutado),
-                        lineStyle:  { width: 3, color: '#e63757' },
-                        itemStyle:  { color: '#e63757' },
+                        name: 'Ejecutado',
+                        type: 'line', smooth: true,
+                        symbol: 'circle', symbolSize: 7,
+                        data: serie.map(s => s.ejecutado),
+                        lineStyle: { width: 3, color: '#e63757' },
+                        itemStyle: { color: '#e63757' },
                         areaStyle: {
                             color: {
                                 type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -286,12 +282,9 @@ new Vue({
                         },
                     },
                 ],
-            }, true); // segundo parámetro: notMerge — sustituye toda la config
+            }, true);
         },
 
-        // ════════════════════════════════════════════════════════════
-        // ECHARTS — RENDER COMPARATIVO (año actual vs anterior)
-        // ════════════════════════════════════════════════════════════
         renderChartComparativo(comp) {
             const dom = document.getElementById('chart-comparativo');
             if (!dom) return;
@@ -307,7 +300,7 @@ new Vue({
                     valueFormatter: (v) => this.formatoMoneda(v),
                 },
                 legend: {
-                    data:   [String(this.anioActivo), String(this.anioActivo - 1)],
+                    data: [String(this.anioActivo), String(this.anioActivo - 1)],
                     bottom: 0,
                     textStyle: { color: '#748194' },
                 },
@@ -322,39 +315,35 @@ new Vue({
                     type: 'value',
                     axisLine:  { lineStyle: { color: '#cbd0dd' } },
                     axisLabel: {
-                        color:     '#748194',
+                        color: '#748194',
                         formatter: (v) => this.formatoCompacto(v),
                     },
                     splitLine: { lineStyle: { color: '#eaedf2', type: 'dashed' } },
                 },
                 series: [
                     {
-                        name:        String(this.anioActivo),
-                        type:        'bar',
-                        data:        comp.map(c => c.anio_actual),
-                        itemStyle:   { color: '#00d27a', borderRadius: [3, 3, 0, 0] },
+                        name: String(this.anioActivo),
+                        type: 'bar',
+                        data: comp.map(c => c.anio_actual),
+                        itemStyle: { color: '#00d27a', borderRadius: [3, 3, 0, 0] },
                         barMaxWidth: 18,
                     },
                     {
-                        name:        String(this.anioActivo - 1),
-                        type:        'bar',
-                        data:        comp.map(c => c.anio_anterior),
-                        itemStyle:   { color: '#748194', borderRadius: [3, 3, 0, 0] },
+                        name: String(this.anioActivo - 1),
+                        type: 'bar',
+                        data: comp.map(c => c.anio_anterior),
+                        itemStyle: { color: '#748194', borderRadius: [3, 3, 0, 0] },
                         barMaxWidth: 18,
                     },
                 ],
             }, true);
         },
 
-        // ── Resize handler ──
         redimensionarGraficos() {
             if (this.chartMensual)     this.chartMensual.resize();
             if (this.chartComparativo) this.chartComparativo.resize();
         },
 
-        // ════════════════════════════════════════════════════════════
-        // CAMBIO DE AÑO
-        // ════════════════════════════════════════════════════════════
         cambiarAnio() {
             this.cargarDatos();
             this.cargarDashboard();
@@ -364,16 +353,20 @@ new Vue({
         // MODAL CRUD
         // ════════════════════════════════════════════════════════════
         abrirModalCrear() {
-            this.modoEditar   = false;
-            this.errores      = {};
+            this.modoEditar             = false;
+            this.errores                = {};
+            this.mostrarInputDistribuir = false;
+            this.montoDistribuir        = '';
             this.inicializarForm();
-            this.form.anio    = this.anioActivo;
-            this.mostrarModal = true;
+            this.form.anio              = this.anioActivo;
+            this.mostrarModal           = true;
         },
 
         async abrirModalEditar(item) {
-            this.modoEditar = true;
-            this.errores    = {};
+            this.modoEditar             = true;
+            this.errores                = {};
+            this.mostrarInputDistribuir = false;
+            this.montoDistribuir        = '';
             try {
                 const res  = await fetch(`${apiUrl}/finanzas/presupuestos/${item.id_presupuesto}`);
                 const data = await res.json();
@@ -399,37 +392,33 @@ new Vue({
             }
         },
 
-        // ── Acciones rápidas en el form ──
-        async distribuirIgual() {
-            const { value } = await Swal.fire({
-                title:           'Distribuir total entre 12 meses',
-                input:           'number',
-                inputLabel:      `Total anual (${this.form.moneda})`,
-                inputAttributes: { min: '0', step: '0.01' },
-                showCancelButton: true,
-                confirmButtonText: 'Distribuir',
-                cancelButtonText:  'Cancelar',
-                // ── Clave: aumentar z-index y forzar foco ──
-                backdrop:        true,
-                allowOutsideClick: false,
-                heightAuto:      false,
-                didOpen: () => {
-                    const input = Swal.getInput();
-                    if (input) {
-                        input.focus();
-                        input.removeAttribute('readonly');
-                    }
-                },
-                customClass: {
-                    container: 'swal-on-modal', // CSS para z-index
-                },
-            });
-            if (!value) return;
-            const mensual = parseFloat(value) / 12;
+        // ════════════════════════════════════════════════════════════
+        // ACCIONES RÁPIDAS — DISTRIBUIR INLINE
+        // ════════════════════════════════════════════════════════════
+        toggleInputDistribuir() {
+            this.mostrarInputDistribuir = !this.mostrarInputDistribuir;
+            this.montoDistribuir        = '';
+            if (this.mostrarInputDistribuir) {
+                this.$nextTick(() => {
+                    const input = document.getElementById('input-distribuir');
+                    if (input) input.focus();
+                });
+            }
+        },
+
+        distribuirIgual() {
+            const monto = parseFloat(this.montoDistribuir);
+            if (!monto || monto <= 0) {
+                Swal.fire('Aviso', 'Ingresa un monto válido mayor a 0.', 'warning');
+                return;
+            }
+            const mensual = monto / 12;
             this.nombresMeses.forEach(m => {
                 this.form['pre_' + m] = +mensual.toFixed(4);
             });
-            },
+            this.mostrarInputDistribuir = false;
+            this.montoDistribuir        = '';
+        },
 
         copiarMesAnterior() {
             const enero = this.form.pre_enero || 0;
@@ -438,7 +427,9 @@ new Vue({
             });
         },
 
-        // ── Guardar ──
+        // ════════════════════════════════════════════════════════════
+        // GUARDAR
+        // ════════════════════════════════════════════════════════════
         async guardarRegistro() {
             this.guardando = true;
             this.errores   = {};
@@ -457,10 +448,8 @@ new Vue({
                 if (res.ok && data.success) {
                     this.mostrarModal = false;
                     await Swal.fire({
-                        icon:              'success',
-                        title:             data.message,
-                        timer:             1500,
-                        showConfirmButton: false,
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false,
                     });
                     this.cargarDatos();
                     this.cargarDashboard();
@@ -481,15 +470,15 @@ new Vue({
         },
 
         // ════════════════════════════════════════════════════════════
-        // STATE MACHINE — APROBAR / CERRAR
+        // STATE MACHINE
         // ════════════════════════════════════════════════════════════
         async aprobarPresupuesto() {
             const ok = await Swal.fire({
-                title:              '¿Aprobar presupuesto?',
-                text:               'Una vez aprobado no se podrán editar los montos.',
-                icon:               'question',
-                showCancelButton:   true,
-                confirmButtonText:  'Sí, aprobar',
+                title: '¿Aprobar presupuesto?',
+                text:  'Una vez aprobado no se podrán editar los montos.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aprobar',
                 confirmButtonColor: '#00d27a',
             });
             if (!ok.isConfirmed) return;
@@ -498,11 +487,11 @@ new Vue({
 
         async cerrarPresupuesto() {
             const ok = await Swal.fire({
-                title:              '¿Cerrar año?',
-                text:               'El presupuesto quedará bloqueado permanentemente.',
-                icon:               'warning',
-                showCancelButton:   true,
-                confirmButtonText:  'Sí, cerrar',
+                title: '¿Cerrar año?',
+                text:  'El presupuesto quedará bloqueado permanentemente.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, cerrar',
                 confirmButtonColor: '#e63757',
             });
             if (!ok.isConfirmed) return;
@@ -519,10 +508,8 @@ new Vue({
                 if (data.success) {
                     this.mostrarModal = false;
                     Swal.fire({
-                        icon:              'success',
-                        title:             data.message,
-                        timer:             1500,
-                        showConfirmButton: false,
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false,
                     });
                     this.cargarDatos();
                     this.cargarDashboard();
@@ -543,12 +530,12 @@ new Vue({
                 return;
             }
             const ok = await Swal.fire({
-                title:              '¿Eliminar presupuesto?',
-                html:               `<b>${item.cuenta}</b><br>${item.centro}`,
-                icon:               'warning',
-                showCancelButton:   true,
+                title: '¿Eliminar presupuesto?',
+                html:  `<b>${item.cuenta}</b><br>${item.centro}`,
+                icon: 'warning',
+                showCancelButton: true,
                 confirmButtonColor: '#e63757',
-                confirmButtonText:  'Sí, eliminar',
+                confirmButtonText: 'Sí, eliminar',
             });
             if (!ok.isConfirmed) return;
             try {
@@ -559,10 +546,8 @@ new Vue({
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire({
-                        icon:              'success',
-                        title:             data.message,
-                        timer:             1500,
-                        showConfirmButton: false,
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false,
                     });
                     this.cargarDatos();
                     this.cargarDashboard();
@@ -598,10 +583,8 @@ new Vue({
                 if (res.ok && data.success) {
                     this.mostrarModalClonar = false;
                     await Swal.fire({
-                        icon:              'success',
-                        title:             data.message,
-                        timer:             2000,
-                        showConfirmButton: false,
+                        icon: 'success', title: data.message,
+                        timer: 2000, showConfirmButton: false,
                     });
                     this.anioActivo = this.clonarForm.anio_destino;
                     this.cargarDatos();
