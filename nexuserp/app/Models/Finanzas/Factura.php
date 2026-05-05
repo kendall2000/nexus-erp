@@ -3,6 +3,7 @@
 namespace App\Models\Finanzas;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Factura extends Model
 {
@@ -212,5 +213,131 @@ class Factura extends Model
             '90+'    => $query->where('fecha_vencimiento', '<', today()->subDays(90)),
             default  => $query,
         };
+    }
+    // ── Hook: actualizar presupuesto al emitir ──────────────────────────
+    protected static function booted(): void
+    {
+        static::updated(function (self $factura) {
+            // Solo cuando pasa a EMITIDA por primera vez
+            if ($factura->wasChanged('estado') && $factura->estado === 'EMITIDA') {
+                self::actualizarPresupuestoPorEmision($factura);
+            }
+
+            // Reversión si se anula
+            if ($factura->wasChanged('estado') && $factura->estado === 'ANULADA') {
+                self::revertirPresupuestoPorAnulacion($factura);
+            }
+        });
+    }
+
+    /**
+     * Suma la BASE IMPONIBLE de cada línea al presupuesto.
+     * No suma el IVA porque el IVA no es ingreso de la empresa, pertenece al SAT.
+     */
+    private static function actualizarPresupuestoPorEmision(self $factura): void
+    {
+        $factura->load('detalles.tipoServicio');
+
+        // ── Cargar configuración fiscal de la empresa ──
+        $empresa     = \App\Models\Core\Empresa::find($factura->id_empresa);
+        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
+        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
+
+        $mes  = $factura->fecha_emision->month;
+        $anio = $factura->fecha_emision->year;
+
+        foreach ($factura->detalles as $linea) {
+            $idCentro = $linea->centro_efectivo;
+            $idCuenta = $linea->cuenta_efectiva;
+
+            if (!$idCentro || !$idCuenta) continue;
+
+            // ── Calcular el monto NETO (sin IVA) que va al presupuesto ──
+            $subtotal = (float) $linea->subtotal;
+            $montoNeto = self::calcularMontoNeto($subtotal, $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
+
+            $presupuesto = \App\Models\Finanzas\PresupuestoAnual::where('id_empresa', $factura->id_empresa)
+                ->where('id_centro', $idCentro)
+                ->where('id_cuenta', $idCuenta)
+                ->where('anio', $anio)
+                ->where('estado', 'APROBADO')
+                ->first();
+
+            if ($presupuesto) {
+                try {
+                    $presupuesto->registrarEjecucion($mes, $montoNeto);
+                } catch (\Exception $e) {
+                    Log::warning("No se pudo registrar ejecución de presupuesto: {$e->getMessage()}", [
+                        'factura'    => $factura->id_factura,
+                        'linea'      => $linea->id_linea,
+                        'centro'     => $idCentro,
+                        'cuenta'     => $idCuenta,
+                        'monto_neto' => $montoNeto,
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resta la BASE IMPONIBLE al presupuesto cuando se anula la factura.
+     */
+    private static function revertirPresupuestoPorAnulacion(self $factura): void
+    {
+        $factura->load('detalles.tipoServicio');
+
+        $empresa     = \App\Models\Core\Empresa::find($factura->id_empresa);
+        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
+        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
+
+        $mes  = $factura->fecha_emision->month;
+        $anio = $factura->fecha_emision->year;
+        $nombreMes = \App\Models\Finanzas\PresupuestoAnual::MESES[$mes] ?? null;
+
+        if (!$nombreMes) return;
+
+        foreach ($factura->detalles as $linea) {
+            $idCentro = $linea->centro_efectivo;
+            $idCuenta = $linea->cuenta_efectiva;
+
+            if (!$idCentro || !$idCuenta) continue;
+
+            $subtotal = (float) $linea->subtotal;
+            $montoNeto = self::calcularMontoNeto($subtotal, $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
+
+            $presupuesto = \App\Models\Finanzas\PresupuestoAnual::where('id_empresa', $factura->id_empresa)
+                ->where('id_centro', $idCentro)
+                ->where('id_cuenta', $idCuenta)
+                ->where('anio', $anio)
+                ->first();
+
+            if ($presupuesto) {
+                $presupuesto->decrement("eje_{$nombreMes}", $montoNeto);
+                $presupuesto->decrement('total_ejecutado', $montoNeto);
+            }
+        }
+    }
+
+    /**
+     * Calcula el monto NETO (sin IVA) que va al presupuesto.
+     *
+     * Casos:
+     *   - Línea exenta de IVA → todo el subtotal es base
+     *   - Precio incluye IVA  → subtotal / (1 + tasa)
+     *   - Precio sin IVA      → subtotal tal cual
+     */
+    private static function calcularMontoNeto(
+        float $subtotal,
+        bool $esAfectoIva,
+        float $tasaIva,
+        bool $ivaIncluido
+    ): float {
+        if (!$esAfectoIva) {
+            return round($subtotal, 4);
+        }
+        if ($ivaIncluido) {
+            return round($subtotal / (1 + $tasaIva), 4);
+        }
+        return round($subtotal, 4);
     }
 }

@@ -23,6 +23,8 @@ class Empresa extends Model
         'logo_url',
         'fecha_fundacion',
         'activo',
+        'tasa_iva',
+        'iva_incluido_en_precio',
     ];
 
     protected $casts = [
@@ -30,6 +32,9 @@ class Empresa extends Model
         'fecha_fundacion' => 'date',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
+        'tasa_iva'               => 'decimal:2',
+        'iva_incluido_en_precio' => 'boolean',
+
     ];
 
     public function pais()
@@ -80,5 +85,9 @@ class Empresa extends Model
     public function getLogoUrlAttribute($value)
     {
         return $value ?? asset('images/logo-default.png');
+    }
+    public function getTasaIvaDecimalAttribute(): float
+    {
+        return (float) $this->tasa_iva / 100;
     }
 }

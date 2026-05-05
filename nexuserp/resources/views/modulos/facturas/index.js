@@ -1,7 +1,7 @@
 /**
  * NexusERP — Módulo Facturas
  * resources/views/modulos/facturas/index.js
- * Vue 2 CDN + Phoenix Template
+ * Vue 2 CDN + Phoenix Template + Opción C (Centro/Cuenta)
  */
 new Vue({
     el: '#facturas-app',
@@ -39,13 +39,14 @@ new Vue({
         // ── Catálogos ──────────────────────────────────────────────
         clientes: [], series: [], tiposServicio: [],
         contratos: [], monedas: [], tipos: [],
+        centros:  [], cuentas:  [],
 
         // ── Modal ──────────────────────────────────────────────────
-        mostrarModal:  false,
-        modoEditar:    false,
-        guardando:     false,
-        cargandoLineas:false,
-        errores:       {},
+        mostrarModal:   false,
+        modoEditar:     false,
+        guardando:      false,
+        cargandoLineas: false,
+        errores:        {},
 
         form: {
             id_factura:               null,
@@ -65,9 +66,17 @@ new Vue({
             saldo_pendiente:          0,
             detalles:                 [],
         },
+        configFiscal: {
+            tasa_iva:               12,
+            tasa_iva_decimal:       0.12,
+            iva_incluido_en_precio: true,
+            moneda_base:            'GTQ',
+        },
     },
 
-    // ── Computed ───────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════
+    // COMPUTED — propiedades reactivas sin argumentos
+    // ════════════════════════════════════════════════════════════
     computed: {
         clienteSeleccionado() {
             return this.clientes.find(c => c.id === this.form.id_cliente) || null;
@@ -92,26 +101,72 @@ new Vue({
         },
 
         totales() {
-            const subtotal      = this.form.detalles
+            const tasaIva     = this.configFiscal.tasa_iva_decimal || 0.12;
+            const ivaIncluido = this.configFiscal.iva_incluido_en_precio;
+
+            const subtotal = this.form.detalles
                 .reduce((sum, l) => sum + (parseFloat(l.subtotal) || 0), 0);
-            const descuento     = parseFloat(this.form.descuento) || 0;
-            const baseImponible = +(subtotal - descuento).toFixed(4);
-            const iva           = +(baseImponible * 0.12).toFixed(4);
-            const total         = +(baseImponible + iva).toFixed(4);
-            return { subtotal, descuento, baseImponible, iva, total };
+
+            const descuentoGlobal = parseFloat(this.form.descuento) || 0;
+
+            let ivaTotal   = 0;
+            let baseAfecta = 0;
+            let baseExenta = 0;
+
+            this.form.detalles.forEach(l => {
+                const sub = parseFloat(l.subtotal) || 0;
+                if (l.es_afecto_iva) {
+                    if (ivaIncluido) {
+                        // Precio CON IVA: separar
+                        const base = +(sub / (1 + tasaIva)).toFixed(4);
+                        const iva  = +(sub - base).toFixed(4);
+                        baseAfecta += base;
+                        ivaTotal   += iva;
+                    } else {
+                        // Precio SIN IVA: sumar
+                        baseAfecta += sub;
+                        ivaTotal   += +(sub * tasaIva).toFixed(4);
+                    }
+                } else {
+                    baseExenta += sub;
+                }
+            });
+
+            const baseImponible = +(baseAfecta + baseExenta - descuentoGlobal).toFixed(4);
+            const total = ivaIncluido
+                ? +(subtotal - descuentoGlobal).toFixed(4)
+                : +(subtotal + ivaTotal - descuentoGlobal).toFixed(4);
+
+            return {
+                subtotal,
+                descuento:    descuentoGlobal,
+                baseAfecta,
+                baseExenta,
+                baseImponible,
+                iva:          ivaTotal,
+                total,
+                // Útiles para el template
+                tasaIvaPct:   this.configFiscal.tasa_iva,
+                ivaIncluido,
+            };
         },
     },
 
-    // ── Lifecycle ──────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════
+    // LIFECYCLE
+    // ════════════════════════════════════════════════════════════
     mounted() {
         this.cargarDatos();
         this.cargarCatalogos();
         if (typeof feather !== 'undefined') feather.replace();
     },
 
-    // ── Methods ────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════
+    // METHODS — funciones que pueden recibir argumentos
+    // ════════════════════════════════════════════════════════════
     methods: {
 
+        // ── Helpers de UI ──────────────────────────────────────────
         formatear(num) {
             return new Intl.NumberFormat('es-GT', {
                 minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -131,7 +186,36 @@ new Vue({
             return mapa[estado] || 'badge-soft-secondary';
         },
 
-        // ── Cargar listado con filtros ─────────────────────────────
+        // ── Helpers para defaults de centro/cuenta ────────────────
+        centroDefaultLinea(linea) {
+            if (!linea.id_tipo_servicio) return null;
+            const svc = this.tiposServicio.find(s => s.id === linea.id_tipo_servicio);
+            return svc?.id_centro_default || null;
+        },
+
+        cuentaDefaultLinea(linea) {
+            if (!linea.id_tipo_servicio) return null;
+            const svc = this.tiposServicio.find(s => s.id === linea.id_tipo_servicio);
+            return svc?.id_cuenta_ingreso || null;
+        },
+
+        centroEfectivoTexto(linea) {
+            const id = linea.id_centro || this.centroDefaultLinea(linea);
+            if (!id) return 'Sin asignar';
+            const c = this.centros.find(x => x.id === id);
+            return c ? `Efectivo: ${c.name}` : 'Sin asignar';
+        },
+
+        cuentaEfectivaTexto(linea) {
+            const id = linea.id_cuenta || this.cuentaDefaultLinea(linea);
+            if (!id) return 'Sin asignar';
+            const c = this.cuentas.find(x => x.id === id);
+            return c ? `Efectiva: ${c.name}` : 'Sin asignar';
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // CARGAR DATOS DESDE API
+        // ════════════════════════════════════════════════════════════
         async cargarDatos() {
             this.cargandoTabla = true;
             try {
@@ -145,14 +229,13 @@ new Vue({
                 if (data.success) this.facturas = data.data;
             } catch (e) {
                 console.error('Error cargando facturas:', e);
-                toastr.error('No se pudo cargar el listado.');
+                Swal.fire('Error', 'No se pudo cargar el listado.', 'error');
             } finally {
                 this.cargandoTabla = false;
                 this.$nextTick(() => feather.replace());
             }
         },
 
-        // ── Cargar catálogos ───────────────────────────────────────
         async cargarCatalogos() {
             try {
                 const res  = await fetch(`${apiUrl}/finanzas/facturas/catalogos`);
@@ -162,15 +245,24 @@ new Vue({
                     this.series        = data.data.series        || [];
                     this.tiposServicio = data.data.tiposServicio || [];
                     this.contratos     = data.data.contratos     || [];
+                    this.centros       = data.data.centros       || [];
+                    this.cuentas       = data.data.cuentas       || [];
                     this.monedas       = data.data.monedas       || ['GTQ'];
                     this.tipos         = data.data.tipos         || ['FACTURA'];
+
+                    // ── Capturar configuración fiscal del backend ──
+                    if (data.data.config_fiscal) {
+                        this.configFiscal = data.data.config_fiscal;
+                    }
                 }
             } catch (e) {
                 console.error('Error cargando catálogos:', e);
             }
         },
 
-        // ── Al cambiar cliente ─────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // EVENTOS DEL FORMULARIO
+        // ════════════════════════════════════════════════════════════
         onClienteChange() {
             // Limpiar contrato si no pertenece al nuevo cliente
             if (this.form.id_contrato) {
@@ -186,7 +278,6 @@ new Vue({
             }
         },
 
-        // ── Al cambiar contrato ────────────────────────────────────
         onContratoChange() {
             const c = this.contratoSeleccionado;
             if (c) {
@@ -203,7 +294,9 @@ new Vue({
             }
         },
 
-        // ── Cargar líneas desde el contrato ───────────────────────
+        // ════════════════════════════════════════════════════════════
+        // CARGAR LÍNEAS DESDE CONTRATO
+        // ════════════════════════════════════════════════════════════
         async cargarLineasContrato() {
             if (!this.form.id_contrato) return;
             this.cargandoLineas = true;
@@ -213,22 +306,36 @@ new Vue({
                 );
                 const data = await res.json();
                 if (data.success && data.data.length > 0) {
-                    this.form.detalles = data.data;
-                    toastr.success(`${data.data.length} líneas cargadas del contrato.`);
+                    // Agregar id_centro y id_cuenta como null para usar defaults
+                    this.form.detalles = data.data.map(l => ({
+                        ...l,
+                        id_centro: null,
+                        id_cuenta: null,
+                    }));
+                    Swal.fire({
+                        icon: 'success',
+                        title: `${data.data.length} líneas cargadas del contrato.`,
+                        timer: 1500,
+                        showConfirmButton: false,
+                    });
                 } else {
-                    toastr.warning('El contrato no tiene líneas de detalle.');
+                    Swal.fire('Aviso', 'El contrato no tiene líneas de detalle.', 'warning');
                 }
             } catch (e) {
-                toastr.error('Error al cargar líneas del contrato.');
+                Swal.fire('Error', 'No se pudieron cargar las líneas del contrato.', 'error');
             } finally {
                 this.cargandoLineas = false;
             }
         },
 
-        // ── Manejo de líneas ───────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // MANEJO DE LÍNEAS
+        // ════════════════════════════════════════════════════════════
         agregarLinea() {
             this.form.detalles.push({
                 id_tipo_servicio: null,
+                id_centro:        null,
+                id_cuenta:        null,
                 descripcion:      '',
                 cantidad:         1,
                 precio_unitario:  0,
@@ -259,7 +366,9 @@ new Vue({
             l.subtotal = +(base - (parseFloat(l.descuento) || 0)).toFixed(4);
         },
 
-        // ── Modal: abrir nuevo ─────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // MODAL: ABRIR NUEVO
+        // ════════════════════════════════════════════════════════════
         abrirModalCrear() {
             this.modoEditar = false;
             this.errores    = {};
@@ -285,7 +394,9 @@ new Vue({
             this.$nextTick(() => feather.replace());
         },
 
-        // ── Modal: abrir editar ────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // MODAL: ABRIR EDITAR
+        // ════════════════════════════════════════════════════════════
         async abrirModalEditar(item) {
             this.modoEditar = true;
             this.errores    = {};
@@ -312,6 +423,8 @@ new Vue({
                         saldo_pendiente:         parseFloat(f.saldo_pendiente),
                         detalles: f.detalles.map(d => ({
                             id_tipo_servicio: d.id_tipo_servicio,
+                            id_centro:        d.id_centro,
+                            id_cuenta:        d.id_cuenta,
                             descripcion:      d.descripcion,
                             cantidad:         parseFloat(d.cantidad),
                             precio_unitario:  parseFloat(d.precio_unitario),
@@ -328,7 +441,9 @@ new Vue({
             }
         },
 
-        // ── Guardar (crear o editar) ───────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // GUARDAR (CREAR O EDITAR)
+        // ════════════════════════════════════════════════════════════
         async guardarRegistro() {
             if (!this.form.id_cliente) {
                 this.errores = { id_cliente: 'Selecciona un cliente.' };
@@ -358,30 +473,33 @@ new Vue({
                 });
                 const data = await res.json();
 
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success', title: data.message,
-                        timer: 2000, showConfirmButton: false,
-                    });
+                if (res.ok && data.success) {
                     this.mostrarModal = false;
+                    await Swal.fire({
+                        icon: 'success', title: data.message,
+                        timer: 1800, showConfirmButton: false,
+                    });
                     this.cargarDatos();
                 } else if (res.status === 422) {
                     this.errores = Object.fromEntries(
                         Object.entries(data.errors || {})
                             .map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
                     );
-                    toastr.warning(data.message || 'Revisa los campos marcados.');
+                    Swal.fire('Aviso', data.message || 'Revisa los campos marcados.', 'warning');
                 } else {
                     Swal.fire('Error', data.message || 'Error al guardar.', 'error');
                 }
             } catch (e) {
+                console.error('Error guardar:', e);
                 Swal.fire('Error', 'Error de conexión.', 'error');
             } finally {
                 this.guardando = false;
             }
         },
 
-        // ── Cambio de estado genérico ──────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // CAMBIO DE ESTADO (ENVIADA / VENCIDA)
+        // ════════════════════════════════════════════════════════════
         async cambiarEstado(nuevoEstado) {
             const etiquetas = {
                 ENVIADA: 'marcar como enviada',
@@ -415,7 +533,6 @@ new Vue({
                     }
                 );
 
-                // Parsear JSON con manejo de error explícito
                 let data;
                 try {
                     data = await res.json();
@@ -438,22 +555,23 @@ new Vue({
                     Swal.fire('Aviso', data.message || 'No se pudo cambiar el estado.', 'warning');
                 }
             } catch (e) {
-                // Solo log real para diagnosticar
                 console.error('Error real en cambiarEstado:', e);
                 Swal.fire('Error', 'Error de conexión: ' + (e.message || 'desconocido'), 'error');
             }
         },
 
-        // ── Emitir ────────────────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // EMITIR
+        // ════════════════════════════════════════════════════════════
         async emitirDesdeModal() {
             const ok = await Swal.fire({
-                title:             '¿Emitir factura?',
-                html:              `<b>${this.form.numero_completo}</b><br><small>Pasará a estado EMITIDA.</small>`,
-                icon:              'question',
-                showCancelButton:  true,
-                confirmButtonColor:'#00d27a',
-                confirmButtonText: 'Sí, emitir',
-                cancelButtonText:  'Cancelar',
+                title:              '¿Emitir factura?',
+                html:               `<b>${this.form.numero_completo}</b><br><small>Pasará a estado EMITIDA.</small>`,
+                icon:               'question',
+                showCancelButton:   true,
+                confirmButtonColor: '#00d27a',
+                confirmButtonText:  'Sí, emitir',
+                cancelButtonText:   'Cancelar',
             });
             if (!ok.isConfirmed) return;
 
@@ -464,8 +582,10 @@ new Vue({
                 );
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire({ icon: 'success', title: data.message,
-                                timer: 1500, showConfirmButton: false });
+                    Swal.fire({
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false
+                    });
                     this.mostrarModal = false;
                     this.cargarDatos();
                 } else {
@@ -476,16 +596,18 @@ new Vue({
             }
         },
 
-        // ── Anular ────────────────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // ANULAR
+        // ════════════════════════════════════════════════════════════
         async anularDesdeModal() {
             const ok = await Swal.fire({
-                title:             '¿Anular factura?',
-                html:              `<b>${this.form.numero_completo}</b><br><small class="text-danger">Esta acción no se puede revertir.</small>`,
-                icon:              'warning',
-                showCancelButton:  true,
-                confirmButtonColor:'#e63757',
-                confirmButtonText: 'Sí, anular',
-                cancelButtonText:  'Cancelar',
+                title:              '¿Anular factura?',
+                html:               `<b>${this.form.numero_completo}</b><br><small class="text-danger">Esta acción no se puede revertir.</small>`,
+                icon:               'warning',
+                showCancelButton:   true,
+                confirmButtonColor: '#e63757',
+                confirmButtonText:  'Sí, anular',
+                cancelButtonText:   'Cancelar',
             });
             if (!ok.isConfirmed) return;
 
@@ -496,8 +618,10 @@ new Vue({
                 );
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire({ icon: 'success', title: data.message,
-                                timer: 1500, showConfirmButton: false });
+                    Swal.fire({
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false
+                    });
                     this.mostrarModal = false;
                     this.cargarDatos();
                 } else {
@@ -508,19 +632,21 @@ new Vue({
             }
         },
 
-        // ── Eliminar ──────────────────────────────────────────────
+        // ════════════════════════════════════════════════════════════
+        // ELIMINAR
+        // ════════════════════════════════════════════════════════════
         async eliminarRegistro(item) {
             if (item.estado !== 'BORRADOR') {
                 Swal.fire('Aviso', 'Solo se pueden eliminar facturas en BORRADOR.', 'warning');
                 return;
             }
             const ok = await Swal.fire({
-                title:             '¿Eliminar factura?',
-                html:              `<b>${item.numero_completo}</b>`,
-                icon:              'warning',
-                showCancelButton:  true,
-                confirmButtonColor:'#e63757',
-                confirmButtonText: 'Sí, eliminar',
+                title:              '¿Eliminar factura?',
+                html:               `<b>${item.numero_completo}</b>`,
+                icon:               'warning',
+                showCancelButton:   true,
+                confirmButtonColor: '#e63757',
+                confirmButtonText:  'Sí, eliminar',
             });
             if (!ok.isConfirmed) return;
 
@@ -531,8 +657,10 @@ new Vue({
                 );
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire({ icon: 'success', title: data.message,
-                                timer: 1500, showConfirmButton: false });
+                    Swal.fire({
+                        icon: 'success', title: data.message,
+                        timer: 1500, showConfirmButton: false
+                    });
                     this.cargarDatos();
                 } else {
                     Swal.fire('Aviso', data.message, 'warning');
@@ -542,6 +670,9 @@ new Vue({
             }
         },
 
+        // ════════════════════════════════════════════════════════════
+        // LIMPIAR FILTROS
+        // ════════════════════════════════════════════════════════════
         limpiarFiltros() {
             this.filtros = { estado: '', fecha_desde: '', fecha_hasta: '' };
             this.cargarDatos();

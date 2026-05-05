@@ -7,6 +7,7 @@ use App\Models\Finanzas\Factura;
 use App\Models\Finanzas\DetalleFactura;
 use App\Models\Finanzas\SerieFacturacion;
 use App\Models\Finanzas\Cliente;
+use App\Models\Core\Empresa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,16 +40,22 @@ class FacturaController extends Controller
 
         return response()->json(['success' => true, 'data' => $facturas]);
     }
-    
+
+    // ════════════════════════════════════════════════════════════
+    // CATÁLOGOS (con configuración fiscal de la empresa)
+    // ════════════════════════════════════════════════════════════
     public function catalogos(Request $request): JsonResponse
     {
         $idEmpresa = $request->user()->id_empresa;
+
+        // ── Configuración fiscal de la empresa actual ──
+        $empresa = Empresa::findOrFail($idEmpresa);
 
         $clientes = \App\Models\Clientes\Cliente::where('id_empresa', $idEmpresa)
             ->where('activo', true)
             ->orderBy('razon_social')
             ->get(['id_cliente as id', 'razon_social as name',
-                'moneda_facturacion', 'dias_credito', 'nit']);
+                   'moneda_facturacion', 'dias_credito', 'nit']);
 
         $series = SerieFacturacion::where('id_empresa', $idEmpresa)
             ->where('activo', true)
@@ -72,56 +79,71 @@ class FacturaController extends Controller
                 'ts.precio_base',
                 'ts.unidad_medida',
                 'ts.moneda',
+                'ts.id_cuenta_ingreso',
+                'ts.id_centro_default',
                 'ln.nombre as linea',
             ]);
 
-        // Contratos vigentes para vincular a facturas
+        $centros = DB::table('centro_costo')
+            ->where('id_empresa', $idEmpresa)
+            ->where('activo', true)
+            ->orderBy('codigo')
+            ->get(['id_centro as id', DB::raw("CONCAT(codigo, ' — ', nombre) as name")]);
+
+        $cuentas = DB::table('cuenta_contable')
+            ->where('id_empresa', $idEmpresa)
+            ->where('activo', true)
+            ->where('permite_movimiento', true)
+            ->where('tipo', 'INGRESO')
+            ->orderBy('codigo')
+            ->get(['id_cuenta as id', DB::raw("CONCAT(codigo, ' — ', nombre) as name")]);
+
         $contratos = DB::table('contrato_servicio as cs')
             ->join('cliente as c', 'cs.id_cliente', '=', 'c.id_cliente')
             ->where('cs.id_empresa', $idEmpresa)
             ->whereIn('cs.estado', ['VIGENTE', 'BORRADOR'])
             ->orderBy('cs.numero_contrato')
-            ->get([
-                'cs.id_contrato as id',
-                'cs.numero_contrato',
-                'cs.nombre_proyecto',
-                'cs.id_cliente',
-                'cs.moneda',
-                'cs.valor_mensual',
-                'cs.periodicidad_factura',
-                'c.razon_social as cliente',
-            ])
+            ->get(['cs.id_contrato as id', 'cs.numero_contrato', 'cs.nombre_proyecto',
+                   'cs.id_cliente', 'cs.moneda', 'cs.valor_mensual',
+                   'cs.periodicidad_factura', 'c.razon_social as cliente'])
             ->map(fn($c) => [
-                'id'                 => $c->id,
-                'id_cliente'         => $c->id_cliente,
-                'numero_contrato'    => $c->numero_contrato,
-                'nombre_proyecto'    => $c->nombre_proyecto,
-                'moneda'             => $c->moneda,
-                'valor_mensual'      => $c->valor_mensual,
-                'periodicidad'       => $c->periodicidad_factura,
-                'name'               => $c->numero_contrato . ' — ' . ($c->nombre_proyecto ?? $c->cliente),
+                'id'              => $c->id,
+                'id_cliente'      => $c->id_cliente,
+                'numero_contrato' => $c->numero_contrato,
+                'nombre_proyecto' => $c->nombre_proyecto,
+                'moneda'          => $c->moneda,
+                'valor_mensual'   => $c->valor_mensual,
+                'periodicidad'    => $c->periodicidad_factura,
+                'name'            => $c->numero_contrato . ' — ' . ($c->nombre_proyecto ?? $c->cliente),
             ]);
-
-        $monedas = ['GTQ', 'USD', 'EUR', 'HNL', 'NIO', 'CRC'];
-        $tipos   = ['FACTURA', 'CREDITO_FISCAL', 'NOTA_CREDITO', 'NOTA_DEBITO'];
-        $estados = ['BORRADOR', 'EMITIDA', 'ENVIADA', 'PARCIAL', 'PAGADA', 'VENCIDA', 'ANULADA'];
 
         return response()->json([
             'success' => true,
-            'data'    => compact('clientes', 'series', 'tiposServicio',
-                                'contratos', 'monedas', 'tipos', 'estados'),
+            'data' => [
+                'clientes'      => $clientes,
+                'series'        => $series,
+                'tiposServicio' => $tiposServicio,
+                'centros'       => $centros,
+                'cuentas'       => $cuentas,
+                'contratos'     => $contratos,
+                'monedas'       => ['GTQ', 'USD', 'EUR', 'HNL', 'NIO', 'CRC'],
+                'tipos'         => ['FACTURA', 'CREDITO_FISCAL', 'NOTA_CREDITO', 'NOTA_DEBITO'],
+
+                // ── NUEVO: configuración fiscal de la empresa ──
+                'config_fiscal' => [
+                    'tasa_iva'               => (float) $empresa->tasa_iva,
+                    'tasa_iva_decimal'       => $empresa->tasa_iva_decimal,
+                    'iva_incluido_en_precio' => (bool) $empresa->iva_incluido_en_precio,
+                    'moneda_base'            => $empresa->moneda_base,
+                ],
+            ],
         ]);
     }
 
-    /**
-     * Carga las líneas de un contrato para pre-llenar la factura.
-     * GET /api/v1/finanzas/facturas/contrato/{id}/lineas
-     */
     public function lineasContrato(Request $request, int $idContrato): JsonResponse
     {
         $idEmpresa = $request->user()->id_empresa;
 
-        // Verificar que el contrato pertenece a la empresa
         $contrato = DB::table('contrato_servicio')
             ->where('id_empresa', $idEmpresa)
             ->where('id_contrato', $idContrato)
@@ -148,7 +170,6 @@ class FacturaController extends Controller
                 'descripcion'      => $l->descripcion ?? $l->servicio_nombre ?? '',
                 'cantidad'         => (float) $l->cantidad,
                 'precio_unitario'  => (float) $l->precio_unitario,
-                // Convertir descuento % a monto
                 'descuento'        => round(
                     ($l->cantidad * $l->precio_unitario) * ($l->descuento_pct / 100), 4
                 ),
@@ -157,7 +178,7 @@ class FacturaController extends Controller
             ]);
 
         return response()->json(['success' => true, 'data' => $lineas]);
-}
+    }
 
     public function show(Request $request, int $id): JsonResponse
     {
@@ -189,9 +210,11 @@ class FacturaController extends Controller
                 'saldo_pendiente'         => $factura->saldo_pendiente,
                 'estado'                  => $factura->estado,
                 'notas'                   => $factura->notas,
-                'detalles'                => $factura->detalles->map(fn($d) => [
+                'detalles' => $factura->detalles->map(fn($d) => [
                     'id_linea'         => $d->id_linea,
                     'id_tipo_servicio' => $d->id_tipo_servicio,
+                    'id_centro'        => $d->id_centro,
+                    'id_cuenta'        => $d->id_cuenta,
                     'descripcion'      => $d->descripcion,
                     'cantidad'         => $d->cantidad,
                     'precio_unitario'  => $d->precio_unitario,
@@ -225,30 +248,27 @@ class FacturaController extends Controller
             'moneda'                  => 'required|string|size:3',
             'descuento'               => 'nullable|numeric|min:0',
             'notas'                   => 'nullable|string',
-            'detalles'                           => 'required|array|min:1',
-            'detalles.*.descripcion'             => 'required|string|max:300',
-            'detalles.*.cantidad'                => 'required|numeric|min:0.01',
-            'detalles.*.precio_unitario'         => 'required|numeric|min:0',
-            'detalles.*.descuento'               => 'nullable|numeric|min:0',
-            'detalles.*.es_afecto_iva'           => 'boolean',
-            'detalles.*.id_tipo_servicio'        => 'nullable|exists:tipo_servicio,id_tipo_servicio',
+            'detalles'                    => 'required|array|min:1',
+            'detalles.*.descripcion'      => 'required|string|max:300',
+            'detalles.*.cantidad'         => 'required|numeric|min:0.01',
+            'detalles.*.precio_unitario'  => 'required|numeric|min:0',
+            'detalles.*.descuento'        => 'nullable|numeric|min:0',
+            'detalles.*.es_afecto_iva'    => 'boolean',
+            'detalles.*.id_tipo_servicio' => 'nullable|exists:tipo_servicio,id_tipo_servicio',
+            'detalles.*.id_centro'        => 'nullable|exists:centro_costo,id_centro',
+            'detalles.*.id_cuenta'        => 'nullable|exists:cuenta_contable,id_cuenta',
         ]);
 
-        // Validar que cliente y serie pertenezcan a la empresa
         $cliente = Cliente::where('id_empresa', $idEmpresa)
-            ->where('activo', true)
-            ->findOrFail($request->id_cliente);
+            ->where('activo', true)->findOrFail($request->id_cliente);
 
         $serie = SerieFacturacion::where('id_empresa', $idEmpresa)
-            ->where('activo', true)
-            ->findOrFail($request->id_serie);
+            ->where('activo', true)->findOrFail($request->id_serie);
 
         return DB::transaction(function () use ($request, $idEmpresa, $cliente, $serie) {
-            // Generar número correlativo usando los métodos del modelo
             $numero         = $serie->siguienteNumero();
             $numeroCompleto = $serie->formatearNumero($numero);
 
-            // Crear cabecera
             $factura = Factura::create([
                 'id_empresa'              => $idEmpresa,
                 'id_cliente'              => $request->id_cliente,
@@ -262,18 +282,13 @@ class FacturaController extends Controller
                 'periodo_servicio_fin'    => $request->periodo_servicio_fin,
                 'moneda'                  => $request->moneda,
                 'descuento'               => $request->descuento ?? 0,
-                'subtotal'                => 0,
-                'base_imponible'          => 0,
-                'iva'                     => 0,
-                'total'                   => 0,
-                'total_pagado'            => 0,
-                'saldo_pendiente'         => 0,
+                'subtotal'                => 0, 'base_imponible' => 0, 'iva' => 0,
+                'total'                   => 0, 'total_pagado' => 0, 'saldo_pendiente' => 0,
                 'estado'                  => 'BORRADOR',
                 'notas'                   => $request->notas,
                 'created_by'              => $request->user()->id_usuario,
             ]);
 
-            // Crear líneas
             foreach ($request->detalles as $d) {
                 $cantidad  = $d['cantidad'];
                 $precio    = $d['precio_unitario'];
@@ -283,6 +298,8 @@ class FacturaController extends Controller
                 DetalleFactura::create([
                     'id_factura'       => $factura->id_factura,
                     'id_tipo_servicio' => $d['id_tipo_servicio'] ?? null,
+                    'id_centro'        => $d['id_centro'] ?? null,
+                    'id_cuenta'        => $d['id_cuenta'] ?? null,
                     'descripcion'      => $d['descripcion'],
                     'cantidad'         => $cantidad,
                     'precio_unitario'  => $precio,
@@ -292,16 +309,13 @@ class FacturaController extends Controller
                 ]);
             }
 
-            // Recalcular totales usando el método del modelo
             $this->recalcularTotales($factura);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Factura creada correctamente.',
-                'data'    => [
-                    'id_factura'      => $factura->id_factura,
-                    'numero_completo' => $factura->numero_completo,
-                ],
+                'data'    => ['id_factura' => $factura->id_factura,
+                              'numero_completo' => $factura->numero_completo],
             ], 201);
         });
     }
@@ -327,13 +341,15 @@ class FacturaController extends Controller
             'moneda'                  => 'required|string|size:3',
             'descuento'               => 'nullable|numeric|min:0',
             'notas'                   => 'nullable|string',
-            'detalles'                           => 'required|array|min:1',
-            'detalles.*.descripcion'             => 'required|string|max:300',
-            'detalles.*.cantidad'                => 'required|numeric|min:0.01',
-            'detalles.*.precio_unitario'         => 'required|numeric|min:0',
-            'detalles.*.descuento'               => 'nullable|numeric|min:0',
-            'detalles.*.es_afecto_iva'           => 'boolean',
-            'detalles.*.id_tipo_servicio'        => 'nullable|exists:tipo_servicio,id_tipo_servicio',
+            'detalles'                    => 'required|array|min:1',
+            'detalles.*.descripcion'      => 'required|string|max:300',
+            'detalles.*.cantidad'         => 'required|numeric|min:0.01',
+            'detalles.*.precio_unitario'  => 'required|numeric|min:0',
+            'detalles.*.descuento'        => 'nullable|numeric|min:0',
+            'detalles.*.es_afecto_iva'    => 'boolean',
+            'detalles.*.id_tipo_servicio' => 'nullable|exists:tipo_servicio,id_tipo_servicio',
+            'detalles.*.id_centro'        => 'nullable|exists:centro_costo,id_centro',
+            'detalles.*.id_cuenta'        => 'nullable|exists:cuenta_contable,id_cuenta',
         ]);
 
         return DB::transaction(function () use ($request, $factura) {
@@ -348,9 +364,7 @@ class FacturaController extends Controller
                 'notas'                   => $request->notas,
             ]);
 
-            // Reemplazar detalles
             $factura->detalles()->delete();
-
             foreach ($request->detalles as $d) {
                 $subtotal = round(
                     ($d['cantidad'] * $d['precio_unitario']) - ($d['descuento'] ?? 0),
@@ -360,6 +374,8 @@ class FacturaController extends Controller
                 DetalleFactura::create([
                     'id_factura'       => $factura->id_factura,
                     'id_tipo_servicio' => $d['id_tipo_servicio'] ?? null,
+                    'id_centro'        => $d['id_centro'] ?? null,
+                    'id_cuenta'        => $d['id_cuenta'] ?? null,
                     'descripcion'      => $d['descripcion'],
                     'cantidad'         => $d['cantidad'],
                     'precio_unitario'  => $d['precio_unitario'],
@@ -410,7 +426,6 @@ class FacturaController extends Controller
             ], 422);
         }
 
-        // Usar el método del modelo Factura
         $factura->anular($request->user()->id_usuario);
 
         return response()->json([
@@ -440,27 +455,6 @@ class FacturaController extends Controller
         ]);
     }
 
-    // ════════════════════════════════════════════════════════════
-    // HELPER PRIVADO
-    // ════════════════════════════════════════════════════════════
-    private function recalcularTotales(Factura $factura): void
-    {
-        $factura->refresh();
-        $subtotal      = $factura->detalles()->sum('subtotal');
-        $descuento     = $factura->descuento ?? 0;
-        $baseImponible = $subtotal - $descuento;
-        $iva           = round($baseImponible * 0.12, 4);
-        $total         = $baseImponible + $iva;
-
-        $factura->update([
-            'subtotal'        => $subtotal,
-            'base_imponible'  => $baseImponible,
-            'iva'             => $iva,
-            'total'           => $total,
-            'saldo_pendiente' => $total - $factura->total_pagado,
-        ]);
-    }
-    
     public function cambiarEstado(Request $request, int $id): JsonResponse
     {
         $request->validate([
@@ -468,9 +462,8 @@ class FacturaController extends Controller
         ]);
 
         $factura = Factura::where('id_empresa', $request->user()->id_empresa)
-                        ->findOrFail($id);
+                          ->findOrFail($id);
 
-        // Reglas de transición de estado
         $transicionesValidas = [
             'EMITIDA' => ['ENVIADA', 'VENCIDA'],
             'ENVIADA' => ['VENCIDA'],
@@ -500,6 +493,61 @@ class FacturaController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Factura marcada como {$nuevoEstado} correctamente.",
+        ]);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // HELPER PRIVADO — Recalcular totales con tasa dinámica
+    // ════════════════════════════════════════════════════════════
+    private function recalcularTotales(Factura $factura): void
+    {
+        $factura->refresh();
+
+        // ── Cargar configuración fiscal de la empresa ──
+        $empresa     = Empresa::find($factura->id_empresa);
+        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;          // fallback 12%
+        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
+
+        $subtotalBruto = 0;
+        $baseAfecta    = 0;
+        $baseExenta    = 0;
+        $ivaTotal      = 0;
+
+        foreach ($factura->detalles as $linea) {
+            $sub = (float) $linea->subtotal;
+            $subtotalBruto += $sub;
+
+            if ($linea->es_afecto_iva) {
+                if ($ivaIncluido) {
+                    // Precio YA incluye IVA → separar
+                    $base = round($sub / (1 + $tasaIva), 4);
+                    $iva  = round($sub - $base, 4);
+                } else {
+                    // Precio es BASE → sumar IVA
+                    $base = $sub;
+                    $iva  = round($sub * $tasaIva, 4);
+                }
+                $baseAfecta += $base;
+                $ivaTotal   += $iva;
+            } else {
+                $baseExenta += $sub;
+            }
+        }
+
+        $descuentoGlobal = (float) ($factura->descuento ?? 0);
+        $baseImponible   = round($baseAfecta + $baseExenta - $descuentoGlobal, 4);
+
+        // Total: si IVA incluido = subtotal - descuento; si no = subtotal + IVA - descuento
+        $total = $ivaIncluido
+            ? round($subtotalBruto - $descuentoGlobal, 4)
+            : round($subtotalBruto + $ivaTotal - $descuentoGlobal, 4);
+
+        $factura->update([
+            'subtotal'        => $subtotalBruto,
+            'base_imponible'  => $baseImponible,
+            'iva'             => $ivaTotal,
+            'total'           => $total,
+            'saldo_pendiente' => $total - $factura->total_pagado,
         ]);
     }
 }
