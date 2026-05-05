@@ -154,6 +154,19 @@ new Vue({
                 return;
             }
 
+            // Validar que no se reciba más de lo pendiente
+            const sobre = lineasValidas.find(l => l.cantidad_a_recibir > l.pendiente);
+            if (sobre) {
+                Swal.fire(
+                    'Aviso',
+                    `No puedes recibir más de lo pendiente.<br>` +
+                    `<b>${sobre.producto_codigo}</b> tiene ${sobre.pendiente} pendientes ` +
+                    `y estás recibiendo ${sobre.cantidad_a_recibir}.`,
+                    'warning'
+                );
+                return;
+            }
+
             this.guardando = true;
             this.errores   = {};
 

@@ -111,27 +111,36 @@
             <div class="col-12 border-top pt-3 mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="text-700 fw-bold mb-0">Líneas de Productos</h6>
-                    <button class="btn btn-sm btn-outline-primary" @click="agregarLinea">
-                        <i class="fas fa-plus me-1"></i>Agregar Producto
+                    <button type="button" class="btn btn-sm btn-outline-primary" @click="agregarLinea">
+                        <span data-feather="plus" style="width:13px" class="me-1"></span>
+                        Agregar Producto
                     </button>
+                </div>
+
+                <div class="alert alert-soft-info py-2 mb-2 small">
+                    <span data-feather="info" style="width:14px;height:14px" class="me-1"></span>
+                    <strong>Tip:</strong> Cada producto puede tener un <em>centro de costo</em> y <em>cuenta de gasto</em> default.
+                    Si lo dejas vacío, se usa el default del producto. Al aprobar la OC, el monto se descontará automáticamente del presupuesto correspondiente.
                 </div>
 
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="bg-100">
                             <tr>
-                                <th style="width: 30%;">Producto <span class="text-danger">*</span></th>
-                                <th style="width: 20%;">Descripción</th>
-                                <th style="width: 10%;">Cantidad</th>
-                                <th style="width: 12%;">Precio Unit.</th>
-                                <th style="width: 10%;">Descuento</th>
-                                <th style="width: 13%;" class="text-end">Subtotal</th>
-                                <th style="width: 5%;"></th>
+                                <th style="width:18%">Producto <span class="text-danger">*</span></th>
+                                <th style="width:14%">Descripción</th>
+                                <th style="width:7%">Cant.</th>
+                                <th style="width:9%">Precio</th>
+                                <th style="width:7%">Desc.</th>
+                                <th style="width:13%">Centro Costo</th>
+                                <th style="width:13%">Cuenta</th>
+                                <th style="width:11%" class="text-end">Subtotal</th>
+                                <th style="width:4%"></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="form.detalles.length === 0">
-                                <td colspan="7" class="text-center text-muted py-3">
+                                <td colspan="9" class="text-center text-muted py-3">
                                     Agrega productos a esta orden
                                 </td>
                             </tr>
@@ -141,51 +150,71 @@
                                             @change="onProductoChange(idx)">
                                         <option :value="null">— Producto —</option>
                                         <option v-for="p in productos" :key="p.id" :value="p.id">
-                                            @{{ p.codigo }} - @{{ p.name }}
+                                            @{{ p.codigo }} — @{{ p.name }}
                                         </option>
                                     </select>
                                 </td>
                                 <td>
                                     <input type="text" class="form-control form-control-sm"
-                                           v-model="linea.descripcion" placeholder="Opcional" />
+                                        v-model="linea.descripcion" placeholder="Opcional" />
                                 </td>
                                 <td>
                                     <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
-                                           v-model.number="linea.cantidad_pedida" @input="recalcularLinea(idx)" />
+                                        v-model.number="linea.cantidad_pedida" @input="recalcularLinea(idx)" />
                                 </td>
                                 <td>
                                     <input type="number" step="0.0001" min="0" class="form-control form-control-sm text-end"
-                                           v-model.number="linea.precio_unitario" @input="recalcularLinea(idx)" />
+                                        v-model.number="linea.precio_unitario" @input="recalcularLinea(idx)" />
                                 </td>
                                 <td>
                                     <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
-                                           v-model.number="linea.descuento" @input="recalcularLinea(idx)" />
+                                        v-model.number="linea.descuento" @input="recalcularLinea(idx)" />
                                 </td>
-                                <td class="text-end fw-bold">
-                                    @{{ formatear(linea.subtotal) }}
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            v-model="linea.id_centro"
+                                            :title="centroEfectivoTexto(linea)">
+                                        <option :value="null">
+                                            @{{ centroDefaultLinea(linea) ? '(default)' : '— Asignar —' }}
+                                        </option>
+                                        <option v-for="c in centros" :key="c.id" :value="c.id">@{{ c.name }}</option>
+                                    </select>
                                 </td>
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            v-model="linea.id_cuenta"
+                                            :title="cuentaEfectivaTexto(linea)">
+                                        <option :value="null">
+                                            @{{ cuentaDefaultLinea(linea) ? '(default)' : '— Asignar —' }}
+                                        </option>
+                                        <option v-for="c in cuentas" :key="c.id" :value="c.id">@{{ c.name }}</option>
+                                    </select>
+                                </td>
+                                <td class="text-end fw-bold">@{{ formatear(linea.subtotal) }}</td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-link text-danger p-0"
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0"
                                             @click="quitarLinea(idx)">
-                                        <i class="fas fa-times"></i>
+                                        <span data-feather="x" style="width:14px"></span>
                                     </button>
                                 </td>
                             </tr>
                         </tbody>
                         <tfoot class="bg-100">
                             <tr>
-                                <td colspan="5" class="text-end fw-bold">Subtotal:</td>
+                                <td colspan="7" class="text-end fw-bold">Subtotal:</td>
                                 <td class="text-end fw-bold">@{{ formatear(totales.subtotal) }}</td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td colspan="5" class="text-end fw-bold">IVA (12%):</td>
+                                <td colspan="7" class="text-end fw-bold">IVA (@{{ totales.tasaIvaPct }}%):</td>
                                 <td class="text-end fw-bold">@{{ formatear(totales.iva) }}</td>
                                 <td></td>
                             </tr>
-                            <tr>
-                                <td colspan="5" class="text-end fw-bold fs--1">TOTAL:</td>
-                                <td class="text-end fw-bold fs--1 text-primary">@{{ formatear(totales.total) }}</td>
+                            <tr class="table-primary">
+                                <td colspan="7" class="text-end fw-bold">TOTAL:</td>
+                                <td class="text-end fw-bold fs-0 text-primary">
+                                    @{{ form.moneda }} @{{ formatear(totales.total) }}
+                                </td>
                                 <td></td>
                             </tr>
                         </tfoot>

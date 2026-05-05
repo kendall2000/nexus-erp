@@ -13,6 +13,8 @@ class DetalleOrdenCompra extends Model
     protected $fillable = [
         'id_oc',
         'id_producto',
+        'id_centro',          // ← NUEVO: override opcional
+        'id_cuenta',          // ← NUEVO: override opcional
         'descripcion',
         'cantidad_pedida',
         'cantidad_recibida',
@@ -29,8 +31,7 @@ class DetalleOrdenCompra extends Model
         'subtotal'          => 'decimal:4',
     ];
 
-    // ── Relaciones ──────────────────────────────────────────────────────────
-
+    // ── Relaciones ──────────────────────────────────────────────
     public function ordenCompra()
     {
         return $this->belongsTo(OrdenCompra::class, 'id_oc');
@@ -41,8 +42,28 @@ class DetalleOrdenCompra extends Model
         return $this->belongsTo(Producto::class, 'id_producto');
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
+    public function centroCosto()
+    {
+        return $this->belongsTo(\App\Models\Core\CentroCosto::class, 'id_centro');
+    }
 
+    public function cuentaContable()
+    {
+        return $this->belongsTo(\App\Models\Core\CuentaContable::class, 'id_cuenta');
+    }
+
+    // ── Cascade override ────────────────────────────────────────
+    public function getCentroEfectivoAttribute(): ?int
+    {
+        return $this->id_centro ?? $this->producto?->id_centro_default;
+    }
+
+    public function getCuentaEfectivaAttribute(): ?int
+    {
+        return $this->id_cuenta ?? $this->producto?->id_cuenta_gasto;
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────
     public function getCantidadPendienteAttribute(): float
     {
         return max(0, $this->cantidad_pedida - $this->cantidad_recibida);
@@ -62,7 +83,6 @@ class DetalleOrdenCompra extends Model
     {
         $this->increment('cantidad_recibida', $cantidad);
 
-        // Registra movimiento de entrada automáticamente
         MovimientoInventario::create([
             'id_empresa'      => $this->ordenCompra->id_empresa,
             'id_producto'     => $this->id_producto,
@@ -76,7 +96,6 @@ class DetalleOrdenCompra extends Model
             'created_by'      => $creadoPor,
         ]);
 
-        // Actualiza estado de la OC
         $oc = $this->ordenCompra;
         $oc->refresh();
         $todoRecibido = $oc->detalles()->get()->every(fn($d) => $d->estaCompleto());

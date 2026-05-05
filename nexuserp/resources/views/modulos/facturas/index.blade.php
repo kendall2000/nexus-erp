@@ -4,7 +4,9 @@
 @section('content')
 <div id="facturas-app" v-cloak>
 
-    {{-- Encabezado --}}
+    {{-- ════════════════════════════════════════════════════════
+         ENCABEZADO
+    ════════════════════════════════════════════════════════ --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="mb-1 text-900">
@@ -17,7 +19,9 @@
         </button>
     </div>
 
-    {{-- Filtros por estado --}}
+    {{-- ════════════════════════════════════════════════════════
+         FILTROS
+    ════════════════════════════════════════════════════════ --}}
     <div class="card mb-3">
         <div class="card-body py-2">
             <div class="row g-2 align-items-end">
@@ -51,7 +55,9 @@
         </div>
     </div>
 
-    {{-- Tabla --}}
+    {{-- ════════════════════════════════════════════════════════
+         TABLA PRINCIPAL
+    ════════════════════════════════════════════════════════ --}}
     <v-smart-table
         title="Facturas Registradas"
         :data="facturas"
@@ -65,9 +71,9 @@
         @delete="eliminarRegistro">
     </v-smart-table>
 
-    {{-- ══════════════════════════════════════════════════════
+    {{-- ════════════════════════════════════════════════════════
          MODAL FACTURA
-    ══════════════════════════════════════════════════════ --}}
+    ════════════════════════════════════════════════════════ --}}
     <v-modal-form
         v-model="mostrarModal"
         id="modal-factura"
@@ -192,7 +198,9 @@
                        placeholder="Observaciones de la factura...">
             </div>
 
-            {{-- ── LÍNEAS DE FACTURA ── --}}
+            {{-- ════════════════════════════════════════════════════
+                 LÍNEAS DE FACTURA
+            ════════════════════════════════════════════════════ --}}
             <div class="col-12 border-top pt-3 mt-1">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold text-700 mb-0">
@@ -217,81 +225,126 @@
                     </div>
                 </div>
 
+                {{-- Alert dinámico (FUERA de la tabla) --}}
+                <div class="alert alert-soft-info py-2 mb-2 small">
+                    <span data-feather="info" style="width:14px;height:14px" class="me-1"></span>
+                    <strong>Tip:</strong>
+                    <template v-if="configFiscal.iva_incluido_en_precio">
+                        El precio se ingresa <strong>con IVA incluido</strong> (@{{ configFiscal.tasa_iva }}%).
+                    </template>
+                    <template v-else>
+                        El precio se ingresa <strong>sin IVA</strong>. Se sumará @{{ configFiscal.tasa_iva }}% automáticamente.
+                    </template>
+                    Si desmarcas <em>IVA</em>, la línea queda como exenta.
+                    Los servicios con cuenta y centro default los aplican automáticamente.
+                </div>
+
+                {{-- TABLA DE LÍNEAS --}}
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle mb-0">
                         <thead class="bg-100">
                             <tr>
-                                <th style="width:22%">Servicio</th>
-                                <th style="width:24%">
-                                    Descripción <span class="text-danger">*</span>
+                                <th style="width:18%">Servicio</th>
+                                <th style="width:20%">Descripción <span class="text-danger">*</span></th>
+                                <th style="width:7%" class="text-end">Cant.</th>
+                                <th style="width:10%" class="text-end">
+                                    Precio @{{ configFiscal.iva_incluido_en_precio ? '(c/IVA)' : '(s/IVA)' }}
                                 </th>
-                                <th style="width:8%" class="text-end">Cant.</th>
-                                <th style="width:12%" class="text-end">Precio Unit.</th>
-                                <th style="width:10%" class="text-end">Descuento</th>
+                                <th style="width:8%" class="text-end">Descuento</th>
                                 <th style="width:5%" class="text-center">IVA</th>
-                                <th style="width:12%" class="text-end">Subtotal</th>
+                                <th style="width:11%">Centro Costo</th>
+                                <th style="width:11%">Cuenta</th>
+                                <th style="width:10%" class="text-end">Subtotal</th>
                                 <th style="width:4%"></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="form.detalles.length === 0">
-                                <td colspan="8" class="text-center text-muted py-3 fs--1">
-                                    <span data-feather="inbox"
-                                          style="width:20px;opacity:.4" class="me-1"></span>
+                                <td colspan="10" class="text-center text-muted py-3 fs--1">
+                                    <span data-feather="inbox" style="width:20px;opacity:.4" class="me-1"></span>
                                     Agrega líneas o carga desde el contrato
                                 </td>
                             </tr>
                             <tr v-for="(linea, idx) in form.detalles" :key="idx">
+                                {{-- Servicio --}}
                                 <td>
                                     <select class="form-select form-select-sm"
                                             v-model="linea.id_tipo_servicio"
                                             @change="onServicioChange(idx)">
                                         <option :value="null">— Libre —</option>
-                                        <optgroup
-                                            v-for="(svcs, linNombre) in serviciosAgrupados"
-                                            :label="linNombre">
-                                            <option v-for="s in svcs"
-                                                    :key="s.id" :value="s.id">
-                                                @{{ s.name }}
-                                            </option>
+                                        <optgroup v-for="(svcs, linNombre) in serviciosAgrupados" :label="linNombre">
+                                            <option v-for="s in svcs" :key="s.id" :value="s.id">@{{ s.name }}</option>
                                         </optgroup>
                                     </select>
                                 </td>
+
+                                {{-- Descripción --}}
                                 <td>
-                                    <input type="text"
-                                           class="form-control form-control-sm"
-                                           v-model="linea.descripcion"
-                                           placeholder="Descripción del servicio">
+                                    <input type="text" class="form-control form-control-sm"
+                                           v-model="linea.descripcion" placeholder="Descripción">
                                 </td>
+
+                                {{-- Cantidad --}}
                                 <td>
                                     <input type="number" step="0.01" min="0"
                                            class="form-control form-control-sm text-end"
                                            v-model.number="linea.cantidad"
                                            @input="recalcularLinea(idx)">
                                 </td>
+
+                                {{-- Precio --}}
                                 <td>
                                     <input type="number" step="0.0001" min="0"
                                            class="form-control form-control-sm text-end"
                                            v-model.number="linea.precio_unitario"
                                            @input="recalcularLinea(idx)">
                                 </td>
+
+                                {{-- Descuento --}}
                                 <td>
                                     <input type="number" step="0.01" min="0"
                                            class="form-control form-control-sm text-end"
                                            v-model.number="linea.descuento"
                                            @input="recalcularLinea(idx)">
                                 </td>
+
+                                {{-- IVA --}}
                                 <td class="text-center">
                                     <input type="checkbox" class="form-check-input"
                                            v-model="linea.es_afecto_iva"
                                            @change="recalcularLinea(idx)">
                                 </td>
-                                <td class="text-end fw-bold text-primary">
-                                    @{{ formatear(linea.subtotal) }}
+
+                                {{-- Centro de Costo --}}
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            v-model="linea.id_centro"
+                                            :title="centroEfectivoTexto(linea)">
+                                        <option :value="null">
+                                            @{{ centroDefaultLinea(linea) ? '(default)' : '— Asignar —' }}
+                                        </option>
+                                        <option v-for="c in centros" :key="c.id" :value="c.id">@{{ c.name }}</option>
+                                    </select>
                                 </td>
+
+                                {{-- Cuenta Contable --}}
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            v-model="linea.id_cuenta"
+                                            :title="cuentaEfectivaTexto(linea)">
+                                        <option :value="null">
+                                            @{{ cuentaDefaultLinea(linea) ? '(default)' : '— Asignar —' }}
+                                        </option>
+                                        <option v-for="c in cuentas" :key="c.id" :value="c.id">@{{ c.name }}</option>
+                                    </select>
+                                </td>
+
+                                {{-- Subtotal --}}
+                                <td class="text-end fw-bold text-primary">@{{ formatear(linea.subtotal) }}</td>
+
+                                {{-- Eliminar --}}
                                 <td class="text-center">
-                                    <button type="button"
-                                            class="btn btn-sm btn-link text-danger p-0"
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0"
                                             @click="quitarLinea(idx)">
                                         <span data-feather="x" style="width:14px"></span>
                                     </button>
@@ -300,31 +353,36 @@
                         </tbody>
                         <tfoot class="bg-100 fw-bold fs--1">
                             <tr>
-                                <td colspan="6" class="text-end">Subtotal:</td>
+                                <td colspan="8" class="text-end">
+                                    Subtotal @{{ totales.ivaIncluido ? '(con IVA)' : '(sin IVA)' }}:
+                                </td>
                                 <td class="text-end">@{{ formatear(totales.subtotal) }}</td>
                                 <td></td>
                             </tr>
-                            <tr>
-                                <td colspan="6" class="text-end">Descuento:</td>
-                                <td class="text-end text-danger">
-                                    − @{{ formatear(form.descuento || 0) }}
-                                </td>
+                            <tr v-if="totales.descuento > 0">
+                                <td colspan="8" class="text-end">Descuento Global:</td>
+                                <td class="text-end text-danger">− @{{ formatear(totales.descuento) }}</td>
+                                <td></td>
+                            </tr>
+                            <tr v-if="totales.baseExenta > 0">
+                                <td colspan="8" class="text-end text-muted">Base Exenta:</td>
+                                <td class="text-end text-muted">@{{ formatear(totales.baseExenta) }}</td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td colspan="6" class="text-end">Base Imponible:</td>
-                                <td class="text-end">@{{ formatear(totales.baseImponible) }}</td>
+                                <td colspan="8" class="text-end">Base Imponible (sin IVA):</td>
+                                <td class="text-end">@{{ formatear(totales.baseAfecta) }}</td>
                                 <td></td>
                             </tr>
                             <tr>
-                                <td colspan="6" class="text-end">IVA (12%):</td>
+                                <td colspan="8" class="text-end">IVA (@{{ totales.tasaIvaPct }}%):</td>
                                 <td class="text-end">@{{ formatear(totales.iva) }}</td>
                                 <td></td>
                             </tr>
                             <tr class="table-primary">
-                                <td colspan="6" class="text-end text-primary">TOTAL:</td>
+                                <td colspan="8" class="text-end text-primary">TOTAL A PAGAR:</td>
                                 <td class="text-end text-primary fs-0">
-                                    @{{ formatear(totales.total) }}
+                                    @{{ form.moneda }} @{{ formatear(totales.total) }}
                                 </td>
                                 <td></td>
                             </tr>
@@ -333,12 +391,13 @@
                 </div>
             </div>
 
-            {{-- ── ACCIONES DE ESTADO (solo al editar) ── --}}
+            {{-- ════════════════════════════════════════════════════
+                 ACCIONES DE ESTADO (solo al editar)
+            ════════════════════════════════════════════════════ --}}
             <div v-if="modoEditar" class="col-12 border-top pt-3 mt-1">
                 <div class="d-flex gap-2 justify-content-between align-items-center">
                     <div>
-                        <span class="badge fs--1"
-                              :class="badgeEstado(form.estado)">
+                        <span class="badge fs--1" :class="badgeEstado(form.estado)">
                             @{{ form.estado }}
                         </span>
                         <span v-if="form.saldo_pendiente > 0"

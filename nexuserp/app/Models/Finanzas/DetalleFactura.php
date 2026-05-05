@@ -1,4 +1,5 @@
 <?php
+// app/Models/Finanzas/DetalleFactura.php
 
 namespace App\Models\Finanzas;
 
@@ -13,6 +14,8 @@ class DetalleFactura extends Model
     protected $fillable = [
         'id_factura',
         'id_tipo_servicio',
+        'id_centro',          // ← NUEVO: override opcional
+        'id_cuenta',          // ← NUEVO: override opcional
         'descripcion',
         'cantidad',
         'precio_unitario',
@@ -29,8 +32,7 @@ class DetalleFactura extends Model
         'es_afecto_iva'   => 'boolean',
     ];
 
-    // ── Relaciones ──────────────────────────────────────────────────────────
-
+    // ── Relaciones ──────────────────────────────────────────────
     public function factura()
     {
         return $this->belongsTo(Factura::class, 'id_factura');
@@ -38,13 +40,36 @@ class DetalleFactura extends Model
 
     public function tipoServicio()
     {
-        return $this->belongsTo(
-            \App\Models\Clientes\TipoServicio::class,
-            'id_tipo_servicio'
-        );
+        return $this->belongsTo(\App\Models\Clientes\TipoServicio::class, 'id_tipo_servicio');
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
+    public function centroCosto()
+    {
+        return $this->belongsTo(\App\Models\Core\CentroCosto::class, 'id_centro');
+    }
+
+    public function cuentaContable()
+    {
+        return $this->belongsTo(\App\Models\Core\CuentaContable::class, 'id_cuenta');
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────
+
+    /**
+     * Resuelve el id_centro efectivo: override de la línea > default del servicio.
+     */
+    public function getCentroEfectivoAttribute(): ?int
+    {
+        return $this->id_centro ?? $this->tipoServicio?->id_centro_default;
+    }
+
+    /**
+     * Resuelve el id_cuenta efectivo: override de la línea > default del servicio.
+     */
+    public function getCuentaEfectivaAttribute(): ?int
+    {
+        return $this->id_cuenta ?? $this->tipoServicio?->id_cuenta_ingreso;
+    }
 
     public function calcularSubtotal(): float
     {

@@ -161,11 +161,16 @@ class RecepcionController extends Controller
 
             // 5. Actualizar estado de la OC
             $oc->refresh();
-            $totalPedido   = $oc->detalles()->sum('cantidad_pedida');
-            $totalRecibido = $oc->detalles()->sum('cantidad_recibida');
+            $totalPedido   = (float) $oc->detalles()->sum('cantidad_pedida');
+            $totalRecibido = (float) $oc->detalles()->sum('cantidad_recibida');
 
-            $nuevoEstado = $totalRecibido >= $totalPedido ? 'RECIBIDA' : 'PARCIAL';
-            $oc->update(['estado' => $nuevoEstado]);
+            // Tolerancia de 0.0001 para evitar problemas de redondeo en decimales
+            $nuevoEstado = ($totalPedido - $totalRecibido) <= 0.0001 ? 'RECIBIDA' : 'PARCIAL';
+
+            $oc->update([
+                'estado'             => $nuevoEstado,
+                'fecha_entrega_real' => $nuevoEstado === 'RECIBIDA' ? $request->fecha_recepcion : null,
+            ]);
 
             return response()->json([
                 'success' => true,

@@ -18,6 +18,8 @@ class TipoServicio extends Model
         'precio_base',
         'moneda',
         'activo',
+        'id_cuenta_ingreso',
+        'id_centro_default',
     ];
 
     protected $casts = [
@@ -53,5 +55,14 @@ class TipoServicio extends Model
     public function scopePorLinea($query, $idLinea)
     {
         return $query->where('id_linea', $idLinea);
+    }
+    public function cuentaIngreso()
+    {
+        return $this->belongsTo(\App\Models\Core\CuentaContable::class, 'id_cuenta_ingreso');
+    }
+
+    public function centroDefault()
+    {
+        return $this->belongsTo(\App\Models\Core\CentroCosto::class, 'id_centro_default');
     }
 }

@@ -8,6 +8,8 @@ use App\Models\Inventario\DetalleOrdenCompra;
 use App\Models\Inventario\Proveedor;
 use App\Models\Inventario\Bodega;
 use App\Models\Inventario\Producto;
+use App\Models\Core\Empresa;
+use App\Models\Finanzas\PresupuestoAnual;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +45,7 @@ class OrdenCompraController extends Controller
     public function catalogos(Request $request): JsonResponse
     {
         $idEmpresa = $request->user()->id_empresa;
+        $empresa   = Empresa::findOrFail($idEmpresa);
 
         $proveedores = Proveedor::where('id_empresa', $idEmpresa)
             ->where('activo', true)
@@ -54,13 +57,29 @@ class OrdenCompraController extends Controller
             ->orderBy('nombre')
             ->get(['id_bodega as id', 'nombre as name']);
 
+        // Productos ahora con sus defaults de centro/cuenta
         $productos = Producto::where('id_empresa', $idEmpresa)
             ->where('activo', true)
             ->orderBy('nombre')
-            ->get(['id_producto as id', 'codigo', 'nombre as name', 'precio_compra', 'unidad_medida']);
+            ->get(['id_producto as id', 'codigo', 'nombre as name',
+                   'precio_compra', 'unidad_medida',
+                   'id_cuenta_gasto', 'id_centro_default']);
 
-        $monedas = ['GTQ', 'USD', 'EUR', 'MXN', 'HNL', 'NIO', 'CRC'];
-        $estados = ['BORRADOR', 'ENVIADA', 'PARCIAL', 'RECIBIDA', 'CANCELADA'];
+        // Centros de costo activos
+        $centros = DB::table('centro_costo')
+            ->where('id_empresa', $idEmpresa)
+            ->where('activo', true)
+            ->orderBy('codigo')
+            ->get(['id_centro as id', DB::raw("CONCAT(codigo, ' — ', nombre) as name")]);
+
+        // Cuentas de GASTO/COSTO que permitan movimiento (no INGRESO como en facturas)
+        $cuentas = DB::table('cuenta_contable')
+            ->where('id_empresa', $idEmpresa)
+            ->where('activo', true)
+            ->where('permite_movimiento', true)
+            ->whereIn('tipo', ['GASTO', 'COSTO'])
+            ->orderBy('codigo')
+            ->get(['id_cuenta as id', DB::raw("CONCAT(codigo, ' — ', nombre) as name"), 'tipo']);
 
         return response()->json([
             'success' => true,
@@ -68,8 +87,15 @@ class OrdenCompraController extends Controller
                 'proveedores' => $proveedores,
                 'bodegas'     => $bodegas,
                 'productos'   => $productos,
-                'monedas'     => $monedas,
-                'estados'     => $estados,
+                'centros'     => $centros,
+                'cuentas'     => $cuentas,
+                'monedas'     => ['GTQ', 'USD', 'EUR', 'MXN', 'HNL', 'NIO', 'CRC'],
+                'estados'     => ['BORRADOR', 'ENVIADA', 'PARCIAL', 'RECIBIDA', 'CANCELADA'],
+                'config_fiscal' => [
+                    'tasa_iva'               => (float) $empresa->tasa_iva,
+                    'tasa_iva_decimal'       => $empresa->tasa_iva_decimal,
+                    'iva_incluido_en_precio' => (bool) $empresa->iva_incluido_en_precio,
+                ],
             ],
         ]);
     }
@@ -99,6 +125,8 @@ class OrdenCompraController extends Controller
                 'detalles'               => $oc->detalles->map(fn($d) => [
                     'id_linea'          => $d->id_linea,
                     'id_producto'       => $d->id_producto,
+                    'id_centro'         => $d->id_centro,
+                    'id_cuenta'         => $d->id_cuenta,
                     'producto_nombre'   => $d->producto?->nombre ?? '—',
                     'producto_codigo'   => $d->producto?->codigo ?? '',
                     'descripcion'       => $d->descripcion,
@@ -117,7 +145,7 @@ class OrdenCompraController extends Controller
         $idEmpresa = $request->user()->id_empresa;
 
         $request->validate([
-            'numero_oc'              => [
+            'numero_oc' => [
                 'required', 'string', 'max:30',
                 Rule::unique('orden_compra', 'numero_oc')->where('id_empresa', $idEmpresa),
             ],
@@ -130,17 +158,17 @@ class OrdenCompraController extends Controller
             'notas'                  => 'nullable|string',
             'detalles'                       => 'required|array|min:1',
             'detalles.*.id_producto'         => 'required|exists:producto,id_producto',
+            'detalles.*.id_centro'           => 'nullable|exists:centro_costo,id_centro',
+            'detalles.*.id_cuenta'           => 'nullable|exists:cuenta_contable,id_cuenta',
             'detalles.*.descripcion'         => 'nullable|string|max:300',
             'detalles.*.cantidad_pedida'     => 'required|numeric|min:0.0001',
             'detalles.*.precio_unitario'     => 'required|numeric|min:0',
             'detalles.*.descuento'           => 'nullable|numeric|min:0',
         ]);
 
-        // Validar que proveedor y bodega pertenezcan a la empresa
         $this->validarPertenenciaEmpresa($request, $idEmpresa);
 
         return DB::transaction(function () use ($request, $idEmpresa) {
-            // 1. Crear cabecera
             $oc = OrdenCompra::create([
                 'id_empresa'             => $idEmpresa,
                 'id_proveedor'           => $request->id_proveedor,
@@ -151,13 +179,10 @@ class OrdenCompraController extends Controller
                 'moneda'                 => $request->moneda,
                 'estado'                 => $request->estado,
                 'notas'                  => $request->notas,
-                'subtotal'               => 0,
-                'iva'                    => 0,
-                'total'                  => 0,
+                'subtotal'               => 0, 'iva' => 0, 'total' => 0,
                 'created_by'             => $request->user()->id_usuario,
             ]);
 
-            // 2. Crear líneas
             foreach ($request->detalles as $d) {
                 $cantidad  = $d['cantidad_pedida'];
                 $precio    = $d['precio_unitario'];
@@ -167,6 +192,8 @@ class OrdenCompraController extends Controller
                 DetalleOrdenCompra::create([
                     'id_oc'             => $oc->id_oc,
                     'id_producto'       => $d['id_producto'],
+                    'id_centro'         => $d['id_centro'] ?? null,
+                    'id_cuenta'         => $d['id_cuenta'] ?? null,
                     'descripcion'       => $d['descripcion'] ?? null,
                     'cantidad_pedida'   => $cantidad,
                     'cantidad_recibida' => 0,
@@ -176,7 +203,6 @@ class OrdenCompraController extends Controller
                 ]);
             }
 
-            // 3. Recalcular totales
             $oc->recalcularTotales();
 
             return response()->json([
@@ -192,16 +218,15 @@ class OrdenCompraController extends Controller
         $idEmpresa = $request->user()->id_empresa;
         $oc = OrdenCompra::where('id_empresa', $idEmpresa)->findOrFail($id);
 
-        // Solo BORRADOR se puede editar libremente
-        if (!in_array($oc->estado, ['BORRADOR', 'ENVIADA'])) {
+        if (!in_array($oc->estado, ['BORRADOR'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede editar una orden en estado ' . $oc->estado . '.',
+                'message' => 'Solo se pueden editar órdenes en BORRADOR. Una vez aprobada no se puede modificar.',
             ], 422);
         }
 
         $request->validate([
-            'numero_oc'              => [
+            'numero_oc' => [
                 'required', 'string', 'max:30',
                 Rule::unique('orden_compra', 'numero_oc')
                     ->where('id_empresa', $idEmpresa)
@@ -212,10 +237,12 @@ class OrdenCompraController extends Controller
             'fecha_emision'          => 'required|date',
             'fecha_entrega_esperada' => 'nullable|date|after_or_equal:fecha_emision',
             'moneda'                 => 'required|string|size:3',
-            'estado'                 => 'required|in:BORRADOR,ENVIADA,PARCIAL,RECIBIDA,CANCELADA',
+            'estado'                 => 'required|in:BORRADOR',
             'notas'                  => 'nullable|string',
             'detalles'                       => 'required|array|min:1',
             'detalles.*.id_producto'         => 'required|exists:producto,id_producto',
+            'detalles.*.id_centro'           => 'nullable|exists:centro_costo,id_centro',
+            'detalles.*.id_cuenta'           => 'nullable|exists:cuenta_contable,id_cuenta',
             'detalles.*.cantidad_pedida'     => 'required|numeric|min:0.0001',
             'detalles.*.precio_unitario'     => 'required|numeric|min:0',
         ]);
@@ -230,11 +257,9 @@ class OrdenCompraController extends Controller
                 'fecha_emision'          => $request->fecha_emision,
                 'fecha_entrega_esperada' => $request->fecha_entrega_esperada,
                 'moneda'                 => $request->moneda,
-                'estado'                 => $request->estado,
                 'notas'                  => $request->notas,
             ]);
 
-            // Reemplazar detalles (estrategia: borrar y recrear)
             $oc->detalles()->delete();
 
             foreach ($request->detalles as $d) {
@@ -246,6 +271,8 @@ class OrdenCompraController extends Controller
                 DetalleOrdenCompra::create([
                     'id_oc'             => $oc->id_oc,
                     'id_producto'       => $d['id_producto'],
+                    'id_centro'         => $d['id_centro'] ?? null,
+                    'id_cuenta'         => $d['id_cuenta'] ?? null,
                     'descripcion'       => $d['descripcion'] ?? null,
                     'cantidad_pedida'   => $cantidad,
                     'cantidad_recibida' => 0,
@@ -264,15 +291,32 @@ class OrdenCompraController extends Controller
         });
     }
 
+    /**
+     * Aprobar OC (BORRADOR → ENVIADA).
+     * Aquí dispara el hook que actualiza presupuesto.
+     * Antes de aprobar, valida saldo presupuestal disponible.
+     */
     public function aprobar(Request $request, int $id): JsonResponse
     {
-        $oc = OrdenCompra::where('id_empresa', $request->user()->id_empresa)
-                         ->findOrFail($id);
+        $oc = OrdenCompra::with('detalles.producto')
+            ->where('id_empresa', $request->user()->id_empresa)
+            ->findOrFail($id);
 
         if ($oc->estado !== 'BORRADOR') {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo se pueden aprobar órdenes en BORRADOR.',
+            ], 422);
+        }
+
+        // ── Validar saldo presupuestal antes de aprobar ──
+        $validacion = $this->validarSaldoPresupuestal($oc, (bool) $request->input('forzar', false));
+        if (!$validacion['ok']) {
+            return response()->json([
+                'success'         => false,
+                'message'         => $validacion['mensaje'],
+                'requiere_forzar' => true,
+                'detalles'        => $validacion['detalles'],
             ], 422);
         }
 
@@ -329,7 +373,7 @@ class OrdenCompraController extends Controller
     }
 
     // ════════════════════════════════════════════════════════════
-    // HELPERS
+    // HELPERS PRIVADOS
     // ════════════════════════════════════════════════════════════
     private function validarPertenenciaEmpresa(Request $request, int $idEmpresa): void
     {
@@ -352,5 +396,70 @@ class OrdenCompraController extends Controller
                 ], 422));
             }
         }
+    }
+
+    /**
+     * Valida que cada línea tenga saldo presupuestal disponible.
+     * Si todo OK retorna ['ok' => true]. Si hay sobregiro, retorna detalles.
+     */
+    private function validarSaldoPresupuestal(OrdenCompra $oc, bool $forzar): array
+    {
+        $empresa     = Empresa::find($oc->id_empresa);
+        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
+        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false;
+        $anio        = $oc->fecha_emision->year;
+        $mes         = $oc->fecha_emision->month;
+        $nombreMes   = PresupuestoAnual::MESES[$mes] ?? null;
+
+        $sobregiros = [];
+
+        // Agrupar montos por (centro + cuenta)
+        $agregados = [];
+        foreach ($oc->detalles as $linea) {
+            $idCentro = $linea->centro_efectivo;
+            $idCuenta = $linea->cuenta_efectiva;
+            if (!$idCentro || !$idCuenta) continue;
+
+            $subtotal  = (float) $linea->subtotal;
+            $montoNeto = $ivaIncluido ? round($subtotal / (1 + $tasaIva), 4) : $subtotal;
+
+            $key = "{$idCentro}-{$idCuenta}";
+            $agregados[$key] = ($agregados[$key] ?? 0) + $montoNeto;
+        }
+
+        foreach ($agregados as $key => $montoOC) {
+            [$idCentro, $idCuenta] = explode('-', $key);
+
+            $presupuesto = PresupuestoAnual::where('id_empresa', $oc->id_empresa)
+                ->where('id_centro', $idCentro)
+                ->where('id_cuenta', $idCuenta)
+                ->where('anio', $anio)
+                ->where('estado', 'APROBADO')
+                ->first();
+
+            if (!$presupuesto) continue; // sin presupuesto = no se valida
+
+            $disponible = (float) $presupuesto->saldo_disponible;
+
+            if ($montoOC > $disponible) {
+                $sobregiros[] = [
+                    'centro'     => $idCentro,
+                    'cuenta'     => $idCuenta,
+                    'requerido'  => round($montoOC, 2),
+                    'disponible' => round($disponible, 2),
+                    'sobregiro'  => round($montoOC - $disponible, 2),
+                ];
+            }
+        }
+
+        if (empty($sobregiros) || $forzar) {
+            return ['ok' => true];
+        }
+
+        return [
+            'ok'       => false,
+            'mensaje'  => 'La OC excede el saldo disponible en el presupuesto. ¿Deseas aprobar de todos modos?',
+            'detalles' => $sobregiros,
+        ];
     }
 }
