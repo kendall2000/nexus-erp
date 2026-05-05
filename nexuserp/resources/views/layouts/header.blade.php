@@ -9,7 +9,7 @@
     <base href="{{ url('/') }}/Plantilla/public/">
 
     <script>
-        const server     = '{{ url("/") }}';
+        const server     = window.location.protocol + '//' + window.location.host;
         const basePath   = '';
         const servidor   = server + basePath;
         const apiUrl     = server + '/api/v1';
