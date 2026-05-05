@@ -42,7 +42,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script_stop: true
           script: |
-            cd ~/documentos/proyectos/php/nexus-erp/nexuserp#
+            cd ~/documentos/proyectos/php/nexus-erp/nexuserp
             git pull
             docker compose up -d --build --remove-orphans
             docker image prune -f
