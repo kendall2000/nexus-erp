@@ -6,11 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NexusERP</title>
-
     <base href="{{ url('/') }}/Plantilla/public/">
 
     <script>
-        const server     = '{{ str_replace("http://", "https://", url("/")) }}';
+        const server     = '{{ url("/") }}';
         const basePath   = '';
         const servidor   = server + basePath;
         const apiUrl     = server + '/api/v1';

@@ -132,11 +132,17 @@
             return;
         }
 
+        // Ocultar contenido INMEDIATAMENTE mientras valida
+        document.documentElement.style.visibility = 'hidden';
+
         fetch(apiUrl + '/auth/me')
             .then(res => {
                 if (!res.ok) {
                     sessionStorage.clear();
                     window.location.href = '/login';
+                } else {
+                    // Token válido → mostrar contenido
+                    document.documentElement.style.visibility = 'visible';
                 }
             })
             .catch(() => {

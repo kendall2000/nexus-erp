@@ -19,9 +19,8 @@ services:
       - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
     ports:
       - "${APP_PORT:-8080}:80"
-  networks:
-    red-external-network:
-      external: true
+    networks:
+      - red-external-network # <-- CORREGIDO: Ahora está bien indentado y referenciado
 
   # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
   queue:
@@ -55,6 +54,7 @@ services:
     networks:
       - red-external-network
 
+# ── Configuración Global de Redes ─────────────────────────────
 networks:
   red-external-network:
-    driver: bridge
+    external: true 
