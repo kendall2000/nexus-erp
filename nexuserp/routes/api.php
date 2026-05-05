@@ -20,6 +20,9 @@ use App\Http\Controllers\Api\V1\Inventario\RecepcionController;
 use App\Http\Controllers\Api\V1\Clientes\ClienteController;
 use App\Http\Controllers\Api\V1\Finanzas\FacturaController;
 use App\Http\Controllers\Api\V1\Finanzas\PagoController;
+use App\Http\Controllers\Api\V1\Finanzas\PresupuestoController;
+use App\Http\Controllers\Api\V1\Core\CentroCostoController;
+use App\Http\Controllers\Api\V1\Core\CuentaContableController;
 
 // ── Rutas PÚBLICAS (sin token) ───────────────────────────────
 Route::prefix('v1')->group(function () {
@@ -201,7 +204,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::patch ('finanzas/facturas/{id}/anular',         [FacturaController::class, 'anular']);
     Route::patch ('finanzas/facturas/{id}/estado',         [FacturaController::class, 'cambiarEstado']);
     Route::delete('finanzas/facturas/{id}',                [FacturaController::class, 'destroy']);
-    
+
     // ── Pagos ──────────────────────────────────────────────────────
     Route::prefix('finanzas/pagos')->group(function () {
         Route::get('catalogos', [PagoController::class, 'catalogos']);
@@ -209,5 +212,42 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::post('',          [PagoController::class, 'store']);
         Route::get('{id}',      [PagoController::class, 'show']);
         Route::delete('{id}',    [PagoController::class, 'destroy']);
+    });
+
+    // ── Presupuesto Anual ────────────────────────────────────────────
+    Route::get   ('finanzas/presupuestos/catalogos',     [PresupuestoController::class, 'catalogos']);
+    Route::get   ('finanzas/presupuestos/dashboard',     [PresupuestoController::class, 'dashboard']);
+    Route::post  ('finanzas/presupuestos/clonar',        [PresupuestoController::class, 'clonar']);
+    Route::get   ('finanzas/presupuestos',               [PresupuestoController::class, 'index']);
+    Route::post  ('finanzas/presupuestos',               [PresupuestoController::class, 'store']);
+    Route::get   ('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'show']);
+    Route::put   ('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'update']);
+    Route::patch ('finanzas/presupuestos/{id}/aprobar',  [PresupuestoController::class, 'aprobar']);
+    Route::patch ('finanzas/presupuestos/{id}/cerrar',   [PresupuestoController::class, 'cerrar']);
+    Route::delete('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'destroy']);
+
+    // ── Centros de Costo ─────────────────────────────────────────────
+    Route::prefix('core/centros-costo')->group(function () {
+        Route::get   ('catalogo',     [CentroCostoController::class, 'catalogo']);
+        Route::get   ('',             [CentroCostoController::class, 'index']);
+        Route::post  ('',             [CentroCostoController::class, 'store']);
+        Route::get   ('{id}',         [CentroCostoController::class, 'show']);
+        Route::put   ('{id}',         [CentroCostoController::class, 'update']);
+        Route::patch ('{id}/toggle',  [CentroCostoController::class, 'toggle']);
+        Route::delete('{id}',         [CentroCostoController::class, 'destroy']);
+    });
+
+    // ── Cuentas Contables ────────────────────────────────────────────
+    Route::prefix('core/cuentas-contables')->group(function () {
+        Route::get   ('catalogo',         [CuentaContableController::class, 'catalogo']);
+        Route::get   ('arbol',            [CuentaContableController::class, 'arbol']);
+        Route::post  ('import/preview',   [CuentaContableController::class, 'importPreview']);
+        Route::post  ('import/commit',    [CuentaContableController::class, 'importCommit']);
+        Route::get   ('',                 [CuentaContableController::class, 'index']);
+        Route::post  ('',                 [CuentaContableController::class, 'store']);
+        Route::get   ('{id}',             [CuentaContableController::class, 'show']);
+        Route::put   ('{id}',             [CuentaContableController::class, 'update']);
+        Route::patch ('{id}/toggle',      [CuentaContableController::class, 'toggle']);
+        Route::delete('{id}',             [CuentaContableController::class, 'destroy']);
     });
 });

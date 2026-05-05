@@ -67,6 +67,7 @@
 <script src="{{ asset('Plantilla/public/vendors/lodash/lodash.min.js') }}"></script>
 <script src="{{ asset('Plantilla/public/vendors/feather-icons/feather.min.js') }}"></script>
 <script src="{{ asset('Plantilla/public/vendors/leaflet/leaflet.js') }}"></script>
+<script src="{{ asset('Plantilla/public/vendors/echarts/echarts.min.js') }}"></script>
 
 {{-- Phoenix core --}}
 <script src="{{ asset('Plantilla/public/assets/js/phoenix.js') }}"></script>
