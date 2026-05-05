@@ -387,9 +387,14 @@ new Vue({
                 ENVIADA: 'marcar como enviada',
                 VENCIDA: 'marcar como vencida',
             };
+
+            // Capturar valores ANTES de cerrar el modal
+            const idFactura      = this.form.id_factura;
+            const numeroCompleto = this.form.numero_completo;
+
             const ok = await Swal.fire({
                 title:             `¿${etiquetas[nuevoEstado] || nuevoEstado}?`,
-                html:              `Factura <b>${this.form.numero_completo}</b>`,
+                html:              `Factura <b>${numeroCompleto}</b>`,
                 icon:              'question',
                 showCancelButton:  true,
                 confirmButtonText: 'Sí, continuar',
@@ -398,24 +403,44 @@ new Vue({
             if (!ok.isConfirmed) return;
 
             try {
-                const res  = await fetch(
-                    `${apiUrl}/finanzas/facturas/${this.form.id_factura}/estado`,
+                const res = await fetch(
+                    `${apiUrl}/finanzas/facturas/${idFactura}/estado`,
                     {
                         method:  'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept':       'application/json',
+                        },
                         body:    JSON.stringify({ estado: nuevoEstado }),
                     }
                 );
-                const data = await res.json();
-                if (data.success) {
-                    toastr.success(data.message);
+
+                // Parsear JSON con manejo de error explícito
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    console.error('Respuesta no es JSON válido:', parseErr);
+                    Swal.fire('Error', 'Respuesta inválida del servidor.', 'error');
+                    return;
+                }
+
+                if (res.ok && data.success) {
                     this.mostrarModal = false;
-                    this.cargarDatos();
+                    await Swal.fire({
+                        icon:              'success',
+                        title:             data.message,
+                        timer:             1500,
+                        showConfirmButton: false,
+                    });
+                    await this.cargarDatos();
                 } else {
-                    Swal.fire('Aviso', data.message, 'warning');
+                    Swal.fire('Aviso', data.message || 'No se pudo cambiar el estado.', 'warning');
                 }
             } catch (e) {
-                Swal.fire('Error', 'Error de conexión.', 'error');
+                // Solo log real para diagnosticar
+                console.error('Error real en cambiarEstado:', e);
+                Swal.fire('Error', 'Error de conexión: ' + (e.message || 'desconocido'), 'error');
             }
         },
 
