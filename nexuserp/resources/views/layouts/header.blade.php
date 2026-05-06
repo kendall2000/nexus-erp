@@ -45,18 +45,57 @@
 
     <script>
         // RTL/LTR automático
-        const phoenixIsRTL = window.config?.config?.phoenixIsRTL;
-        if (phoenixIsRTL) {
-            document.getElementById('style-default').disabled    = true;
-            document.getElementById('user-style-default').disabled = true;
-            document.documentElement.setAttribute('dir', 'rtl');
-        } else {
-            document.getElementById('style-rtl').disabled      = true;
-            document.getElementById('user-style-rtl').disabled = true;
+        // const phoenixIsRTL = window.config?.config?.phoenixIsRTL;
+        // if (phoenixIsRTL) {
+        //     document.getElementById('style-default').disabled    = true;
+        //     document.getElementById('user-style-default').disabled = true;
+        //     document.documentElement.setAttribute('dir', 'rtl');
+        // } else {
+        //     document.getElementById('style-rtl').disabled      = true;
+        //     document.getElementById('user-style-rtl').disabled = true;
+        // }
+        if (!window.location.pathname.includes('/login')) {
+            document.documentElement.classList.add('nexus-loading');
         }
     </script>
 
     <style>
+        /* Anti-FOUC: oculta el body mientras valida sesión */
+        html.nexus-loading body {
+            visibility: hidden !important;
+            opacity: 0;
+        }
+        html body {
+            visibility: visible;
+            opacity: 1;
+            transition: opacity 0.15s ease-in;
+        }
+
+        /* ✅ FIX: Footer sticky correcto */
+        html, body {
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .content {
+            flex: 1 0 auto;
+            padding-bottom: 4rem; /* Espacio reservado para el footer */
+        }
+        .footer {
+            flex-shrink: 0;
+            position: relative !important; /* ⚠️ Quitamos absolute */
+            margin-top: auto;
+            padding: 1rem 0;
+        }
+
         .table { width: 100% !important; }
         [v-cloak] { display: none; }
     </style>

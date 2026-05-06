@@ -14,9 +14,8 @@
 </div>
 
 {{-- Footer --}}
-<footer class="footer position-absolute">
-    <div class="row g-0 justify-content-between align-items-center h-100">
-        {{-- Columna 1: Izquierda --}}
+<footer class="footer">
+    <div class="row g-0 justify-content-between align-items-center">
         <div class="col-12 col-sm-auto text-center">
             <p class="mb-0 mt-2 mt-sm-0 text-900">
                 NexusERP
@@ -25,8 +24,6 @@
                 <a class="mx-1" href="{{ url('/') }}">NexusERP</a>
             </p>
         </div>
-        
-        {{-- Columna 2: Derecha (Estaba anidada por error, ahora es un hermano) --}}
         <div class="col-12 col-sm-auto text-center">
             <p class="mb-0 text-600">v1.0.0</p>
         </div>
@@ -99,9 +96,10 @@
      ============================================================ --}}
 <script>
 (function() {
+    'use strict';
+
     // ── 1. Interceptor global de fetch ──────────────────────────
     const originalFetch = window.fetch;
-
     window.fetch = async function(url, options) {
         options = options || {};
         options.headers = options.headers || {};
@@ -118,32 +116,34 @@
             sessionStorage.removeItem('nexus_usuario');
             window.location.href = '/login';
         }
-
         return response;
     };
 
-    // ── 2. Función de validación reutilizable ───────────────────
+    // ── 2. Validación de sesión SIN parpadeo ────────────────────
+    function mostrarContenido() {
+        document.documentElement.classList.remove('nexus-loading');
+    }
+
     function validarSesion() {
-        if (window.location.pathname.includes('/login')) return;
+        if (window.location.pathname.includes('/login')) {
+            mostrarContenido();
+            return;
+        }
 
         const token = sessionStorage.getItem('nexus_token');
-
         if (!token) {
             window.location.href = '/login';
             return;
         }
 
-        // Ocultar contenido INMEDIATAMENTE mientras valida
-        document.documentElement.style.visibility = 'hidden';
-
+        // ✅ Validamos en background; el body ya está oculto por el CSS anti-FOUC
         fetch(apiUrl + '/auth/me')
             .then(res => {
                 if (!res.ok) {
                     sessionStorage.clear();
                     window.location.href = '/login';
                 } else {
-                    // Token válido → mostrar contenido
-                    document.documentElement.style.visibility = 'visible';
+                    mostrarContenido(); // Solo mostramos si la sesión es válida
                 }
             })
             .catch(() => {
@@ -152,17 +152,18 @@
             });
     }
 
-    // ── 3. Validar al cargar página ─────────────────────────────
-    document.addEventListener('DOMContentLoaded', validarSesion);
+    // ── 3. Eventos ──────────────────────────────────────────────
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', validarSesion);
+    } else {
+        validarSesion();
+    }
 
-    // ── 4. Validar al volver con back/forward (bfcache) ─────────
     window.addEventListener('pageshow', function(event) {
-        if (event.persisted) {
-            validarSesion();
-        }
+        if (event.persisted) validarSesion();
     });
 
-    // ── 5. Configuración visual de Phoenix ──────────────────────
+    // ── 4. Configuración visual de Phoenix ──────────────────────
     const navbarTopStyle = window.config?.config?.phoenixNavbarTopStyle;
     const navbarTop = document.querySelector('.navbar-top');
     if (navbarTopStyle === 'darker' && navbarTop) {
