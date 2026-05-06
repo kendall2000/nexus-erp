@@ -1,6 +1,6 @@
 {{-- ============================================================
      EXTRAS — NexusERP
-     Footer + JavaScripts globales de Phoenix
+     Footer + JavaScripts globales (estructura Phoenix nativa)
      ============================================================ --}}
 
 {{-- Loader global --}}
@@ -9,13 +9,12 @@
         <div class="loader-track">
             <div class="loader-shape"></div>
         </div>
-        <!-- <div class="loading-text">Cargando, por favor espere...</div> -->
     </div>
 </div>
 
-{{-- Footer --}}
-<footer class="footer">
-    <div class="row g-0 justify-content-between align-items-center">
+{{-- Footer (posición Phoenix nativa) --}}
+<footer class="footer position-absolute">
+    <div class="row g-0 justify-content-between align-items-center h-100">
         <div class="col-12 col-sm-auto text-center">
             <p class="mb-0 mt-2 mt-sm-0 text-900">
                 NexusERP
@@ -34,11 +33,7 @@
 </main> {{-- ¡CRÍTICO! Cierra main abierto en header.blade.php --}}
 
 {{-- ============================================================
-     JavaScripts — Orden importante:
-     1. CDN externos
-     2. Phoenix vendors (via base href)
-     3. Phoenix core
-     4. Scripts del módulo actual
+     JavaScripts — Orden importante
      ============================================================ --}}
 
 {{-- CDN externos --}}
@@ -48,7 +43,6 @@
 <script src="https://cdn.jsdelivr.net/npm/vue-select@3.20.2"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/v/bs5/jq-3.7.0/jszip-3.10.1/dt-1.13.8/b-2.4.2/b-html5-2.4.2/sl-1.7.0/datatables.min.js"></script>
@@ -69,15 +63,14 @@
 {{-- Phoenix core --}}
 <script src="{{ asset('Plantilla/public/assets/js/phoenix.js') }}"></script>
 
-{{-- Lógica del Loader --}}
+{{-- Loader del sistema --}}
 @if(file_exists(public_path('Plantilla/public/componentes/loader.js')))
     <script src="{{ asset('Plantilla/public/componentes/loader.js') }}"></script>
 @else
-    {{-- Si el archivo loader.js no existe, ocultamos el loader automáticamente con este pequeño script --}}
     <script>
         window.addEventListener('load', function() {
             var loader = document.getElementById('global-loader');
-            if(loader) loader.style.display = 'none';
+            if (loader) loader.style.display = 'none';
         });
     </script>
 @endif
@@ -91,14 +84,15 @@
     <script src="{{ url('/') }}/Plantilla/public/componentes/apis_service.js?v={{ time() }}"></script>
     <script src="{{ url('/') }}/Plantilla/public/componentes/api.js?v={{ time() }}"></script>
 @endif
+
 {{-- ============================================================
-     CONFIGURACIÓN GLOBAL — Auth + Phoenix
+     CONFIGURACIÓN GLOBAL — Auth + Phoenix + Vue Perfil
      ============================================================ --}}
 <script>
 (function() {
     'use strict';
 
-    // ── 1. Interceptor global de fetch ──────────────────────────
+    // ── 1. Interceptor global de fetch (token + 401) ────────────
     const originalFetch = window.fetch;
     window.fetch = async function(url, options) {
         options = options || {};
@@ -119,16 +113,9 @@
         return response;
     };
 
-    // ── 2. Validación de sesión SIN parpadeo ────────────────────
-    function mostrarContenido() {
-        document.documentElement.classList.remove('nexus-loading');
-    }
-
+    // ── 2. Validación de sesión (sin manipular visibility) ──────
     function validarSesion() {
-        if (window.location.pathname.includes('/login')) {
-            mostrarContenido();
-            return;
-        }
+        if (window.location.pathname.includes('/login')) return;
 
         const token = sessionStorage.getItem('nexus_token');
         if (!token) {
@@ -136,34 +123,20 @@
             return;
         }
 
-        // ✅ Validamos en background; el body ya está oculto por el CSS anti-FOUC
-        fetch(apiUrl + '/auth/me')
-            .then(res => {
-                if (!res.ok) {
-                    sessionStorage.clear();
-                    window.location.href = '/login';
-                } else {
-                    mostrarContenido(); // Solo mostramos si la sesión es válida
-                }
-            })
-            .catch(() => {
-                sessionStorage.clear();
-                window.location.href = '/login';
-            });
+        // Validación silenciosa en background
+        fetch(apiUrl + '/auth/me').catch(function() {
+            sessionStorage.clear();
+            window.location.href = '/login';
+        });
     }
 
-    // ── 3. Eventos ──────────────────────────────────────────────
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', validarSesion);
-    } else {
-        validarSesion();
-    }
+    document.addEventListener('DOMContentLoaded', validarSesion);
 
     window.addEventListener('pageshow', function(event) {
         if (event.persisted) validarSesion();
     });
 
-    // ── 4. Configuración visual de Phoenix ──────────────────────
+    // ── 3. Configuración visual de Phoenix ──────────────────────
     const navbarTopStyle = window.config?.config?.phoenixNavbarTopStyle;
     const navbarTop = document.querySelector('.navbar-top');
     if (navbarTopStyle === 'darker' && navbarTop) {
@@ -176,11 +149,40 @@
         navbarVertical.classList.add('navbar-darker');
     }
 })();
+
+// ── 4. Vue del perfil de usuario ─────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    new Vue({
+        el: '#perfil-app',
+        data: {
+            usuario: JSON.parse(sessionStorage.getItem('nexus_usuario') || '{}')
+        },
+        methods: {
+            async cerrarSesion() {
+                try {
+                    await fetch(apiUrl + '/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + nexusToken
+                        }
+                    });
+                } catch(e) {}
+                sessionStorage.removeItem('nexus_token');
+                sessionStorage.removeItem('nexus_usuario');
+                window.location.href = server + '/login';
+            }
+        }
+    });
+});
 </script>
-{{-- ── JS automático del módulo actual ───────────────────────── --}}
+
+{{-- ============================================================
+     JS automático del módulo actual
+     ============================================================ --}}
 @php
     $segmentos = array_values(array_filter(explode('/', request()->path())));
-    $jsUrl     = null;
+    $jsUrl = null;
 
     if (count($segmentos) >= 2 && $segmentos[0] === 'sistema') {
         $modulo  = strtolower($segmentos[1]);
@@ -198,5 +200,6 @@
 @endif
 
 @stack('scripts')
+
 </body>
 </html>
