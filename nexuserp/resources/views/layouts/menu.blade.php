@@ -1,7 +1,6 @@
 {{-- ============================================================
      MENÚ LATERAL — NexusERP
-     Vue 2 compatible — templates en JS con @{{ }} para Blade
-     Comportamiento de Acordeón Activado
+     Vue 2 — HTML válido + Simplebar para scroll interno
      ============================================================ --}}
 
 <nav class="navbar navbar-vertical navbar-expand-lg">
@@ -14,11 +13,10 @@
     </script>
 
     <div class="collapse navbar-collapse" id="navbarVerticalCollapse">
-        <div class="navbar-vertical-content">
-            {{-- El ID navbarVerticalNav será el "Padre" de nuestro acordeón --}}
-            <ul class="navbar-nav flex-column" id="navbarVerticalNav">
-                <div id="menu-app" class="w-100"></div>
-            </ul>
+        {{-- ✅ data-simplebar activa el scroll interno del sidebar --}}
+        <div class="navbar-vertical-content" data-simplebar>
+            {{-- ✅ Vue mounta acá y renderiza el <ul> completo (HTML válido) --}}
+            <div id="menu-app"></div>
         </div>
     </div>
 
@@ -31,13 +29,13 @@
     </div>
 </nav>
 
-{{-- ── Plantillas de Vue separadas del JS para evitar conflicto con Blade ── --}}
+{{-- ── Plantillas Vue ────────────────────────────────────────── --}}
 
 {{-- Template: enlace directo (Nivel 2 sin hijos) --}}
 <script type="text/x-template" id="tpl-menu-link">
-    <a class="nav-link label-1" 
-       :class="{ 'active': isActive }" 
-       :href="enlaceCalculado" 
+    <a class="nav-link label-1"
+       :class="{ 'active': isActive }"
+       :href="enlaceCalculado"
        role="button">
         <div class="d-flex align-items-center">
             <span class="nav-link-icon">
@@ -48,7 +46,7 @@
     </a>
 </script>
 
-{{-- Template: dropdown con subitems (Nivel 2 con hijos en Nivel 3) --}}
+{{-- Template: dropdown con subitems --}}
 <script type="text/x-template" id="tpl-menu-dropdown">
     <div class="w-100">
         <a class="nav-link dropdown-indicator label-1"
@@ -69,15 +67,15 @@
             </div>
         </a>
         <div class="parent-wrapper label-1">
-            <ul class="nav collapse parent" 
+            <ul class="nav collapse parent"
                 :class="{ 'show': isOpen }"
-                data-bs-parent="#navbarVerticalNav" 
+                data-bs-parent="#navbarVerticalNav"
                 :id="'nv-' + item.id">
                 <li class="collapsed-nav-item-title d-none">@{{ item.nombre }}</li>
-                
+
                 <li class="nav-item" v-for="sub in item.subitems" :key="sub.id">
-                    <a class="nav-link" 
-                       :class="{ 'active': isSubActive(sub.ruta) }" 
+                    <a class="nav-link"
+                       :class="{ 'active': isSubActive(sub.ruta) }"
                        :href="baseUrl + sub.ruta">
                         <div class="d-flex align-items-center">
                             <span class="nav-link-icon">
@@ -92,14 +90,13 @@
     </div>
 </script>
 
-{{-- Template: grupo del menú (Nivel 1: Principal, CRM, ERP...) --}}
+{{-- Template: grupo del menú (Nivel 1) --}}
 <script type="text/x-template" id="tpl-menu-grupo">
     <li class="nav-item">
         <p class="navbar-vertical-label">@{{ grupo.nombre }}</p>
         <hr class="navbar-vertical-line" />
         <div class="nav-item-wrapper">
             <template v-for="item in itemsGrupo">
-                {{-- Muestra dropdown si tiene subitems, si no, muestra link normal --}}
                 <menu-dropdown
                     v-if="item.subitems && item.subitems.length > 0"
                     :key="'d-' + item.id"
@@ -119,16 +116,16 @@
     </li>
 </script>
 
-{{-- Template: app principal --}}
+{{-- ✅ Template app principal: ahora renderiza <ul> directamente --}}
 <script type="text/x-template" id="tpl-menu-app">
-    <div>
-        {{-- Skeleton Loader (Animación de carga) --}}
+    <ul class="navbar-nav flex-column" id="navbarVerticalNav">
+        {{-- Skeleton Loader --}}
         <li class="nav-item" v-if="!menuCargado" v-for="n in 5" :key="'sk-'+n">
             <div class="px-3 py-2">
                 <div style="height:10px;background:#e3e6ea;border-radius:4px;margin-bottom:6px;width:70%;"></div>
             </div>
         </li>
-        
+
         {{-- Menú real --}}
         <menu-grupo
             v-if="menuCargado"
@@ -138,7 +135,7 @@
             :base-url="baseUrl"
             :current-path="currentPath">
         </menu-grupo>
-    </div>
+    </ul>
 </script>
 
 <script>
@@ -153,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!ruta && this.item.subitems && this.item.subitems.length > 0) {
                     ruta = this.item.subitems[0].ruta;
                 }
-                
                 if (ruta && ruta.startsWith('/') && this.baseUrl.endsWith('/')) {
                     ruta = ruta.substring(1);
                 }
@@ -162,7 +158,8 @@ document.addEventListener('DOMContentLoaded', function () {
             isActive: function() {
                 var href = this.enlaceCalculado;
                 if (href === '#') return false;
-                return window.location.href.indexOf(href) !== -1 || (this.item.ruta && this.currentPath.indexOf(this.item.ruta) !== -1);
+                return window.location.href.indexOf(href) !== -1
+                    || (this.item.ruta && this.currentPath.indexOf(this.item.ruta) !== -1);
             }
         }
     });
@@ -173,8 +170,8 @@ document.addEventListener('DOMContentLoaded', function () {
         computed: {
             isOpen: function() {
                 var self = this;
-                var activaDirecta = this.item.ruta && this.item.ruta !== 'NULL' && this.currentPath.indexOf(this.item.ruta) !== -1;
-                
+                var activaDirecta = this.item.ruta && this.item.ruta !== 'NULL'
+                    && this.currentPath.indexOf(this.item.ruta) !== -1;
                 var hijoActivo = false;
                 if (this.item.subitems) {
                     hijoActivo = this.item.subitems.some(function(sub) {
@@ -208,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
         data: {
             menu: [],
             menuCargado: false,
-            baseUrl: window.server || '', 
+            baseUrl: window.server || '',
             currentPath: window.location.pathname
         },
         mounted: function () {
@@ -218,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
             cargarMenu: async function () {
                 try {
                     var token = sessionStorage.getItem('nexus_token') || '';
-                    var res = await fetch(apiUrl + '/menu', { 
+                    var res = await fetch(apiUrl + '/menu', {
                         method:  'GET',
                         headers: {
                             'Content-Type':  'application/json',
@@ -227,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     if (res.ok) {
                         var json  = await res.json();
-                        this.menu = json.data || []; 
+                        this.menu = json.data || [];
                     }
                 } catch (e) {
                     console.error('Error cargando menú:', e);
@@ -237,8 +234,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (typeof feather !== 'undefined') {
                             feather.replace();
                         }
-                        // ✅ FIX: Forzar a Phoenix a recalcular layout del footer
-                        // Phoenix calcula el footer al cargar; el menú async lo desfasa.
+                        // ✅ Re-inicializa Simplebar para que tome las medidas
+                        // del menú recién renderizado y active el scroll interno.
+                        var contentEl = document.querySelector('.navbar-vertical-content');
+                        if (contentEl && window.SimpleBar) {
+                            new SimpleBar(contentEl);
+                        }
+                        // Notifica a Phoenix para recalcular layout/footer.
                         window.dispatchEvent(new Event('resize'));
                     });
                 }
