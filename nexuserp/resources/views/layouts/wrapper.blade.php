@@ -1,16 +1,13 @@
-{{-- ============================================================
-     NAVBAR TOP — NexusERP
-     ============================================================ --}}
-<nav class="navbar navbar-top fixed-top navbar-expand" id="navbarDefault">
-    <div id="inicioUsuarioCS" class="collapse navbar-collapse justify-content-between">
-
-        {{-- Logo --}}
+<nav class="navbar navbar-top fixed-top navbar-expand" id="navbar-app">
+    <div class="collapse navbar-collapse justify-content-between" id="navbarDefault">
         <div class="navbar-logo">
             <button class="btn navbar-toggler navbar-toggler-humburger-icon hover-bg-transparent"
-                type="button" data-bs-toggle="collapse"
+                type="button"
+                data-bs-toggle="collapse"
                 data-bs-target="#navbarVerticalCollapse"
                 aria-controls="navbarVerticalCollapse"
-                aria-expanded="false" aria-label="Toggle Navigation">
+                aria-expanded="false"
+                aria-label="Toggle Navigation">
                 <span class="navbar-toggle-icon"><span class="toggle-line"></span></span>
             </button>
             <a class="navbar-brand me-1 me-sm-3" href="{{ url('/sistema/dashboard') }}">
@@ -22,7 +19,7 @@
 
         {{-- Buscador --}}
         <div class="search-box navbar-top-search-box d-none d-lg-block" style="width:25rem;">
-            <form class="position-relative" data-bs-toggle="search" data-bs-display="static">
+            <form class="position-relative">
                 <input class="form-control search-input fuzzy-search rounded-pill form-control-sm"
                     type="search" placeholder="Buscar..." aria-label="Buscar" />
                 <span class="fas fa-search search-box-icon"></span>
@@ -136,11 +133,8 @@
     </div>
 </nav>
 
-{{-- ============================================================
-     CONTENIDO DEL MÓDULO
-     ⚠️ Este div.content se cierra en extras.blade.php
-     ============================================================ --}}
-<div class="content">
+{{-- Contenido del módulo --}}
+<div class="content"> {{-- ESTE DIV SE ABRE AQUÍ, PERO SE CIERRA EN EXTRAS --}}
     <nav class="mb-2" aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item">
@@ -151,3 +145,31 @@
     </nav>
 
     @yield('content')
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        new Vue({
+            el: '#perfil-app',
+            data: {
+                usuario: JSON.parse(sessionStorage.getItem('nexus_usuario') || '{}')
+            },
+            methods: {
+                async cerrarSesion() {
+                    try {
+                        await fetch(apiUrl + '/auth/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + nexusToken
+                            }
+                        });
+                    } catch(e) {}
+                    sessionStorage.removeItem('nexus_token');
+                    sessionStorage.removeItem('nexus_usuario');
+                    window.location.href = server + '/login';
+                }
+            }
+        });
+    });
+    </script>
+{{-- NOTA: NO HAY </div> AQUÍ A PROPÓSITO --}}

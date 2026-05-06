@@ -237,6 +237,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (typeof feather !== 'undefined') {
                             feather.replace();
                         }
+                        // ✅ FIX: Forzar a Phoenix a recalcular layout del footer
+                        // Phoenix calcula el footer al cargar; el menú async lo desfasa.
+                        window.dispatchEvent(new Event('resize'));
                     });
                 }
             }
