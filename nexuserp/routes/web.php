@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
+use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PresupuestoController;
@@ -162,6 +163,13 @@ Route::middleware('auth')->group(function () {
         });
         Route::patch('{orden}/aprobar', 'aprobar')->whereNumber('orden')->middleware('permiso:ordenes_compra.aprobar')->name('aprobar');
         Route::patch('{orden}/cancelar', 'cancelar')->whereNumber('orden')->middleware('permiso:ordenes_compra.cancelar')->name('cancelar');
+    });
+
+    // Kardex: movimientos de inventario (no se editan ni se borran)
+    Route::prefix('sistema/movimientos')->name('movimientos.')->controller(MovimientoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:movimientos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:movimientos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:movimientos.crear')->name('store');
     });
 
     // Recepciones de mercadería (entrada al stock y al kardex; no se editan ni se anulan)
