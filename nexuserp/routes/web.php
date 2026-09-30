@@ -8,6 +8,7 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\OrdenCompraController;
@@ -223,12 +224,29 @@ Route::middleware('auth')->group(function () {
         Route::patch('{presupuesto}/reabrir', 'reabrir')->whereNumber('presupuesto')->middleware('permiso:presupuesto.reabrir')->name('reabrir');
     });
 
+    // Facturas (borrador → emitida → enviada → pagada; anular sin pagos)
+    Route::prefix('sistema/facturas')->name('facturas.')->controller(FacturaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:facturas.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:facturas.exportar')->name('exportar');
+        Route::get('nueva', 'create')->middleware('permiso:facturas.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:facturas.crear')->name('store');
+        Route::get('{factura}', 'show')->whereNumber('factura')->middleware('permiso:facturas.ver')->name('show');
+        Route::get('{factura}/imprimir', 'imprimir')->whereNumber('factura')->middleware('permiso:facturas.imprimir')->name('imprimir');
+        Route::middleware('permiso:facturas.editar')->group(function () {
+            Route::get('{factura}/editar', 'edit')->whereNumber('factura')->name('edit');
+            Route::put('{factura}', 'update')->whereNumber('factura')->name('update');
+            Route::delete('{factura}', 'destroy')->whereNumber('factura')->name('destroy');
+            Route::patch('{factura}/emitir', 'emitir')->whereNumber('factura')->name('emitir');
+            Route::patch('{factura}/enviar', 'enviar')->whereNumber('factura')->name('enviar');
+        });
+        Route::patch('{factura}/anular', 'anular')->whereNumber('factura')->middleware('permiso:facturas.anular')->name('anular');
+    });
+
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ── Pantallas que todavía son Vue + API (se migran en el paso 5) ──
     // ── Finanzas ────────────────────────────────────────────────────
-    Route::get('/sistema/facturas',          fn() => view('modulos.facturas.index'));
     Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
