@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Core\Rol;
 use App\Models\Core\Sucursal;
 use App\Models\Core\Usuario;
+use App\Support\Archivos;
 use App\Support\Seguridad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -61,6 +63,10 @@ class UsuarioController extends Controller
             'intentos_fallidos' => 0,
         ]);
         $this->asignarRol($request, $usuario, (int) $datos['id_rol']);
+        if ($error = $this->guardarFoto($request, $usuario)) {
+            return redirect()->route('usuarios.edit', $usuario->id_usuario)
+                ->with('status', "Usuario {$usuario->username} creado.")->withErrors(['foto' => $error]);
+        }
 
         return redirect()->route('usuarios.index')->with('status', "Usuario {$usuario->username} creado.");
     }
@@ -94,6 +100,7 @@ class UsuarioController extends Controller
             'email' => $datos['email'],
         ]);
         $this->asignarRol($request, $usuario, (int) $datos['id_rol']);
+        $errorFoto = $this->guardarFoto($request, $usuario);
 
         if (! empty($datos['password'])) {
             $usuario->forceFill([
@@ -107,6 +114,11 @@ class UsuarioController extends Controller
                 $usuario->tokens()->delete();
                 Seguridad::registrar('RESET_PASSWORD', $usuario->username, $usuario->id_usuario, 'Restablecida por '.$request->user()->username);
             }
+        }
+
+        if ($errorFoto) {
+            return redirect()->route('usuarios.edit', $usuario->id_usuario)
+                ->with('status', "Usuario {$usuario->username} actualizado.")->withErrors(['foto' => $errorFoto]);
         }
 
         return redirect()->route('usuarios.index')->with('status', "Usuario {$usuario->username} actualizado.");
@@ -178,11 +190,36 @@ class UsuarioController extends Controller
             'id_rol' => ['required', Rule::exists('rol', 'id_rol')->where('id_empresa', $idEmpresa)->where('activo', true)],
             'id_sucursal' => ['nullable', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
             'password' => [$usuario ? 'nullable' : 'required', 'string', Password::default(), 'confirmed'],
+            'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'username.regex' => 'El usuario solo puede tener letras minúsculas, números, punto, guion y guion bajo (sin espacios).',
             'username.unique' => 'Este nombre de usuario ya está en uso.',
             'email.unique' => 'Este correo ya está registrado.',
         ]);
+    }
+
+    /**
+     * Foto de perfil en Contabo (carpeta usuarios/). Devuelve el error si la subida falla:
+     * el usuario ya quedó guardado y se avisa sin perder lo demás.
+     */
+    private function guardarFoto(Request $request, Usuario $usuario): ?string
+    {
+        if ($request->boolean('quitar_foto') && $usuario->avatar_url) {
+            Archivos::borrar($usuario->avatar_url);
+            $usuario->update(['avatar_url' => null]);
+        }
+        if (! $request->hasFile('foto')) {
+            return null;
+        }
+        try {
+            $anterior = $usuario->avatar_url;
+            $usuario->update(['avatar_url' => Archivos::subir($request->file('foto'), 'usuarios', 'foto')]);
+            Archivos::borrar($anterior);
+
+            return null;
+        } catch (ValidationException $e) {
+            return $e->validator->errors()->first('foto');
+        }
     }
 
     /** Un rol por usuario (como en la pantalla anterior); si no cambió, se conserva su fecha de asignación. */

@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rol extends Model
 {
+    /** Nombre reservado: tiene todos los permisos (Usuario::esAdministrador). */
+    public const ADMINISTRADOR = 'Administrador';
+
     protected $table      = 'rol';
     protected $primaryKey = 'id_rol';
     public $timestamps    = false;
@@ -60,6 +63,17 @@ class Rol extends Model
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    public function esAdministrador(): bool
+    {
+        return $this->nombre === self::ADMINISTRADOR;
+    }
+
+    /** El Administrador y los roles de sistema no se renombran, desactivan, limitan ni eliminan. */
+    public function esProtegido(): bool
+    {
+        return $this->esAdministrador() || $this->es_rol_sistema;
+    }
 
     public function asignarPermiso(int $idPermiso, array $acciones = []): void
     {

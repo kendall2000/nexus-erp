@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\File;
@@ -54,9 +55,20 @@ Route::middleware('auth')->group(function () {
         });
     });
 
+    // ── Roles y permisos ────────────────────────────────────────────
+    Route::prefix('sistema/roles')->name('roles.')->controller(RolController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:CONFIG.ROLES.VER')->name('index');
+        Route::get('{rol}/editar', 'edit')->whereNumber('rol')->middleware('permiso:CONFIG.ROLES.VER')->name('edit');
+        Route::middleware('permiso:CONFIG.ROLES.GESTIONAR')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::put('{rol}', 'update')->whereNumber('rol')->name('update');
+            Route::delete('{rol}', 'destroy')->whereNumber('rol')->name('destroy');
+        });
+    });
+
     // ── Vistas del sistema ──────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/sistema/roles',         fn() => view('modulos.roles.index'));
     Route::get('/sistema/configuracion', fn() => view('modulos.configuracion.index'));
     Route::get('/sistema/menu',          fn() => view('modulos.menu.index'));
 

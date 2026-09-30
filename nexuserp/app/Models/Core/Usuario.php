@@ -134,7 +134,7 @@ class Usuario extends Authenticatable
     {
         return $this->roles()
             ->where('rol.activo', true)
-            ->where('rol.nombre', 'Administrador')
+            ->where('rol.nombre', Rol::ADMINISTRADOR)
             ->exists();
     }
 

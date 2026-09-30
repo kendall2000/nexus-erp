@@ -5,7 +5,6 @@ use App\Http\Controllers\Api\V1\Core\ConfiguracionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Core\MenuController;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
-use App\Http\Controllers\Api\V1\Core\RolController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionSistemaController;
 use App\Http\Controllers\Api\V1\Core\GestionMenuController;
 use App\Http\Controllers\Api\V1\Core\SucursalController;
@@ -48,17 +47,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
 
 
-    // Roles
-    Route::get('roles/catalogos',           [RolController::class, 'catalogos']);
-    Route::get('roles',                     [RolController::class, 'index']);
-    Route::post('roles',                     [RolController::class, 'store']);
-    Route::get('roles/{id}',                [RolController::class, 'show']);
-    Route::put('roles/{id}',                [RolController::class, 'update']);
-    Route::patch ('roles/{id}/toggle',         [RolController::class, 'toggle']);
-    Route::post('roles/{id}/permisos',       [RolController::class, 'sincronizarPermisos']);
-    Route::delete('roles/{id}',                [RolController::class, 'destroy']);
-    Route::get ('roles/{id}/menu',  [RolController::class, 'permisosMenu']);
-    Route::post('roles/{id}/menu',  [RolController::class, 'sincronizarMenu']);
 
     // Gestión de Configuracion
     Route::get('/core/configuracion', [ConfiguracionSistemaController::class, 'index']);

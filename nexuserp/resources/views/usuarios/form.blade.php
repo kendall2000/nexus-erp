@@ -5,7 +5,7 @@
 
     <div class="card" style="max-width: 44rem">
         <div class="card-body">
-            <form method="POST" action="{{ $usuario->exists ? route('usuarios.update', $usuario->id_usuario) : route('usuarios.store') }}">
+            <form method="POST" action="{{ $usuario->exists ? route('usuarios.update', $usuario->id_usuario) : route('usuarios.store') }}" enctype="multipart/form-data">
                 @csrf
                 @if ($usuario->exists)
                     @method('PUT')
@@ -44,6 +44,24 @@
                                 <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $usuario->id_sucursal) === $s->id_sucursal)>{{ $s->nombre }}</option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="foto">Foto de perfil</label>
+                    <div class="d-flex align-items-center gap-3">
+                        @if ($usuario->avatar_url)
+                            <div class="avatar avatar-3xl flex-shrink-0"><img class="rounded-circle" src="{{ $usuario->avatar_url }}" alt="" /></div>
+                        @endif
+                        <div class="flex-1">
+                            <input class="form-control" id="foto" name="foto" type="file" accept=".jpg,.jpeg,.png,.webp" />
+                            <div class="form-text">JPG, PNG o WEBP de hasta 2 MB.</div>
+                            @if ($usuario->avatar_url)
+                                <div class="form-check mt-1 mb-0">
+                                    <input class="form-check-input" id="quitar_foto" name="quitar_foto" type="checkbox" value="1" />
+                                    <label class="form-check-label fs--1" for="quitar_foto">Quitar la foto actual</label>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">

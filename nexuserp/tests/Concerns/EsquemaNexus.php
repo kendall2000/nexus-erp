@@ -60,6 +60,14 @@ trait EsquemaNexus
             $t->dateTime('fecha_asignacion')->nullable();
             $t->unsignedInteger('asignado_por')->nullable();
         });
+        Schema::create('modulo_sistema', function (Blueprint $t) {
+            $t->increments('id_modulo');
+            $t->string('codigo')->nullable();
+            $t->string('nombre');
+            $t->string('icono')->nullable();
+            $t->integer('orden_menu')->default(0);
+            $t->boolean('activo')->default(true);
+        });
         Schema::create('permiso', function (Blueprint $t) {
             $t->increments('id_permiso');
             $t->unsignedInteger('id_modulo')->nullable();

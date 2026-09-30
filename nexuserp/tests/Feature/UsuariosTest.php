@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Core\Usuario;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\EsquemaNexus;
 use Tests\TestCase;
 
@@ -143,5 +145,37 @@ class UsuariosTest extends TestCase
     public function test_la_api_de_usuarios_ya_no_existe(): void
     {
         $this->actingAs($this->crearUsuario())->getJson('/api/v1/usuarios')->assertNotFound();
+    }
+
+    public function test_sube_la_foto_de_perfil_a_contabo(): void
+    {
+        config(['filesystems.disks.contabo' => array_merge(config('filesystems.disks.contabo'), [
+            'key' => 'k', 'secret' => 's', 'bucket' => 'b', 'url' => 'https://cdn.test/nexus',
+        ])]);
+        Storage::fake('contabo', ['url' => 'https://cdn.test/nexus']);
+        $admin = $this->crearUsuario();
+
+        $this->actingAs($admin)->put(route('usuarios.update', $admin->id_usuario), [
+            'nombre_completo' => 'Admin', 'username' => 'admin', 'email' => 'admin@nexus.test', 'id_rol' => $this->idRol($admin),
+            'foto' => UploadedFile::fake()->image('yo.png', 200, 200),
+        ])->assertRedirect(route('usuarios.index'))->assertSessionHasNoErrors();
+
+        $url = $admin->fresh()->avatar_url;
+        $this->assertStringStartsWith('https://cdn.test/nexus/usuarios/', $url);
+        Storage::disk('contabo')->assertExists('usuarios/'.basename($url));
+    }
+
+    public function test_sin_contabo_configurado_guarda_el_usuario_y_avisa_de_la_foto(): void
+    {
+        config(['filesystems.disks.contabo.key' => null]);
+        $admin = $this->crearUsuario();
+
+        $this->actingAs($admin)->put(route('usuarios.update', $admin->id_usuario), [
+            'nombre_completo' => 'Nombre Nuevo', 'username' => 'admin', 'email' => 'admin@nexus.test', 'id_rol' => $this->idRol($admin),
+            'foto' => UploadedFile::fake()->image('yo.png'),
+        ])->assertRedirect(route('usuarios.edit', $admin->id_usuario))->assertSessionHasErrors('foto');
+
+        $this->assertSame('Nombre Nuevo', $admin->fresh()->nombre_completo);
+        $this->assertNull($admin->fresh()->avatar_url);
     }
 }
