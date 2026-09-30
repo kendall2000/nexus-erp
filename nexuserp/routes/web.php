@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionController;
@@ -202,6 +203,26 @@ Route::middleware('auth')->group(function () {
         Route::delete('{cliente}', 'destroy')->whereNumber('cliente')->middleware('permiso:clientes.eliminar')->name('destroy');
     });
 
+    // Presupuesto anual (borrador → aprobado → cerrado; reabrir vuelve a aprobado)
+    Route::prefix('sistema/presupuesto')->name('presupuesto.')->controller(PresupuestoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:presupuesto.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:presupuesto.exportar')->name('exportar');
+        Route::middleware('permiso:presupuesto.crear')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::post('clonar', 'clonar')->name('clonar');
+        });
+        Route::get('{presupuesto}', 'show')->whereNumber('presupuesto')->middleware('permiso:presupuesto.ver')->name('show');
+        Route::middleware('permiso:presupuesto.editar')->group(function () {
+            Route::get('{presupuesto}/editar', 'edit')->whereNumber('presupuesto')->name('edit');
+            Route::put('{presupuesto}', 'update')->whereNumber('presupuesto')->name('update');
+            Route::delete('{presupuesto}', 'destroy')->whereNumber('presupuesto')->name('destroy');
+        });
+        Route::patch('{presupuesto}/aprobar', 'aprobar')->whereNumber('presupuesto')->middleware('permiso:presupuesto.aprobar')->name('aprobar');
+        Route::patch('{presupuesto}/cerrar', 'cerrar')->whereNumber('presupuesto')->middleware('permiso:presupuesto.cerrar')->name('cerrar');
+        Route::patch('{presupuesto}/reabrir', 'reabrir')->whereNumber('presupuesto')->middleware('permiso:presupuesto.reabrir')->name('reabrir');
+    });
+
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -209,7 +230,6 @@ Route::middleware('auth')->group(function () {
     // ── Finanzas ────────────────────────────────────────────────────
     Route::get('/sistema/facturas',          fn() => view('modulos.facturas.index'));
     Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));
-    Route::get('/sistema/presupuesto',       fn() => view('modulos.presupuesto.index'));
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')

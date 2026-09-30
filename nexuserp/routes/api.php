@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\V1\Core\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Finanzas\FacturaController;
 use App\Http\Controllers\Api\V1\Finanzas\PagoController;
-use App\Http\Controllers\Api\V1\Finanzas\PresupuestoController;
 
 // El inicio de sesión es por sesión web (Fortify: POST /login); ya no hay rutas públicas.
 
@@ -34,16 +33,4 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::get('{id}',      [PagoController::class, 'show']);
         Route::delete('{id}',    [PagoController::class, 'destroy']);
     });
-
-    // ── Presupuesto Anual ────────────────────────────────────────────
-    Route::get   ('finanzas/presupuestos/catalogos',     [PresupuestoController::class, 'catalogos']);
-    Route::get   ('finanzas/presupuestos/dashboard',     [PresupuestoController::class, 'dashboard']);
-    Route::post  ('finanzas/presupuestos/clonar',        [PresupuestoController::class, 'clonar']);
-    Route::get   ('finanzas/presupuestos',               [PresupuestoController::class, 'index']);
-    Route::post  ('finanzas/presupuestos',               [PresupuestoController::class, 'store']);
-    Route::get   ('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'show']);
-    Route::put   ('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'update']);
-    Route::patch ('finanzas/presupuestos/{id}/aprobar',  [PresupuestoController::class, 'aprobar']);
-    Route::patch ('finanzas/presupuestos/{id}/cerrar',   [PresupuestoController::class, 'cerrar']);
-    Route::delete('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'destroy']);
 });
