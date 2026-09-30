@@ -60,6 +60,25 @@ return [
             'report' => false,
         ],
 
+        // Archivos públicos (fotos de perfil, logo, fondo del login…) en Contabo,
+        // igual que sistema-restaurante. En la BD se guarda la URL completa.
+        // CONTABO_URL: dirección pública del bucket, p. ej.
+        // https://usc1.contabostorage.com/<id-de-cuenta>:<bucket> (se le agrega la carpeta y el archivo).
+        'contabo' => [
+            'driver' => 's3',
+            'key' => env('CONTABO_KEY'),
+            'secret' => env('CONTABO_SECRET'),
+            'region' => env('CONTABO_REGION', 'US-central'),
+            'bucket' => env('CONTABO_BUCKET'),
+            'url' => env('CONTABO_URL'),
+            'endpoint' => env('CONTABO_ENDPOINT', 'https://usc1.contabostorage.com'),
+            'use_path_style_endpoint' => true,
+            'root' => env('CONTABO_CARPETA', ''),
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*

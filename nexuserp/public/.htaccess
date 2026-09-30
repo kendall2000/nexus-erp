@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # La plantilla de diseño es solo referencia local (trae código de otro
+    # sistema con credenciales): nunca se sirve por web.
+    RewriteRule ^Plantilla(/|$) - [F,NC,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

@@ -1,9 +1,16 @@
 <?php
 
+use App\Http\Middleware\EncabezadosSeguridad;
+use App\Http\Middleware\PreventBackHistory;
+use App\Http\Middleware\RequiereDosFactores;
+use App\Http\Middleware\SoloAdministrador;
+use App\Http\Middleware\TienePermiso;
+use App\Http\Middleware\UsuarioActivo;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,18 +20,39 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias([
-            'no.cache' => \App\Http\Middleware\NoCache::class,
-        ]);
+        // Detrás del proxy del servidor: IP real del cliente para el historial y el bloqueo por IP.
         $middleware->trustProxies(at: '*');
+
+        $middleware->web(append: [
+            EncabezadosSeguridad::class,
+            PreventBackHistory::class,
+            UsuarioActivo::class,
+            RequiereDosFactores::class,
+        ]);
+
+        // La API se autentica con la sesión del navegador (cookie + CSRF), ya no con
+        // tokens guardados en el navegador. Mientras se migran los módulos a Blade,
+        // las pantallas actuales siguen llamando a /api/v1 con esa misma sesión.
+        $middleware->statefulApi();
+        $middleware->api(append: [
+            EncabezadosSeguridad::class,
+            UsuarioActivo::class,
+            RequiereDosFactores::class,
+        ]);
+
+        $middleware->alias(['admin' => SoloAdministrador::class, 'permiso' => TienePermiso::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Forzar respuesta JSON 401 en peticiones API
-        $exceptions->render(function (AuthenticationException $e, $request) {
+        $exceptions->shouldRenderJsonWhen(
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+        );
+
+        // 401 en JSON para la API (las pantallas actuales redirigen al login al recibirlo).
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No autenticado. Token inválido o expirado.',
+                    'message' => 'Tu sesión expiró. Vuelve a iniciar sesión.',
                 ], 401);
             }
         });

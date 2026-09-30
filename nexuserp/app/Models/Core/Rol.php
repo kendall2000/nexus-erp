@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rol extends Model
 {
+    /** Nombre reservado: tiene todos los permisos (Usuario::esAdministrador). */
+    public const ADMINISTRADOR = 'Administrador';
+
     protected $table      = 'rol';
     protected $primaryKey = 'id_rol';
     public $timestamps    = false;
@@ -16,11 +19,13 @@ class Rol extends Model
         'descripcion',
         'es_rol_sistema',
         'activo',
+        'requiere_2fa',
     ];
 
     protected $casts = [
         'es_rol_sistema' => 'boolean',
         'activo'         => 'boolean',
+        'requiere_2fa'   => 'boolean',
         'created_at'     => 'datetime',
     ];
 
@@ -43,33 +48,20 @@ class Rol extends Model
 
     public function permisos()
     {
-        return $this->belongsToMany(
-            Permiso::class,
-            'rol_permiso',
-            'id_rol',
-            'id_permiso'
-        )->withPivot(
-            'puede_crear',
-            'puede_leer',
-            'puede_editar',
-            'puede_eliminar',
-            'puede_exportar'
-        );
+        return $this->belongsToMany(Permiso::class, 'rol_permiso', 'id_rol', 'id_permiso')->withPivot('asignado_at');
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    public function asignarPermiso(int $idPermiso, array $acciones = []): void
+    public function esAdministrador(): bool
     {
-        $this->permisos()->syncWithoutDetaching([
-            $idPermiso => array_merge([
-                'puede_crear'    => false,
-                'puede_leer'     => true,
-                'puede_editar'   => false,
-                'puede_eliminar' => false,
-                'puede_exportar' => false,
-            ], $acciones),
-        ]);
+        return $this->nombre === self::ADMINISTRADOR;
+    }
+
+    /** El Administrador y los roles de sistema no se renombran, desactivan, limitan ni eliminan. */
+    public function esProtegido(): bool
+    {
+        return $this->esAdministrador() || $this->es_rol_sistema;
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────

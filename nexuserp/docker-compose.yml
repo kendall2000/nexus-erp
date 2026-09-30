@@ -1,60 +1,24 @@
 services:
-
-  # ── Aplicación Laravel ────────────────────────────────────────
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        user: nexuserp
-        uid: 1000
-    image: nexuserp-app
-    container_name: nexuserp_app
-    restart: unless-stopped
-    working_dir: /var/www/nexuserp
+  sistema-nexuserp-php:
+    image: sistema-nexuserp-php
+    container_name: sistema-nexuserp-php
+    build: .
+    ports:
+      - "8080:80"
+    networks:
+      - red-external-network
+    restart: always
     env_file:
       - .env
     volumes:
-      - ./storage:/var/www/nexuserp/storage
-      - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
-    ports:
-      - "${APP_PORT:-8080}:80"
-    networks:
-      - red-external-network # <-- CORREGIDO: Ahora está bien indentado y referenciado
+      # .env del host (para cambiar config sin rebuild)
+      - ./.env:/var/www/nexuserp/.env
+      # Persistencia de logs/sessions/cache de Laravel entre rebuilds
+      - sistema-nexuserp-storage:/var/www/nexuserp/storage
 
-  # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
-  queue:
-    image: nexuserp-app
-    container_name: nexuserp_queue
-    restart: unless-stopped
-    working_dir: /var/www/nexuserp
-    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
-    env_file:
-      - .env
-    depends_on:
-      - app
-    networks:
-      - red-external-network
+volumes:
+  sistema-nexuserp-storage:
 
-  # ── Scheduler (opcional, puedes comentar si no lo usas) ──────
-  scheduler:
-    image: nexuserp-app
-    container_name: nexuserp_scheduler
-    restart: unless-stopped
-    working_dir: /var/www/nexuserp
-    command: >
-      sh -c "while true; do
-        php artisan schedule:run --verbose --no-interaction;
-        sleep 60;
-      done"
-    env_file:
-      - .env
-    depends_on:
-      - app
-    networks:
-      - red-external-network
-
-# ── Configuración Global de Redes ─────────────────────────────
 networks:
   red-external-network:
-    external: true 
+    external: true
