@@ -29,6 +29,9 @@ class Factura extends Model
         'iva',
         'total',
         'total_pagado',
+        'monto_condonado',
+        'condonado_por',
+        'fecha_condonacion',
         'saldo_pendiente',
         'estado',
         'uuid_fel',
@@ -54,6 +57,8 @@ class Factura extends Model
         'iva'                     => 'decimal:4',
         'total'                   => 'decimal:4',
         'total_pagado'            => 'decimal:4',
+        'monto_condonado'         => 'decimal:4',
+        'fecha_condonacion'       => 'datetime',
         'saldo_pendiente'         => 'decimal:4',
         'created_at'              => 'datetime',
         'updated_at'              => 'datetime',
@@ -94,6 +99,11 @@ class Factura extends Model
     public function pagos()
     {
         return $this->hasMany(Pago::class, 'id_factura');
+    }
+
+    public function condonadoPor()
+    {
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'condonado_por');
     }
 
     public function anuladaPor()
@@ -140,16 +150,29 @@ class Factura extends Model
         return 'MAS DE 90 DIAS';
     }
 
-    public function registrarPago(float $monto): void
-    {
-        $totalPagado    = $this->total_pagado + $monto;
-        $saldoPendiente = $this->total - $totalPagado;
+    /** Estados en los que el cobro mueve el estado de la factura. */
+    public const ESTADOS_COBRABLES = ['EMITIDA', 'ENVIADA', 'PARCIAL', 'PAGADA', 'VENCIDA'];
 
-        $this->update([
-            'total_pagado'    => $totalPagado,
-            'saldo_pendiente' => max(0, $saldoPendiente),
-            'estado'          => $saldoPendiente <= 0 ? 'PAGADA' : 'PARCIAL',
-        ]);
+    /**
+     * Recalcula lo pagado (suma de pagos APLICADOS), el saldo (total − pagado − condonado)
+     * y el estado: PAGADA sin saldo, PARCIAL con algo abonado, EMITIDA si ya no queda nada.
+     */
+    public function recalcularCobro(): void
+    {
+        if (! in_array($this->estado, self::ESTADOS_COBRABLES, true)) {
+            return;
+        }
+        $pagado = round((float) $this->pagos()->where('estado', 'APLICADO')->sum('monto'), 4);
+        $saldo = $this->tipo === 'NOTA_CREDITO' ? 0 : max(0, round((float) $this->total - $pagado - (float) $this->monto_condonado, 4));
+        $abonado = $pagado > 0 || (float) $this->monto_condonado > 0;
+        $estado = match (true) {
+            $saldo <= 0 => 'PAGADA',
+            $abonado => 'PARCIAL',
+            in_array($this->estado, ['PARCIAL', 'PAGADA'], true) => 'EMITIDA',
+            default => $this->estado,
+        };
+
+        $this->update(['total_pagado' => $pagado, 'saldo_pendiente' => $saldo, 'estado' => $estado]);
     }
 
     public function anular(int $idUsuario): void
@@ -253,7 +276,7 @@ class Factura extends Model
             'base_imponible' => round($base + $exentoNeto, 4),
             'iva' => round($iva, 4),
             'total' => $total,
-            'saldo_pendiente' => $this->tipo === 'NOTA_CREDITO' ? 0 : max(0, round($total - (float) $this->total_pagado, 4)),
+            'saldo_pendiente' => $this->tipo === 'NOTA_CREDITO' ? 0 : max(0, round($total - (float) $this->total_pagado - (float) $this->monto_condonado, 4)),
         ]);
     }
 }

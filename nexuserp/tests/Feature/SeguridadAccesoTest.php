@@ -379,15 +379,16 @@ class SeguridadAccesoTest extends TestCase
         $this->actingAs($bodeguero->fresh())->get(route('dashboard'))->assertSee('Reportes')->assertSee('Kardex');
     }
 
-    public function test_las_pantallas_vue_usan_el_layout_puente(): void
+    public function test_la_ultima_pantalla_vue_ya_es_blade(): void
     {
         $this->crearMenu();
 
+        // Pagos era la última pantalla con el layout puente de Vue (paso 5e).
         $this->actingAs($this->crearUsuario())->get('/sistema/pagos')
             ->assertOk()
             ->assertSee('navbar-vertical', false)
-            ->assertSee('vue@2.5.16', false)
-            ->assertSee('/modulos-js/pagos/index.js', false);
+            ->assertDontSee('vue@2.5.16', false)
+            ->assertDontSee('/modulos-js/', false);
     }
 
     public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void

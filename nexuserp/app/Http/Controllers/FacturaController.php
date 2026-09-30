@@ -23,8 +23,8 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Facturas de venta. Permisos: facturas.ver / crear / editar / anular / imprimir / exportar
- * (cobrar y condonar llegan con Pagos).
+ * Facturas de venta. Permisos: facturas.ver / crear / editar / anular / imprimir / exportar /
+ * condonar (cobrar = registrar un pago, en PagoController).
  *
  * Flujo: BORRADOR → (emitir) EMITIDA → (marcar enviada) ENVIADA → PARCIAL / PAGADA con los
  * pagos. Se anula mientras no tenga pagos. Emitir ejecuta el presupuesto de ingresos y anular
@@ -87,7 +87,7 @@ class FacturaController extends Controller
     public function show(Request $request, int $factura): View
     {
         return view('facturas.show', [
-            'f' => $this->cargar($request, $factura)->load(['pagos', 'anuladaPor']),
+            'f' => $this->cargar($request, $factura)->load(['pagos' => fn ($q) => $q->orderBy('fecha_pago'), 'anuladaPor', 'condonadoPor']),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS,
             'eliminable' => $this->esUltimoDeSuSerie($this->deMiEmpresa($request)->findOrFail($factura)),
@@ -226,8 +226,11 @@ class FacturaController extends Controller
             if (! in_array($f->estado, self::ANULABLES, true)) {
                 return back()->withErrors(['factura' => 'No se puede anular un documento '.strtolower(self::ESTADOS[$f->estado][0] ?? $f->estado).'.']);
             }
-            if ((float) $f->total_pagado > 0 || $f->pagos()->exists()) {
-                return back()->withErrors(['factura' => 'Tiene pagos registrados: revierte primero los pagos para poder anularla.']);
+            if ((float) $f->total_pagado > 0 || $f->pagos()->where('estado', 'APLICADO')->exists()) {
+                return back()->withErrors(['factura' => 'Tiene cobros aplicados: revierte o devuelve primero esos cobros para poder anularla.']);
+            }
+            if ((float) $f->monto_condonado > 0) {
+                return back()->withErrors(['factura' => 'Tiene saldo condonado: ya no se puede anular.']);
             }
             $emitida = $f->estado !== 'BORRADOR';
             $f->update([
@@ -242,6 +245,35 @@ class FacturaController extends Controller
             }
 
             return back()->with('status', "{$this->nombre($f)} anulada".($emitida ? ' y revertida del presupuesto.' : '.'));
+        });
+    }
+
+    /** Perdona todo o parte del saldo pendiente (queda registrado en la factura y en sus notas). */
+    public function condonar(Request $request, int $factura): RedirectResponse
+    {
+        $datos = $request->validate([
+            'monto' => ['required', 'numeric', 'min:0.01'],
+            'motivo' => ['required', 'string', 'min:5', 'max:300'],
+        ], ['motivo.required' => 'Indica el motivo de la condonación.']);
+
+        return DB::transaction(function () use ($request, $factura, $datos) {
+            $f = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($factura);
+            if (! in_array($f->estado, Cliente::ESTADOS_CON_SALDO, true) || (float) $f->saldo_pendiente <= 0) {
+                return back()->withErrors(['factura' => 'La factura no tiene saldo por condonar.']);
+            }
+            if (round((float) $datos['monto'], 2) > round((float) $f->saldo_pendiente, 2)) {
+                return back()->withErrors(['monto' => 'No se puede condonar más que el saldo ('.$f->moneda.' '.number_format((float) $f->saldo_pendiente, 2).').']);
+            }
+            $monto = round((float) $datos['monto'], 4);
+            $f->update([
+                'monto_condonado' => round((float) $f->monto_condonado + $monto, 4),
+                'condonado_por' => $request->user()->id_usuario,
+                'fecha_condonacion' => now(),
+                'notas' => trim(($f->notas ? $f->notas."\n" : '').'[Condonado '.$f->moneda.' '.number_format($monto, 2).' el '.now()->format('d/m/Y').'] '.$datos['motivo']),
+            ]);
+            $f->recalcularCobro();
+
+            return back()->with('status', 'Se condonaron '.$f->moneda.' '.number_format($monto, 2).'.'.($f->estado === 'PAGADA' ? ' La factura queda saldada.' : ''));
         });
     }
 

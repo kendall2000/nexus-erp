@@ -6,7 +6,10 @@
         [$nombreEstado, $color] = $estados[$f->estado] ?? [$f->estado, 'secondary'];
         $tipo = $tipos[$f->tipo] ?? $f->tipo;
         $vencida = in_array($f->estado, \App\Models\Clientes\Cliente::ESTADOS_CON_SALDO, true) && (float) $f->saldo_pendiente > 0 && $f->fecha_vencimiento?->lt(today());
-        $anulable = in_array($f->estado, ['BORRADOR', 'EMITIDA', 'ENVIADA', 'VENCIDA'], true) && (float) $f->total_pagado <= 0 && $f->pagos->isEmpty();
+        $anulable = in_array($f->estado, ['BORRADOR', 'EMITIDA', 'ENVIADA', 'VENCIDA'], true) && (float) $f->total_pagado <= 0
+            && $f->pagos->where('estado', 'APLICADO')->isEmpty() && (float) $f->monto_condonado <= 0;
+        $conSaldo = in_array($f->estado, \App\Models\Clientes\Cliente::ESTADOS_CON_SALDO, true) && (float) $f->saldo_pendiente > 0;
+        $puedeCobrar = $yo->puede('pagos.crear') || $yo->puede('facturas.cobrar');
         $dinero = fn ($n) => number_format((float) $n, 2);
     @endphp
     <nav class="mb-2" aria-label="breadcrumb">
@@ -28,6 +31,12 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            @if ($conSaldo && $puedeCobrar)
+                <a class="btn btn-success" href="{{ route('pagos.create', ['factura' => $f->id_factura]) }}"><span class="fas fa-hand-holding-usd me-2"></span>Registrar cobro</a>
+            @endif
+            @if ($conSaldo && $yo->puede('facturas.condonar'))
+                <button class="btn btn-phoenix-warning" type="button" data-bs-toggle="collapse" data-bs-target="#condonar" aria-expanded="{{ $errors->has('monto') ? 'true' : 'false' }}">Condonar</button>
+            @endif
             @if ($f->estado !== 'BORRADOR' && $yo->puede('facturas.imprimir'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('facturas.imprimir', $f->id_factura) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Imprimir</a>
             @endif
@@ -47,7 +56,7 @@
                 </form>
             @endif
             @if ($anulable && $yo->puede('facturas.anular'))
-                <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#anular" aria-expanded="{{ $errors->has('motivo') ? 'true' : 'false' }}">Anular</button>
+                <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#anular" aria-expanded="{{ $errors->has('motivo') && ! old('monto') ? 'true' : 'false' }}">Anular</button>
             @endif
             @if ($eliminable && $yo->puede('facturas.editar'))
                 <form method="POST" action="{{ route('facturas.destroy', $f->id_factura) }}" onsubmit="return confirm(@js('¿Eliminar el borrador '.$f->numero_completo.'? Su número quedará libre.'))">
@@ -60,7 +69,7 @@
     </div>
 
     @if ($anulable && $yo->puede('facturas.anular'))
-        <div class="collapse {{ $errors->has('motivo') ? 'show' : '' }} mb-4" id="anular">
+        <div class="collapse {{ $errors->has('motivo') && ! old('monto') ? 'show' : '' }} mb-4" id="anular">
             <div class="card border-danger"><div class="card-body">
                 <form method="POST" action="{{ route('facturas.anular', $f->id_factura) }}" class="row g-2 align-items-start">
                     @csrf
@@ -71,6 +80,25 @@
                         @if ($f->estado !== 'BORRADOR')<div class="form-text">Se revertirá lo que sumó al presupuesto.</div>@endif
                     </div>
                     <div class="col-md-3"><button class="btn btn-danger w-100" type="submit">Confirmar anulación</button></div>
+                </form>
+            </div></div>
+        </div>
+    @endif
+
+    @if ($conSaldo && $yo->puede('facturas.condonar'))
+        <div class="collapse {{ $errors->has('monto') || ($errors->has('motivo') && old('monto')) ? 'show' : '' }} mb-4" id="condonar">
+            <div class="card border-warning"><div class="card-body">
+                <form method="POST" action="{{ route('facturas.condonar', $f->id_factura) }}" class="row g-2 align-items-start">
+                    @csrf
+                    @method('PATCH')
+                    <div class="col-md-3">
+                        <input class="form-control @error('monto') is-invalid @enderror" name="monto" type="number" step="0.01" min="0.01" max="{{ round((float) $f->saldo_pendiente, 2) }}" value="{{ old('monto', round((float) $f->saldo_pendiente, 2)) }}" required title="Monto a condonar" />
+                        @error('monto')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control" name="motivo" value="{{ old('motivo') }}" maxlength="300" placeholder="Motivo (ej.: acuerdo comercial, incobrable)" required />
+                    </div>
+                    <div class="col-md-3"><button class="btn btn-warning w-100" type="submit" onclick="return confirm('El monto condonado ya no se cobrará. ¿Continuar?')">Condonar saldo</button></div>
                 </form>
             </div></div>
         </div>
@@ -125,14 +153,21 @@
                     <dl class="row mb-0">
                         <dt class="col-6 text-700">Total</dt><dd class="col-6 text-end">{{ $f->moneda }} {{ $dinero($f->total) }}</dd>
                         <dt class="col-6 text-700">Pagado</dt><dd class="col-6 text-end">{{ $dinero($f->total_pagado) }}</dd>
+                        @if ((float) $f->monto_condonado > 0)
+                            <dt class="col-6 text-700">Condonado</dt><dd class="col-6 text-end" title="{{ $f->condonadoPor?->nombre_completo }} · {{ $f->fecha_condonacion?->format('d/m/Y') }}">{{ $dinero($f->monto_condonado) }}</dd>
+                        @endif
                         <dt class="col-6 text-700">Saldo</dt><dd class="col-6 text-end fw-bold {{ $vencida ? 'text-danger' : '' }}">{{ $f->estado === 'BORRADOR' ? '—' : $dinero($f->saldo_pendiente) }}</dd>
                     </dl>
                     @if ($f->pagos->isNotEmpty())
                         <h6 class="mt-3 mb-2">Pagos</h6>
                         @foreach ($f->pagos as $p)
-                            <div class="d-flex justify-content-between border-bottom border-200 py-1">
-                                <span>{{ $p->fecha_pago?->format('d/m/Y') }} · {{ ucfirst(strtolower($p->forma_pago)) }} <span class="text-600">{{ $p->referencia }}</span></span>
-                                <span class="fw-semi-bold">{{ $dinero($p->monto) }}</span>
+                            <div class="d-flex justify-content-between border-bottom border-200 py-1 {{ $p->estado !== 'APLICADO' ? 'text-500' : '' }}">
+                                <span>
+                                    @if ($yo->puede('pagos.ver'))<a href="{{ route('pagos.show', $p->id_pago) }}">{{ $p->fecha_pago?->format('d/m/Y') }}</a>@else{{ $p->fecha_pago?->format('d/m/Y') }}@endif
+                                    · {{ \App\Models\Finanzas\Pago::FORMAS[$p->forma_pago] ?? $p->forma_pago }} <span class="text-600">{{ $p->referencia }}</span>
+                                    @if ($p->estado !== 'APLICADO')<span class="badge badge-phoenix badge-phoenix-{{ \App\Models\Finanzas\Pago::ESTADOS[$p->estado][1] }}">{{ \App\Models\Finanzas\Pago::ESTADOS[$p->estado][0] }}</span>@endif
+                                </span>
+                                <span class="fw-semi-bold {{ $p->estado !== 'APLICADO' ? 'text-decoration-line-through' : '' }}">{{ $dinero($p->monto) }}</span>
                             </div>
                         @endforeach
                     @endif

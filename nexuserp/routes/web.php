@@ -12,6 +12,7 @@ use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
@@ -240,14 +241,26 @@ Route::middleware('auth')->group(function () {
             Route::patch('{factura}/enviar', 'enviar')->whereNumber('factura')->name('enviar');
         });
         Route::patch('{factura}/anular', 'anular')->whereNumber('factura')->middleware('permiso:facturas.anular')->name('anular');
+        Route::patch('{factura}/condonar', 'condonar')->whereNumber('factura')->middleware('permiso:facturas.condonar')->name('condonar');
+    });
+
+    // Pagos (cobros): no se borran, se revierten o se devuelven
+    Route::prefix('sistema/pagos')->name('pagos.')->controller(PagoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:pagos.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:pagos.exportar')->name('exportar');
+        Route::middleware('permiso:pagos.crear|facturas.cobrar')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::patch('{pago}/acreditar', 'acreditar')->whereNumber('pago')->name('acreditar');
+        });
+        Route::get('{pago}', 'show')->whereNumber('pago')->middleware('permiso:pagos.ver')->name('show');
+        Route::get('{pago}/imprimir', 'imprimir')->whereNumber('pago')->middleware('permiso:pagos.imprimir')->name('imprimir');
+        Route::patch('{pago}/revertir', 'revertir')->whereNumber('pago')->middleware('permiso:pagos.eliminar')->name('revertir');
+        Route::patch('{pago}/devolver', 'devolver')->whereNumber('pago')->middleware('permiso:pagos.devolver')->name('devolver');
     });
 
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // ── Pantallas que todavía son Vue + API (se migran en el paso 5) ──
-    // ── Finanzas ────────────────────────────────────────────────────
-    Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')

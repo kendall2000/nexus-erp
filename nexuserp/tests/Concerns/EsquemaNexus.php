@@ -252,6 +252,9 @@ trait EsquemaNexus
             $t->string('moneda', 3)->default('GTQ');
             $t->decimal('total', 15, 4)->default(0);
             $t->decimal('total_pagado', 15, 4)->default(0);
+            $t->decimal('monto_condonado', 15, 4)->default(0);
+            $t->unsignedInteger('condonado_por')->nullable();
+            $t->dateTime('fecha_condonacion')->nullable();
             $t->decimal('saldo_pendiente', 15, 4)->default(0);
             $t->string('estado')->default('BORRADOR');
             $t->timestamps();
@@ -266,6 +269,16 @@ trait EsquemaNexus
             $t->decimal('monto', 15, 4)->default(0);
             $t->string('moneda', 3)->default('GTQ');
             $t->date('fecha_pago')->nullable();
+            $t->date('fecha_acreditado')->nullable();
+            $t->string('banco_origen')->nullable();
+            $t->string('comprobante_url')->nullable();
+            $t->string('notas')->nullable();
+            $t->string('estado')->default('APLICADO');
+            $t->unsignedInteger('revertido_por')->nullable();
+            $t->dateTime('fecha_reversion')->nullable();
+            $t->string('motivo_reversion')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->dateTime('created_at')->useCurrent();
         });
         Schema::create('serie_facturacion', function (Blueprint $t) {
             $t->increments('id_serie');

@@ -10,6 +10,17 @@ class Pago extends Model
     protected $primaryKey = 'id_pago';
     public $timestamps    = false;
 
+    public const ESTADOS = [
+        'APLICADO' => ['Aplicado', 'success'],
+        'REVERTIDO' => ['Revertido', 'secondary'],
+        'DEVUELTO' => ['Devuelto al cliente', 'warning'],
+    ];
+
+    public const FORMAS = [
+        'EFECTIVO' => 'Efectivo', 'TRANSFERENCIA' => 'Transferencia', 'DEPOSITO' => 'Depósito',
+        'CHEQUE' => 'Cheque', 'TARJETA' => 'Tarjeta', 'OTRO' => 'Otro',
+    ];
+
     protected $fillable = [
         'id_empresa',
         'id_cliente',
@@ -23,6 +34,10 @@ class Pago extends Model
         'fecha_acreditado',
         'comprobante_url',
         'notas',
+        'estado',
+        'revertido_por',
+        'fecha_reversion',
+        'motivo_reversion',
         'created_by',
     ];
 
@@ -31,6 +46,7 @@ class Pago extends Model
         'fecha_pago'       => 'date',
         'fecha_acreditado' => 'date',
         'created_at'       => 'datetime',
+        'fecha_reversion'  => 'datetime',
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
@@ -55,19 +71,19 @@ class Pago extends Model
         return $this->belongsTo(\App\Models\Core\Usuario::class, 'created_by');
     }
 
-    // ── Hooks ───────────────────────────────────────────────────────────────
-
-    protected static function booted(): void
+    public function revertidoPor()
     {
-        // Al crear un pago, actualiza automáticamente la factura
-        static::created(function (Pago $pago) {
-            if ($pago->id_factura) {
-                $pago->factura->registrarPago($pago->monto);
-            }
-        });
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'revertido_por');
     }
 
+    // El efecto en la factura (saldo y estado) lo aplica Factura::recalcularCobro.
+
     // ── Scopes ──────────────────────────────────────────────────────────────
+
+    public function scopeAplicados($query)
+    {
+        return $query->where('estado', 'APLICADO');
+    }
 
     public function scopePorEmpresa($query, $idEmpresa)
     {
