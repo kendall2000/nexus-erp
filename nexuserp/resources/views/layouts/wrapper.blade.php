@@ -87,7 +87,7 @@
                     aria-haspopup="true" aria-expanded="false">
                     <div class="avatar avatar-l">
                         <img class="rounded-circle"
-                            :src="usuario.avatar_url || '{{ url('/') }}/Plantilla/public/assets/img/avatar/avatar.png'"
+                            :src="usuario.avatar_url || '{{ asset('assets/img/avatar/avatar.png') }}'"
                             alt="Avatar" />
                     </div>
                 </a>
@@ -97,7 +97,7 @@
                             <div class="text-center pt-4 pb-3">
                                 <div class="avatar avatar-xl">
                                     <img class="rounded-circle"
-                                        :src="usuario.avatar_url || '{{ url('/') }}/Plantilla/public/assets/img/avatar/avatar.png'"
+                                        :src="usuario.avatar_url || '{{ asset('assets/img/avatar/avatar.png') }}'"
                                         alt="Avatar" />
                                 </div>
                                 <h6 class="mt-2 text-black">@{{ usuario.nombre_completo }}</h6>

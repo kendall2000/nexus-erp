@@ -34,3 +34,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .DS_Store
+# Plantilla de diseño: solo referencia local, nunca va a la imagen
+public/Plantilla

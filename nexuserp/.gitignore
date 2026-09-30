@@ -27,3 +27,5 @@ Thumbs.db
 /.nova
 /.vscode
 /.zed
+# ── Plantilla Phoenix (solo referencia local, ~200 MB; trae código de otro sistema) ──
+/public/Plantilla

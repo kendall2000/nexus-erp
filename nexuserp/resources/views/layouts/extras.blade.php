@@ -58,23 +58,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
 
 {{-- Phoenix vendors --}}
-<script src="{{ asset('Plantilla/public/vendors/popper/popper.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/choices/choices.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/bootstrap/bootstrap.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/anchorjs/anchor.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/is/is.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/fontawesome/all.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/lodash/lodash.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/feather-icons/feather.min.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/leaflet/leaflet.js') }}"></script>
-<script src="{{ asset('Plantilla/public/vendors/echarts/echarts.min.js') }}"></script>
+<script src="{{ asset('vendors/popper/popper.min.js') }}"></script>
+<script src="{{ asset('vendors/choices/choices.min.js') }}"></script>
+<script src="{{ asset('vendors/bootstrap/bootstrap.min.js') }}"></script>
+<script src="{{ asset('vendors/anchorjs/anchor.min.js') }}"></script>
+<script src="{{ asset('vendors/is/is.min.js') }}"></script>
+<script src="{{ asset('vendors/fontawesome/all.min.js') }}"></script>
+<script src="{{ asset('vendors/lodash/lodash.min.js') }}"></script>
+<script src="{{ asset('vendors/feather-icons/feather.min.js') }}"></script>
+<script src="{{ asset('vendors/leaflet/leaflet.js') }}"></script>
+<script src="{{ asset('vendors/echarts/echarts.min.js') }}"></script>
 
 {{-- Phoenix core --}}
-<script src="{{ asset('Plantilla/public/assets/js/phoenix.js') }}"></script>
+<script src="{{ asset('assets/js/phoenix.js') }}"></script>
 
 {{-- Lógica del Loader --}}
-@if(file_exists(public_path('Plantilla/public/componentes/loader.js')))
-    <script src="{{ asset('Plantilla/public/componentes/loader.js') }}"></script>
+@if(file_exists(public_path('js/componentes/loader.js')))
+    <script src="{{ asset('js/componentes/loader.js') }}"></script>
 @else
     {{-- Si el archivo loader.js no existe, ocultamos el loader automáticamente con este pequeño script --}}
     <script>
@@ -86,13 +86,13 @@
 @endif
 
 {{-- Componentes Vue propios --}}
-@if(file_exists(public_path('Plantilla/public/componentes/vuecomponentes.js')))
-    <script src="{{ url('/') }}/Plantilla/public/componentes/vuecomponentes.js?v={{ time() }}"></script>
+@if(file_exists(public_path('js/componentes/vuecomponentes.js')))
+    <script src="{{ asset('js/componentes/vuecomponentes.js') }}?v={{ filemtime(public_path('js/componentes/vuecomponentes.js')) }}"></script>
 @endif
 
-@if(file_exists(public_path('Plantilla/public/componentes/apis_service.js')))
-    <script src="{{ url('/') }}/Plantilla/public/componentes/apis_service.js?v={{ time() }}"></script>
-    <script src="{{ url('/') }}/Plantilla/public/componentes/api.js?v={{ time() }}"></script>
+@if(file_exists(public_path('js/componentes/apis_service.js')))
+    <script src="{{ asset('js/componentes/apis_service.js') }}?v={{ filemtime(public_path('js/componentes/apis_service.js')) }}"></script>
+    <script src="{{ asset('js/componentes/api.js') }}?v={{ filemtime(public_path('js/componentes/api.js')) }}"></script>
 @endif
 {{-- ============================================================
      CONFIGURACIÓN GLOBAL — Auth + Phoenix

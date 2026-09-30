@@ -11,22 +11,21 @@
         const apiUrl = server + '/api/v1';
     </script>
 
-    <base href="/Plantilla/public/pages/login/">
 
-    <link rel="icon" type="image/png" href="{{ url('/') }}/Plantilla/public/assets/img/favicon.png">
+    <link rel="icon" type="image/png" href="{{ asset('assets/img/favicons/favicon-32x32.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="../../vendors/simplebar/simplebar.min.css" rel="stylesheet">
+    <link href="{{ asset('vendors/simplebar/simplebar.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
-    <link href="../../assets/css/theme-rtl.min.css" rel="stylesheet" id="style-rtl">
-    <link href="../../assets/css/theme.min.css" rel="stylesheet" id="style-default">
-    <link href="../../assets/css/user-rtl.min.css" rel="stylesheet" id="user-style-rtl">
-    <link href="../../assets/css/user.min.css" rel="stylesheet" id="user-style-default">
+    <link href="{{ asset('assets/css/theme-rtl.min.css') }}" rel="stylesheet" id="style-rtl">
+    <link href="{{ asset('assets/css/theme.min.css') }}" rel="stylesheet" id="style-default">
+    <link href="{{ asset('assets/css/user-rtl.min.css') }}" rel="stylesheet" id="user-style-rtl">
+    <link href="{{ asset('assets/css/user.min.css') }}" rel="stylesheet" id="user-style-default">
 
-    <script src="../../vendors/imagesloaded/imagesloaded.pkgd.min.js"></script>
-    <script src="../../vendors/simplebar/simplebar.min.js"></script>
-    <script src="../../assets/js/config.js"></script>
+    <script src="{{ asset('vendors/imagesloaded/imagesloaded.pkgd.min.js') }}"></script>
+    <script src="{{ asset('vendors/simplebar/simplebar.min.js') }}"></script>
+    <script src="{{ asset('assets/js/config.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
 
@@ -64,7 +63,7 @@
             <div class="bg-holder"
                 :style="{ backgroundImage: config.imgFondoLogin
                     ? 'url(' + config.imgFondoLogin + ')'
-                    : 'url(../../assets/img/generic/authentication-bg.webp)' }">
+                    : 'url({{ asset('assets/img/bg/30.png') }})' }">
             </div>
 
             {{-- Overlay con datos del sistema --}}
@@ -219,14 +218,14 @@
 </main>
 
 {{-- Scripts Phoenix --}}
-<script src="../../vendors/popper/popper.min.js"></script>
-<script src="../../vendors/bootstrap/bootstrap.min.js"></script>
-<script src="../../vendors/anchorjs/anchor.min.js"></script>
-<script src="../../vendors/is/is.min.js"></script>
-<script src="../../vendors/fontawesome/all.min.js"></script>
-<script src="../../vendors/lodash/lodash.min.js"></script>
-<script src="../../vendors/feather-icons/feather.min.js"></script>
-<script src="../../assets/js/phoenix.js"></script>
+<script src="{{ asset('vendors/popper/popper.min.js') }}"></script>
+<script src="{{ asset('vendors/bootstrap/bootstrap.min.js') }}"></script>
+<script src="{{ asset('vendors/anchorjs/anchor.min.js') }}"></script>
+<script src="{{ asset('vendors/is/is.min.js') }}"></script>
+<script src="{{ asset('vendors/fontawesome/all.min.js') }}"></script>
+<script src="{{ asset('vendors/lodash/lodash.min.js') }}"></script>
+<script src="{{ asset('vendors/feather-icons/feather.min.js') }}"></script>
+<script src="{{ asset('assets/js/phoenix.js') }}"></script>
 
 <script>
 new Vue({

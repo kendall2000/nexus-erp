@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NexusERP</title>
-    <base href="/Plantilla/public/">
-    <!-- <base href="{{ url('/') }}/Plantilla/public/"> -->
 
     <script>
         const server     = window.location.protocol + '//' + window.location.host;
@@ -18,7 +16,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
 
-    <link rel="icon" type="image/png" href="{{ url('/') }}/Plantilla/public/assets/img/favicon.png">
+    <link rel="icon" type="image/png" href="{{ asset('assets/img/favicons/favicon-32x32.png') }}">
 
     {{-- Phoenix CSS --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vue-select@3.20.2/dist/vue-select.css">
@@ -27,21 +25,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
 
-    <link href="vendors/flatpickr/flatpickr.min.css" rel="stylesheet">
-    <link href="vendors/simplebar/simplebar.min.css" rel="stylesheet">
-    <link href="vendors/choices/choices.min.css" rel="stylesheet">
-    <link href="vendors/leaflet/leaflet.css" rel="stylesheet">
-    <link href="assets/css/theme.min.css" rel="stylesheet" id="style-default">
-    <link href="assets/css/theme-rtl.min.css" rel="stylesheet" id="style-rtl">
-    <link href="assets/css/user.min.css" rel="stylesheet" id="user-style-default">
-    <link href="assets/css/user-rtl.min.css" rel="stylesheet" id="user-style-rtl">
+    <link href="{{ asset('vendors/flatpickr/flatpickr.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('vendors/simplebar/simplebar.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('vendors/choices/choices.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('vendors/leaflet/leaflet.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/theme.min.css') }}" rel="stylesheet" id="style-default">
+    <link href="{{ asset('assets/css/theme-rtl.min.css') }}" rel="stylesheet" id="style-rtl">
+    <link href="{{ asset('assets/css/user.min.css') }}" rel="stylesheet" id="user-style-default">
+    <link href="{{ asset('assets/css/user-rtl.min.css') }}" rel="stylesheet" id="user-style-rtl">
     <link href="https://cdn.datatables.net/v/bs5/jq-3.7.0/jszip-3.10.1/dt-1.13.8/b-2.4.2/b-html5-2.4.2/sl-1.7.0/datatables.min.css" rel="stylesheet">
 
     {{-- Scripts base --}}
-    <script src="vendors/imagesloaded/imagesloaded.pkgd.min.js"></script>
-    <script src="vendors/simplebar/simplebar.min.js"></script>
-    <script src="vendors/dayjs/dayjs.min.js"></script>
-    <script src="assets/js/config.js"></script>
+    <script src="{{ asset('vendors/imagesloaded/imagesloaded.pkgd.min.js') }}"></script>
+    <script src="{{ asset('vendors/simplebar/simplebar.min.js') }}"></script>
+    <script src="{{ asset('vendors/dayjs/dayjs.min.js') }}"></script>
+    <script src="{{ asset('assets/js/config.js') }}"></script>
 
     <script>
         // RTL/LTR automático
