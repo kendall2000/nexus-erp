@@ -188,6 +188,63 @@ trait EsquemaNexus
                 $t->softDeletes();
             });
         }
+        Schema::table('cliente', function (Blueprint $t) {
+            $t->unsignedInteger('id_industria')->nullable();
+            $t->unsignedInteger('id_pais')->nullable();
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('razon_social')->nullable();
+            $t->string('nombre_comercial')->nullable();
+            $t->string('nit', 20)->nullable();
+            $t->string('tipo_persona')->default('JURIDICA');
+            $t->string('email_principal')->nullable();
+            $t->string('telefono_principal')->nullable();
+            $t->string('sitio_web')->nullable();
+            $t->string('direccion_fiscal')->nullable();
+            $t->string('segmento')->nullable();
+            $t->string('categoria')->nullable();
+            $t->string('moneda_facturacion', 3)->default('GTQ');
+            $t->unsignedTinyInteger('dias_credito')->default(30);
+            $t->decimal('limite_credito', 15, 4)->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('updated_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('contacto_cliente', function (Blueprint $t) {
+            $t->increments('id_contacto');
+            $t->unsignedInteger('id_cliente');
+            $t->string('nombre');
+            $t->string('cargo')->nullable();
+            $t->string('email')->nullable();
+            $t->string('telefono')->nullable();
+            $t->string('whatsapp')->nullable();
+            $t->boolean('es_contacto_principal')->default(false);
+            $t->boolean('recibe_facturas')->default(false);
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('industria', function (Blueprint $t) {
+            $t->increments('id_industria');
+            $t->string('nombre');
+        });
+        Schema::create('factura', function (Blueprint $t) {
+            $t->increments('id_factura');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente');
+            $t->string('numero_completo', 30)->nullable();
+            $t->date('fecha_emision')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('total', 15, 4)->default(0);
+            $t->decimal('total_pagado', 15, 4)->default(0);
+            $t->decimal('saldo_pendiente', 15, 4)->default(0);
+            $t->string('estado')->default('BORRADOR');
+            $t->timestamps();
+        });
+        Schema::create('pago', function (Blueprint $t) {
+            $t->increments('id_pago');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente')->nullable();
+        });
         Schema::table('empleado', function (Blueprint $t) {
             $t->unsignedInteger('id_sucursal')->nullable();
             foreach (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada'] as $columna) {

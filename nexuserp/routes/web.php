@@ -3,6 +3,7 @@
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroCostoController;
+use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
@@ -182,13 +183,29 @@ Route::middleware('auth')->group(function () {
         Route::get('{recepcion}/imprimir', 'imprimir')->whereNumber('recepcion')->middleware('permiso:recepciones.imprimir')->name('imprimir');
     });
 
+    // Clientes (ficha con contactos y estado de cuenta)
+    Route::prefix('sistema/clientes')->name('clientes.')->controller(ClienteController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:clientes.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:clientes.exportar')->name('exportar');
+        Route::get('nuevo', 'create')->middleware('permiso:clientes.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:clientes.crear')->name('store');
+        Route::get('{cliente}', 'show')->whereNumber('cliente')->middleware('permiso:clientes.ver')->name('show');
+        Route::get('{cliente}/imprimir', 'imprimir')->whereNumber('cliente')->middleware('permiso:clientes.imprimir')->name('imprimir');
+        Route::middleware('permiso:clientes.editar')->group(function () {
+            Route::get('{cliente}/editar', 'edit')->whereNumber('cliente')->name('edit');
+            Route::put('{cliente}', 'update')->whereNumber('cliente')->name('update');
+            Route::patch('{cliente}/estado', 'estado')->whereNumber('cliente')->name('estado');
+            Route::post('{cliente}/contactos', 'guardarContacto')->whereNumber('cliente')->name('contactos.store');
+            Route::put('{cliente}/contactos/{contacto}', 'guardarContacto')->whereNumber(['cliente', 'contacto'])->name('contactos.update');
+            Route::delete('{cliente}/contactos/{contacto}', 'eliminarContacto')->whereNumber(['cliente', 'contacto'])->name('contactos.destroy');
+        });
+        Route::delete('{cliente}', 'destroy')->whereNumber('cliente')->middleware('permiso:clientes.eliminar')->name('destroy');
+    });
+
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ── Pantallas que todavía son Vue + API (se migran en el paso 5) ──
-    // ── Clientes ────────────────────────────────────────────────────
-    Route::get('/sistema/clientes', fn() => view('modulos.clientes.index'));
-
     // ── Finanzas ────────────────────────────────────────────────────
     Route::get('/sistema/facturas',          fn() => view('modulos.facturas.index'));
     Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));

@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\Api\V1\Core\AuthController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Core\GeografiaController;
-use App\Http\Controllers\Api\V1\Clientes\ClienteController;
 use App\Http\Controllers\Api\V1\Finanzas\FacturaController;
 use App\Http\Controllers\Api\V1\Finanzas\PagoController;
 use App\Http\Controllers\Api\V1\Finanzas\PresupuestoController;
@@ -15,22 +13,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
-
-    // ── Geografía: catálogos de solo lectura para los selects en cascada de Clientes
-    //    (la administración está en /sistema/geografia) ────
-    Route::get('geografia/divisiones/{idPais}',            [GeografiaController::class, 'divisionesPorPais']);
-    Route::get('geografia/municipios/{idDivision}',        [GeografiaController::class, 'municipiosPorDivision']);
-
-    Route::get('geografia/municipio/{id}/cascada', [GeografiaController::class, 'datosParaCascada']);
-
-    // ── Clientes ───────────────────────────────────────────────────
-    Route::get('clientes/clientes/catalogos',    [ClienteController::class, 'catalogos']);
-    Route::get('clientes/clientes',              [ClienteController::class, 'index']);
-    Route::post('clientes/clientes',              [ClienteController::class, 'store']);
-    Route::get('clientes/clientes/{id}',         [ClienteController::class, 'show']);
-    Route::put('clientes/clientes/{id}',         [ClienteController::class, 'update']);
-    Route::patch ('clientes/clientes/{id}/toggle',  [ClienteController::class, 'toggle']);
-    Route::delete('clientes/clientes/{id}',         [ClienteController::class, 'destroy']);
 
     // ── Facturas ───────────────────────────────────────────────────
     Route::get   ('finanzas/facturas/catalogos',           [FacturaController::class, 'catalogos']);
