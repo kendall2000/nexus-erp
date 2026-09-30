@@ -3,10 +3,8 @@
 use App\Http\Controllers\Api\V1\Core\AuthController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Core\MenuController;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionSistemaController;
-use App\Http\Controllers\Api\V1\Core\GestionMenuController;
 use App\Http\Controllers\Api\V1\Core\SucursalController;
 use App\Http\Controllers\Api\V1\Core\GeografiaController;
 use App\Http\Controllers\Api\V1\Inventario\ProductoController;
@@ -38,12 +36,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
 
-    // Menú dinámico
-    Route::get ('menu',       [MenuController::class, 'index']);
-    Route::get ('menu/todos', [MenuController::class, 'todos']);
-    Route::post('menu',       [MenuController::class, 'store']);
-    Route::put ('menu/{id}',  [MenuController::class, 'update']);
-    Route::delete('menu/{id}',[MenuController::class, 'destroy']);
 
 
 
@@ -52,15 +44,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/core/configuracion', [ConfiguracionSistemaController::class, 'index']);
     Route::post('/core/configuracion', [ConfiguracionSistemaController::class, 'update']);
 
-    // Gestión de Menú
-    Route::get ('gestion-menu/catalogos', [GestionMenuController::class, 'catalogos']);
-    Route::get ('gestion-menu/arbol',     [GestionMenuController::class, 'arbol']);     // ← nueva
-    Route::get ('gestion-menu',           [GestionMenuController::class, 'index']);
-    Route::post('gestion-menu',           [GestionMenuController::class, 'store']);
-    Route::get ('gestion-menu/{id}',      [GestionMenuController::class, 'show']);
-    Route::put ('gestion-menu/{id}',      [GestionMenuController::class, 'update']);
-    Route::patch('gestion-menu/{id}/toggle', [GestionMenuController::class, 'toggle']);
-    Route::delete('gestion-menu/{id}',    [GestionMenuController::class, 'destroy']);
 
     // ── Módulo Inventario ──────────────────────────────────────────
     // Bodegas 

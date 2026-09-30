@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GestionMenuController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\UsuarioController;
@@ -25,6 +26,18 @@ Route::middleware('auth')->group(function () {
         Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
         Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
         Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
+
+        // Gestión del menú lateral
+        Route::prefix('sistema/menu')->name('menu.')->controller(GestionMenuController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('{menu}/editar', 'edit')->whereNumber('menu')->name('edit');
+            Route::put('{menu}', 'update')->whereNumber('menu')->name('update');
+            Route::patch('{menu}/estado', 'estado')->whereNumber('menu')->name('estado');
+            Route::patch('{menu}/mover', 'mover')->whereNumber('menu')->name('mover');
+            Route::delete('{menu}', 'destroy')->whereNumber('menu')->name('destroy');
+        });
     });
 
     // ── Sirve los JS de los módulos desde resources/views/modulos/ ──
@@ -70,7 +83,6 @@ Route::middleware('auth')->group(function () {
     // ── Vistas del sistema ──────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/sistema/configuracion', fn() => view('modulos.configuracion.index'));
-    Route::get('/sistema/menu',          fn() => view('modulos.menu.index'));
 
     // ── Inventario ──────────────────────────────────────────────────
     Route::get('/sistema/bodegas',        fn() => view('modulos.bodegas.index'));

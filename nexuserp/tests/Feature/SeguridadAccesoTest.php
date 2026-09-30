@@ -31,7 +31,7 @@ class SeguridadAccesoTest extends TestCase
 
     public function test_sin_sesion_la_api_responde_401_en_json(): void
     {
-        $this->getJson('/api/v1/menu')
+        $this->getJson('/api/v1/inventario/bodegas')
             ->assertStatus(401)
             ->assertJson(['success' => false]);
     }
@@ -216,7 +216,7 @@ class SeguridadAccesoTest extends TestCase
         DB::table('rol')->update(['requiere_2fa' => true]);
 
         $this->actingAs($usuario)->get('/sistema/dashboard')->assertRedirect(route('cuenta.seguridad'));
-        $this->actingAs($usuario)->getJson('/api/v1/menu')->assertForbidden();
+        $this->actingAs($usuario)->getJson('/api/v1/inventario/bodegas')->assertForbidden();
         $this->actingAs($usuario)->get(route('cuenta.seguridad'))
             ->assertOk()
             ->assertSee('Tu rol exige la verificación en dos pasos');

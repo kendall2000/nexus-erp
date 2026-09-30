@@ -47,6 +47,12 @@ class Menu extends Model
     }
 
     // Roles que tienen acceso a este ítem
+    /** Todas las opciones del grupo, activas o no (Gestión de menú). */
+    public function todosLosHijos()
+    {
+        return $this->hasMany(Menu::class, 'id_padre')->orderBy('orden')->orderBy('id_menu');
+    }
+
     public function roles()
     {
         return $this->belongsToMany(
