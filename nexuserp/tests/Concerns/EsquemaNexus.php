@@ -60,26 +60,47 @@ trait EsquemaNexus
             $t->dateTime('fecha_asignacion')->nullable();
             $t->unsignedInteger('asignado_por')->nullable();
         });
-        Schema::create('modulo_sistema', function (Blueprint $t) {
+        // Permisos (estructura de sistema-inventario): módulo × acción, por rol y extras por usuario.
+        Schema::create('modulo', function (Blueprint $t) {
             $t->increments('id_modulo');
-            $t->string('codigo')->nullable();
+            $t->string('codigo')->unique();
             $t->string('nombre');
+            $t->string('descripcion')->nullable();
             $t->string('icono')->nullable();
-            $t->integer('orden_menu')->default(0);
+            $t->string('ruta')->nullable();
+            $t->unsignedInteger('orden')->default(0);
+            $t->unsignedInteger('id_modulo_padre')->nullable();
+            $t->string('grupo')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->timestamps();
+        });
+        Schema::create('accion', function (Blueprint $t) {
+            $t->increments('id_accion');
+            $t->string('codigo')->unique();
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->unsignedInteger('orden')->default(0);
             $t->boolean('activo')->default(true);
         });
         Schema::create('permiso', function (Blueprint $t) {
             $t->increments('id_permiso');
-            $t->unsignedInteger('id_modulo')->nullable();
-            $t->string('codigo');
+            $t->unsignedInteger('id_modulo');
+            $t->unsignedInteger('id_accion');
             $t->string('descripcion')->nullable();
+            $t->unique(['id_modulo', 'id_accion']);
         });
         Schema::create('rol_permiso', function (Blueprint $t) {
             $t->unsignedInteger('id_rol');
             $t->unsignedInteger('id_permiso');
-            foreach (['crear', 'leer', 'editar', 'eliminar', 'exportar'] as $accion) {
-                $t->boolean("puede_{$accion}")->default(false);
-            }
+            $t->dateTime('asignado_at')->useCurrent();
+            $t->primary(['id_rol', 'id_permiso']);
+        });
+        Schema::create('usuario_permiso', function (Blueprint $t) {
+            $t->unsignedInteger('id_usuario');
+            $t->unsignedInteger('id_permiso');
+            $t->unsignedInteger('asignado_por')->nullable();
+            $t->dateTime('asignado_at')->useCurrent();
+            $t->primary(['id_usuario', 'id_permiso']);
         });
         Schema::create('auditoria_acceso', function (Blueprint $t) {
             $t->bigIncrements('id_auditoria');
@@ -105,20 +126,6 @@ trait EsquemaNexus
             $t->timestamp('created_at')->nullable();
         });
         // Menú lateral (Gestión de menú) y tablas que cuenta el dashboard.
-        Schema::create('menu', function (Blueprint $t) {
-            $t->increments('id_menu');
-            $t->unsignedInteger('id_empresa')->nullable();
-            $t->unsignedInteger('id_padre')->nullable();
-            $t->string('nombre');
-            $t->string('icono')->nullable();
-            $t->string('ruta')->nullable();
-            $t->integer('orden')->default(0);
-            $t->boolean('activo')->default(true);
-        });
-        Schema::create('menu_rol', function (Blueprint $t) {
-            $t->unsignedInteger('id_menu');
-            $t->unsignedInteger('id_rol');
-        });
         // Tokens de Sanctum (se siguen revocando por si quedó alguno antiguo sin expirar).
         Schema::create('personal_access_tokens', function (Blueprint $t) {
             $t->id();
@@ -179,6 +186,175 @@ trait EsquemaNexus
                 $t->boolean('activo')->default(true);
                 $t->string('estado')->nullable();
                 $t->softDeletes();
+            });
+        }
+        Schema::table('empleado', function (Blueprint $t) {
+            $t->unsignedInteger('id_sucursal')->nullable();
+            foreach (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada'] as $columna) {
+                $t->string($columna)->nullable();
+            }
+        });
+        // Inventario
+        Schema::create('bodega', function (Blueprint $t) {
+            $t->increments('id_bodega');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_sucursal')->nullable();
+            $t->string('nombre');
+            $t->string('ubicacion')->nullable();
+            $t->unsignedInteger('responsable_id')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('categoria_producto', function (Blueprint $t) {
+            $t->increments('id_categoria');
+            $t->unsignedInteger('id_padre')->nullable();
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('producto', function (Blueprint $t) {
+            $t->increments('id_producto');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_categoria')->nullable();
+            $t->string('codigo')->nullable();
+            $t->string('nombre');
+            $t->text('descripcion')->nullable();
+            $t->string('unidad_medida')->default('UND');
+            $t->decimal('precio_compra', 14, 4)->nullable();
+            $t->unsignedInteger('id_cuenta_gasto')->nullable();
+            $t->unsignedInteger('id_centro_default')->nullable();
+            $t->decimal('precio_venta', 14, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('stock_minimo', 14, 2)->default(0);
+            $t->decimal('stock_maximo', 14, 2)->nullable();
+            $t->boolean('requiere_lote')->default(false);
+            $t->boolean('es_perecedero')->default(false);
+            $t->boolean('activo')->default(true);
+            $t->timestamps();
+        });
+        Schema::create('stock_bodega', function (Blueprint $t) {
+            $t->increments('id_stock');
+            $t->unsignedInteger('id_producto');
+            $t->unsignedInteger('id_bodega');
+            $t->decimal('cantidad_actual', 14, 4)->default(0);
+            $t->decimal('costo_promedio', 14, 4)->default(0);
+            $t->timestamp('updated_at')->nullable();
+        });
+        Schema::create('moneda', function (Blueprint $t) {
+            $t->string('codigo', 3)->primary();
+            $t->string('nombre');
+            $t->string('simbolo')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        DB::table('moneda')->insert([['codigo' => 'GTQ', 'nombre' => 'Quetzal', 'simbolo' => 'Q'], ['codigo' => 'USD', 'nombre' => 'Dolar', 'simbolo' => '$']]);
+        Schema::create('proveedor', function (Blueprint $t) {
+            $t->increments('id_proveedor');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_pais')->nullable();
+            $t->string('razon_social');
+            $t->string('nombre_comercial')->nullable();
+            $t->string('nit')->nullable();
+            $t->string('email')->nullable();
+            $t->string('telefono')->nullable();
+            $t->string('direccion')->nullable();
+            $t->string('contacto')->nullable();
+            $t->string('tipo_proveedor')->default('BIENES');
+            $t->unsignedInteger('dias_credito')->default(0);
+            $t->string('moneda_pago', 3)->default('GTQ');
+            $t->boolean('activo')->default(true);
+            $t->softDeletes();
+            $t->timestamps();
+        });
+        Schema::create('centro_costo', function (Blueprint $t) {
+            $t->increments('id_centro');
+            $t->unsignedInteger('id_empresa');
+            $t->string('codigo');
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('cuenta_contable', function (Blueprint $t) {
+            $t->increments('id_cuenta');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_padre')->nullable();
+            $t->string('codigo');
+            $t->string('nombre');
+            $t->string('tipo')->default('GASTO');
+            $t->string('naturaleza')->nullable();
+            $t->unsignedInteger('nivel')->default(1);
+            $t->boolean('permite_movimiento')->default(true);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('orden_compra', function (Blueprint $t) {
+            $t->increments('id_oc');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_proveedor')->nullable();
+            $t->unsignedInteger('id_bodega')->nullable();
+            $t->string('numero_oc')->nullable();
+            $t->date('fecha_emision')->nullable();
+            $t->date('fecha_entrega_esperada')->nullable();
+            $t->date('fecha_entrega_real')->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('subtotal', 14, 4)->default(0);
+            $t->decimal('iva', 14, 4)->default(0);
+            $t->decimal('total', 14, 4)->default(0);
+            $t->string('estado')->default('BORRADOR');
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('detalle_orden_compra', function (Blueprint $t) {
+            $t->increments('id_linea');
+            $t->unsignedInteger('id_oc');
+            $t->unsignedInteger('id_producto');
+            $t->unsignedInteger('id_centro')->nullable();
+            $t->unsignedInteger('id_cuenta')->nullable();
+            $t->string('descripcion')->nullable();
+            $t->decimal('cantidad_pedida', 14, 4);
+            $t->decimal('cantidad_recibida', 14, 4)->default(0);
+            $t->decimal('precio_unitario', 14, 4);
+            $t->decimal('descuento', 14, 4)->default(0);
+            $t->decimal('subtotal', 14, 4)->default(0);
+        });
+        Schema::create('detalle_recepcion', function (Blueprint $t) {
+            $t->increments('id_detalle_rec');
+            $t->unsignedInteger('id_recepcion')->nullable();
+            $t->unsignedInteger('id_producto');
+        });
+        Schema::create('presupuesto_anual', function (Blueprint $t) {
+            $t->increments('id_presupuesto');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_centro');
+            $t->unsignedInteger('id_cuenta');
+            $t->unsignedInteger('anio');
+            $t->string('moneda', 3)->default('GTQ');
+            foreach (['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'] as $mes) {
+                $t->decimal("pre_{$mes}", 14, 4)->default(0);
+                $t->decimal("eje_{$mes}", 14, 4)->default(0);
+            }
+            $t->decimal('total_presupuestado', 14, 4)->default(0);
+            $t->decimal('total_ejecutado', 14, 4)->default(0);
+            $t->string('estado')->default('BORRADOR');
+            foreach (['aprobado_por', 'cerrado_por', 'created_by', 'updated_by'] as $c) {
+                $t->unsignedInteger($c)->nullable();
+            }
+            $t->dateTime('fecha_aprobacion')->nullable();
+            $t->dateTime('fecha_cierre')->nullable();
+            $t->timestamps();
+        });
+        Schema::table('empresa', function (Blueprint $t) {
+            $t->decimal('tasa_iva', 5, 2)->default(12);
+            $t->boolean('iva_incluido_en_precio')->default(false);
+            $t->string('nombre_legal')->nullable();
+            $t->string('nit')->nullable();
+        });
+        foreach (['recepcion_mercaderia' => 'id_recepcion', 'movimiento_inventario' => 'id_movimiento'] as $tabla => $llave) {
+            Schema::create($tabla, function (Blueprint $t) use ($llave) {
+                $t->increments($llave);
+                $t->unsignedInteger('id_empresa');
+                $t->unsignedInteger('id_bodega')->nullable();
+                $t->unsignedInteger('id_producto')->nullable();
             });
         }
         Schema::create('ConfiguracionSistema', function (Blueprint $t) {
@@ -264,15 +440,31 @@ trait EsquemaNexus
         return DB::table('auditoria_acceso')->where('accion', $accion)->count();
     }
 
-    /** Da a los roles del usuario los permisos indicados (crea los códigos si no existen). */
+    /**
+     * Id del permiso «modulo.accion»; crea el módulo, la acción y el permiso si no existen.
+     * $modulo: columnas extra del módulo al crearlo (ruta, grupo, icono…).
+     */
+    protected function permiso(string $codigo, array $modulo = []): int
+    {
+        $punto = strrpos($codigo, '.');
+        [$codModulo, $codAccion] = [substr($codigo, 0, $punto), substr($codigo, $punto + 1)];
+        $idModulo = DB::table('modulo')->where('codigo', $codModulo)->value('id_modulo')
+            ?? DB::table('modulo')->insertGetId($modulo + ['codigo' => $codModulo, 'nombre' => ucfirst($codModulo), 'activo' => true]);
+        $idAccion = DB::table('accion')->where('codigo', $codAccion)->value('id_accion')
+            ?? DB::table('accion')->insertGetId(['codigo' => $codAccion, 'nombre' => ucfirst($codAccion)]);
+
+        return DB::table('permiso')->where(['id_modulo' => $idModulo, 'id_accion' => $idAccion])->value('id_permiso')
+            ?? DB::table('permiso')->insertGetId(['id_modulo' => $idModulo, 'id_accion' => $idAccion, 'descripcion' => $codigo]);
+    }
+
+    /** Da a los roles del usuario los permisos indicados («modulo.accion»). */
     protected function darPermisos(Usuario $usuario, array $codigos): void
     {
         foreach ($usuario->roles()->pluck('rol.id_rol') as $idRol) {
             foreach ($codigos as $codigo) {
-                $idPermiso = DB::table('permiso')->where('codigo', $codigo)->value('id_permiso')
-                    ?? DB::table('permiso')->insertGetId(['codigo' => $codigo]);
-                DB::table('rol_permiso')->insert(['id_rol' => $idRol, 'id_permiso' => $idPermiso]);
+                DB::table('rol_permiso')->insertOrIgnore(['id_rol' => $idRol, 'id_permiso' => $this->permiso($codigo)]);
             }
         }
+        $usuario->olvidarPermisos();
     }
 }

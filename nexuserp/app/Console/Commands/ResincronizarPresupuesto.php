@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Finanzas\Factura;
 use App\Models\Finanzas\PresupuestoAnual;
 use App\Models\Core\Empresa;
+use App\Models\Inventario\OrdenCompra;
+use App\Support\EjecucionPresupuesto;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +17,7 @@ class ResincronizarPresupuesto extends Command
                               {--anio= : Año a resincronizar (default año actual)}
                               {--dry-run : Solo muestra cambios sin aplicar}';
 
-    protected $description = 'Resincroniza el ejecutado del presupuesto desde las facturas EMITIDAS reales.';
+    protected $description = 'Resincroniza el ejecutado del presupuesto desde las facturas emitidas y las órdenes de compra aprobadas.';
 
     // ════════════════════════════════════════════════════════════
     // ESTE MÉTODO ES EL QUE CAMBIAS
@@ -67,7 +69,7 @@ class ResincronizarPresupuesto extends Command
     }
 
     // ════════════════════════════════════════════════════════════
-    // ESTE MÉTODO NO LO TOCAS (queda igual que ya tienes)
+    // Recalcula un presupuesto: facturas + órdenes de compra del año.
     // ════════════════════════════════════════════════════════════
     private function resyncUno(PresupuestoAnual $pres, bool $dryRun): void
     {
@@ -97,6 +99,21 @@ class ResincronizarPresupuesto extends Command
                 $montoNeto = $this->calcularMontoNeto($subtotal, $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
 
                 $ejecMensual[$nombreMes] += $montoNeto;
+            }
+        }
+
+        // Órdenes de compra aprobadas (enviadas, parciales o recibidas; no borradores ni canceladas).
+        $ordenes = OrdenCompra::with('detalles.producto')
+            ->where('id_empresa', $pres->id_empresa)
+            ->whereYear('fecha_emision', $pres->anio)
+            ->whereIn('estado', ['ENVIADA', 'PARCIAL', 'RECIBIDA'])
+            ->get();
+
+        foreach ($ordenes as $oc) {
+            $nombreMes = PresupuestoAnual::MESES[$oc->fecha_emision->month];
+            foreach ($oc->detalles as $linea) {
+                if ($linea->centro_efectivo != $pres->id_centro || $linea->cuenta_efectiva != $pres->id_cuenta) continue;
+                $ejecMensual[$nombreMes] += EjecucionPresupuesto::montoNeto((float) $linea->subtotal, true, $tasaIva, $ivaIncluido);
             }
         }
 

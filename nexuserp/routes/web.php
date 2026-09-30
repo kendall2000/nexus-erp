@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\BodegaController;
+use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeografiaController;
-use App\Http\Controllers\GestionMenuController;
+use App\Http\Controllers\ModuloController;
+use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
@@ -56,16 +61,17 @@ Route::middleware('auth')->group(function () {
             Route::delete('{tipo}/{id}', 'destroy')->name('destroy');
             });
 
-        // Gestión del menú lateral
-        Route::prefix('sistema/menu')->name('menu.')->controller(GestionMenuController::class)->group(function () {
+        // Módulos (menú lateral y acciones de los permisos)
+        Route::redirect('sistema/menu', '/sistema/modulos');
+        Route::prefix('sistema/modulos')->name('modulos.')->controller(ModuloController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('nuevo', 'create')->name('create');
             Route::post('/', 'store')->name('store');
-            Route::get('{menu}/editar', 'edit')->whereNumber('menu')->name('edit');
-            Route::put('{menu}', 'update')->whereNumber('menu')->name('update');
-            Route::patch('{menu}/estado', 'estado')->whereNumber('menu')->name('estado');
-            Route::patch('{menu}/mover', 'mover')->whereNumber('menu')->name('mover');
-            Route::delete('{menu}', 'destroy')->whereNumber('menu')->name('destroy');
+            Route::get('{modulo}/editar', 'edit')->whereNumber('modulo')->name('edit');
+            Route::put('{modulo}', 'update')->whereNumber('modulo')->name('update');
+            Route::patch('{modulo}/estado', 'estado')->whereNumber('modulo')->name('estado');
+            Route::patch('{modulo}/mover', 'mover')->whereNumber('modulo')->name('mover');
+            Route::delete('{modulo}', 'destroy')->whereNumber('modulo')->name('destroy');
         });
     });
 
@@ -81,43 +87,79 @@ Route::middleware('auth')->group(function () {
             ->header('Content-Type', 'application/javascript');
     })->where(['modulo' => '[a-zA-Z0-9_-]+', 'archivo' => '[a-zA-Z0-9_-]+']);
 
-    // ── Usuarios ────────────────────────────────────────────────────
+    // ── Módulos con permisos «modulo.accion» (ver, crear, editar, eliminar) ──
+    // Usuarios
     Route::prefix('sistema/usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function () {
-        Route::get('/', 'index')->middleware('permiso:CONFIG.USUARIOS.VER')->name('index');
-        Route::middleware('permiso:CONFIG.USUARIOS.CREAR')->group(function () {
+        Route::get('/', 'index')->middleware('permiso:usuarios.ver')->name('index');
+        Route::middleware('permiso:usuarios.crear')->group(function () {
             Route::get('nuevo', 'create')->name('create');
             Route::post('/', 'store')->name('store');
         });
-        Route::middleware('permiso:CONFIG.USUARIOS.EDITAR')->group(function () {
+        Route::middleware('permiso:usuarios.editar')->group(function () {
             Route::get('{usuario}/editar', 'edit')->whereNumber('usuario')->name('edit');
             Route::put('{usuario}', 'update')->whereNumber('usuario')->name('update');
+            Route::put('{usuario}/permisos', 'permisos')->whereNumber('usuario')->name('permisos');
             Route::patch('{usuario}/estado', 'estado')->whereNumber('usuario')->name('estado');
             Route::delete('{usuario}/sesiones', 'sesiones')->whereNumber('usuario')->name('sesiones');
-            Route::delete('{usuario}', 'destroy')->whereNumber('usuario')->name('destroy');
         });
+        Route::delete('{usuario}', 'destroy')->whereNumber('usuario')->middleware('permiso:usuarios.eliminar')->name('destroy');
     });
 
-    // ── Roles y permisos ────────────────────────────────────────────
+    // Roles y permisos (ver = puede abrir el rol en solo lectura)
     Route::prefix('sistema/roles')->name('roles.')->controller(RolController::class)->group(function () {
-        Route::get('/', 'index')->middleware('permiso:CONFIG.ROLES.VER')->name('index');
-        Route::get('{rol}/editar', 'edit')->whereNumber('rol')->middleware('permiso:CONFIG.ROLES.VER')->name('edit');
-        Route::middleware('permiso:CONFIG.ROLES.GESTIONAR')->group(function () {
-            Route::get('nuevo', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
-            Route::put('{rol}', 'update')->whereNumber('rol')->name('update');
-            Route::delete('{rol}', 'destroy')->whereNumber('rol')->name('destroy');
-        });
+        Route::get('/', 'index')->middleware('permiso:roles.ver')->name('index');
+        Route::get('{rol}/editar', 'edit')->whereNumber('rol')->middleware('permiso:roles.ver')->name('edit');
+        Route::get('nuevo', 'create')->middleware('permiso:roles.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:roles.crear')->name('store');
+        Route::put('{rol}', 'update')->whereNumber('rol')->middleware('permiso:roles.editar')->name('update');
+        Route::delete('{rol}', 'destroy')->whereNumber('rol')->middleware('permiso:roles.eliminar')->name('destroy');
     });
 
-    // ── Vistas del sistema ──────────────────────────────────────────
+    // Catálogos de inventario y compras: [controlador, parámetro, ruta «nuevo», ¿exporta?]
+    $catalogos = [
+        'bodegas' => [BodegaController::class, 'bodega', 'nueva', false],
+        'categorias' => [CategoriaController::class, 'categoria', 'nueva', false],
+        'productos' => [ProductoController::class, 'producto', 'nuevo', true],
+        'proveedores' => [ProveedorController::class, 'proveedor', 'nuevo', true],
+    ];
+    foreach ($catalogos as $modulo => [$controlador, $parametro, $nuevo, $exporta]) {
+        Route::prefix("sistema/{$modulo}")->name("{$modulo}.")->controller($controlador)->group(function () use ($modulo, $parametro, $nuevo, $exporta) {
+            Route::get('/', 'index')->middleware("permiso:{$modulo}.ver")->name('index');
+            if ($exporta) {
+                Route::get('exportar', 'exportar')->middleware("permiso:{$modulo}.exportar")->name('exportar');
+            }
+            Route::get($nuevo, 'create')->middleware("permiso:{$modulo}.crear")->name('create');
+            Route::post('/', 'store')->middleware("permiso:{$modulo}.crear")->name('store');
+            Route::middleware("permiso:{$modulo}.editar")->group(function () use ($parametro) {
+                Route::get("{{$parametro}}/editar", 'edit')->whereNumber($parametro)->name('edit');
+                Route::put("{{$parametro}}", 'update')->whereNumber($parametro)->name('update');
+                Route::patch("{{$parametro}}/estado", 'estado')->whereNumber($parametro)->name('estado');
+            });
+            Route::delete("{{$parametro}}", 'destroy')->whereNumber($parametro)->middleware("permiso:{$modulo}.eliminar")->name('destroy');
+        });
+    }
+
+    // Órdenes de compra (borrador → aprobada → recibida / cancelada)
+    Route::prefix('sistema/ordenes-compra')->name('ordenes-compra.')->controller(OrdenCompraController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:ordenes_compra.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:ordenes_compra.exportar')->name('exportar');
+        Route::get('nueva', 'create')->middleware('permiso:ordenes_compra.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:ordenes_compra.crear')->name('store');
+        Route::get('{orden}', 'show')->whereNumber('orden')->middleware('permiso:ordenes_compra.ver')->name('show');
+        Route::get('{orden}/imprimir', 'imprimir')->whereNumber('orden')->middleware('permiso:ordenes_compra.imprimir')->name('imprimir');
+        Route::middleware('permiso:ordenes_compra.editar')->group(function () {
+            Route::get('{orden}/editar', 'edit')->whereNumber('orden')->name('edit');
+            Route::put('{orden}', 'update')->whereNumber('orden')->name('update');
+            Route::delete('{orden}', 'destroy')->whereNumber('orden')->name('destroy');
+        });
+        Route::patch('{orden}/aprobar', 'aprobar')->whereNumber('orden')->middleware('permiso:ordenes_compra.aprobar')->name('aprobar');
+        Route::patch('{orden}/cancelar', 'cancelar')->whereNumber('orden')->middleware('permiso:ordenes_compra.cancelar')->name('cancelar');
+    });
+
+    // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // ── Inventario ──────────────────────────────────────────────────
-    Route::get('/sistema/bodegas',        fn() => view('modulos.bodegas.index'));
-    Route::get('/sistema/proveedores',    fn() => view('modulos.proveedores.index'));
-    Route::get('/sistema/productos',      fn() => view('modulos.productos.index'));
-    Route::get('/sistema/categorias',     fn() => view('modulos.categorias.index'));
-    Route::get('/sistema/ordenes-compra', fn() => view('modulos.ordenes-compra.index'));
+    // ── Pantallas que todavía son Vue + API (se migran en 4d y 5) ────
     Route::get('/sistema/recepciones',    fn() => view('modulos.recepciones.index'));
 
     // ── Clientes ────────────────────────────────────────────────────

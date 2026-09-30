@@ -48,18 +48,7 @@ class Rol extends Model
 
     public function permisos()
     {
-        return $this->belongsToMany(
-            Permiso::class,
-            'rol_permiso',
-            'id_rol',
-            'id_permiso'
-        )->withPivot(
-            'puede_crear',
-            'puede_leer',
-            'puede_editar',
-            'puede_eliminar',
-            'puede_exportar'
-        );
+        return $this->belongsToMany(Permiso::class, 'rol_permiso', 'id_rol', 'id_permiso')->withPivot('asignado_at');
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -73,19 +62,6 @@ class Rol extends Model
     public function esProtegido(): bool
     {
         return $this->esAdministrador() || $this->es_rol_sistema;
-    }
-
-    public function asignarPermiso(int $idPermiso, array $acciones = []): void
-    {
-        $this->permisos()->syncWithoutDetaching([
-            $idPermiso => array_merge([
-                'puede_crear'    => false,
-                'puede_leer'     => true,
-                'puede_editar'   => false,
-                'puede_eliminar' => false,
-                'puede_exportar' => false,
-            ], $acciones),
-        ]);
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────

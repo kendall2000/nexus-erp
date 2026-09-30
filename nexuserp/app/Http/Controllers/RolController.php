@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Core\Menu;
-use App\Models\Core\ModuloSistema;
 use App\Models\Core\Permiso;
 use App\Models\Core\Rol;
+use App\Support\MatrizPermisos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,19 +12,17 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Roles y permisos de la empresa. Permisos: CONFIG.ROLES.VER / .GESTIONAR.
- * El Administrador tiene todo y no se renombra, desactiva, limita ni elimina.
- * Para evitar que alguien se dé más acceso, quien no es Administrador no puede
- * editar sus propios roles ni dar permisos que él mismo no tiene.
+ * Roles y permisos (matriz módulos × acciones, como en sistema-inventario).
+ * Permisos: roles.ver / .crear / .editar / .eliminar. El Administrador tiene todo
+ * y no se renombra, desactiva, limita ni elimina. Para evitar que alguien se dé
+ * más acceso, quien no es Administrador no puede editar sus propios roles ni dar
+ * permisos que él mismo no tiene. Lo que ve cada rol en el menú sale del permiso «ver».
  */
 class RolController extends Controller
 {
     public function index(Request $request): View
     {
-        $roles = $this->deMiEmpresa($request)
-            ->withCount(['usuarios', 'permisos'])
-            ->orderBy('nombre')
-            ->get();
+        $roles = $this->deMiEmpresa($request)->withCount(['usuarios', 'permisos'])->orderBy('nombre')->get();
 
         return view('roles.index', ['roles' => $roles, 'totalPermisos' => Permiso::count()]);
     }
@@ -39,12 +36,10 @@ class RolController extends Controller
     {
         $datos = $this->validar($request);
         $permisos = $this->permisosElegidos($request);
-        $menu = $this->menuElegido($request);
 
-        $rol = DB::transaction(function () use ($request, $datos, $permisos, $menu) {
+        $rol = DB::transaction(function () use ($request, $datos, $permisos) {
             $rol = Rol::create($datos + ['id_empresa' => $request->user()->id_empresa, 'es_rol_sistema' => false]);
-            $this->guardarPermisos($rol, $permisos);
-            $this->guardarMenu($rol, $menu);
+            $rol->permisos()->sync($permisos);
 
             return $rol;
         });
@@ -66,23 +61,21 @@ class RolController extends Controller
 
         $datos = $this->validar($request, $rol);
         $permisos = $this->permisosElegidos($request);
-        $menu = $this->menuElegido($request);
 
         // Los permisos del rol que quien edita no tiene no aparecen como editables: se conservan.
-        if (($propios = $this->permisosPropios($request)) !== null) {
+        if (($propios = MatrizPermisos::idsDe($request->user())) !== null) {
             $actuales = $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all();
             $permisos = array_values(array_unique([...$permisos, ...array_diff($actuales, $propios)]));
         }
 
-        DB::transaction(function () use ($rol, $datos, $permisos, $menu) {
+        DB::transaction(function () use ($rol, $datos, $permisos) {
             if ($rol->esAdministrador()) {
-                // Solo se puede cambiar la descripción, los 2 pasos y el menú.
+                // Tiene todo: solo cambian la descripción y los 2 pasos.
                 $rol->update(['descripcion' => $datos['descripcion'], 'requiere_2fa' => $datos['requiere_2fa']]);
             } else {
                 $rol->update($datos);
-                $this->guardarPermisos($rol, $permisos);
+                $rol->permisos()->sync($permisos);
             }
-            $this->guardarMenu($rol, $menu);
         });
 
         return redirect()->route('roles.index')->with('status', "Rol {$rol->nombre} actualizado.");
@@ -103,7 +96,6 @@ class RolController extends Controller
 
         DB::transaction(function () use ($rol) {
             $rol->permisos()->detach();
-            DB::table('menu_rol')->where('id_rol', $rol->id_rol)->delete();
             $rol->delete();
         });
 
@@ -115,13 +107,9 @@ class RolController extends Controller
         return view('roles.form', [
             'rol' => $rol,
             'soloLectura' => $rol->exists ? $this->noEditable($request, $rol) : null,
-            'modulos' => ModuloSistema::query()->where('activo', true)->with(['permisos' => fn ($q) => $q->orderBy('codigo')])
-                ->orderBy('orden_menu')->get()->filter(fn ($m) => $m->permisos->isNotEmpty()),
-            'grupos' => Menu::query()->grupos($request->user()->id_empresa)->with('hijos')->get()
-                ->filter(fn ($g) => $g->hijos->isNotEmpty()),
-            'permisosMarcados' => $rol->exists ? $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all() : [],
-            'menuMarcado' => $rol->exists ? DB::table('menu_rol')->where('id_rol', $rol->id_rol)->pluck('id_menu')->map(fn ($id) => (int) $id)->all() : [],
-            'permisosPropios' => $this->permisosPropios($request),
+            'matriz' => MatrizPermisos::datos(),
+            'marcados' => $rol->exists ? $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all() : [],
+            'propios' => MatrizPermisos::idsDe($request->user()),
         ]);
     }
 
@@ -179,51 +167,11 @@ class RolController extends Controller
         ]);
         $ids = array_values(array_unique(array_map('intval', $request->input('permisos', []))));
 
-        $propios = $this->permisosPropios($request);
+        $propios = MatrizPermisos::idsDe($request->user());
         if ($propios !== null && array_diff($ids, $propios)) {
             abort(403, 'No puedes dar permisos que tú no tienes.');
         }
 
         return $ids;
-    }
-
-    /** @return list<int> Opciones del menú marcadas (de la empresa). */
-    private function menuElegido(Request $request): array
-    {
-        $request->validate([
-            'menu' => ['array'],
-            'menu.*' => ['integer', Rule::exists('menu', 'id_menu')->where('id_empresa', $request->user()->id_empresa)],
-        ]);
-
-        return array_values(array_unique(array_map('intval', $request->input('menu', []))));
-    }
-
-    /** @return list<int>|null Permisos del usuario actual; null = Administrador (todos). */
-    private function permisosPropios(Request $request): ?array
-    {
-        $usuario = $request->user();
-        if ($usuario->esAdministrador()) {
-            return null;
-        }
-
-        return DB::table('rol_permiso')
-            ->join('usuario_rol', 'usuario_rol.id_rol', '=', 'rol_permiso.id_rol')
-            ->join('rol', 'rol.id_rol', '=', 'rol_permiso.id_rol')
-            ->where('usuario_rol.id_usuario', $usuario->id_usuario)
-            ->where('rol.activo', true)
-            ->pluck('rol_permiso.id_permiso')->map(fn ($id) => (int) $id)->unique()->values()->all();
-    }
-
-    /** Permiso asignado = permitido (el código ya indica la acción: VER, CREAR, EDITAR…). */
-    private function guardarPermisos(Rol $rol, array $ids): void
-    {
-        $todas = ['puede_crear' => true, 'puede_leer' => true, 'puede_editar' => true, 'puede_eliminar' => true, 'puede_exportar' => true];
-        $rol->permisos()->sync(array_fill_keys($ids, $todas));
-    }
-
-    private function guardarMenu(Rol $rol, array $ids): void
-    {
-        DB::table('menu_rol')->where('id_rol', $rol->id_rol)->delete();
-        DB::table('menu_rol')->insert(array_map(fn ($id) => ['id_menu' => $id, 'id_rol' => $rol->id_rol], $ids));
     }
 }

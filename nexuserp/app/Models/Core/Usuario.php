@@ -14,6 +14,11 @@ class Usuario extends Authenticatable
 {
     use HasApiTokens, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
+    /** @var list<string>|null Códigos de permiso calculados (ver codigosPermiso). */
+    private ?array $codigosPermiso = null;
+
+    private ?bool $esAdmin = null;
+
     protected $table      = 'usuario';
     protected $primaryKey = 'id_usuario';
     public $timestamps    = true;
@@ -150,24 +155,55 @@ class Usuario extends Authenticatable
         return ! $this->two_factor_confirmed_at && $this->rolExigeDosPasos();
     }
 
-    /** Uso: $usuario->puede('INV.PRODUCTOS.VER'). El Administrador puede todo. */
-    public function puede(string $codigoPermiso): bool
+    /** Permisos extra del usuario, además de los de su rol (como en sistema-inventario). */
+    public function permisosExtras()
     {
-        if ($this->esAdministrador()) {
-            return true;
-        }
-
-        return $this->roles()
-            ->where('rol.activo', true)
-            ->whereHas('permisos', fn ($q) => $q->where('codigo', $codigoPermiso))
-            ->exists();
+        return $this->belongsToMany(Permiso::class, 'usuario_permiso', 'id_usuario', 'id_permiso')
+            ->withPivot('asignado_por', 'asignado_at');
     }
 
-    public function tienePermiso(string $codigoPermiso): bool
+    /**
+     * Uso: $usuario->puede('bodegas.crear'). El Administrador puede todo; los demás,
+     * lo que den sus roles activos más sus permisos extra.
+     */
+    public function puede(string $codigoPermiso): bool
     {
-        return $this->roles()
-            ->whereHas('permisos', fn($q) => $q->where('codigo', $codigoPermiso))
-            ->exists();
+        return $this->esAdministradorEnCache() || in_array($codigoPermiso, $this->codigosPermiso(), true);
+    }
+
+    /**
+     * Códigos «modulo.accion» del usuario (roles activos + extras), calculados una vez
+     * por instancia: el menú y las vistas preguntan muchas veces en la misma petición.
+     *
+     * @return list<string>
+     */
+    public function codigosPermiso(): array
+    {
+        return $this->codigosPermiso ??= Permiso::query()
+            ->join('modulo', 'modulo.id_modulo', '=', 'permiso.id_modulo')
+            ->join('accion', 'accion.id_accion', '=', 'permiso.id_accion')
+            ->where('modulo.activo', true)
+            ->where(fn ($q) => $q
+                ->whereIn('permiso.id_permiso', fn ($s) => $s->select('rol_permiso.id_permiso')->from('rol_permiso')
+                    ->join('usuario_rol', 'usuario_rol.id_rol', '=', 'rol_permiso.id_rol')
+                    ->join('rol', 'rol.id_rol', '=', 'rol_permiso.id_rol')
+                    ->where('usuario_rol.id_usuario', $this->id_usuario)->where('rol.activo', true))
+                ->orWhereIn('permiso.id_permiso', fn ($s) => $s->select('id_permiso')->from('usuario_permiso')
+                    ->where('id_usuario', $this->id_usuario)))
+            ->get(['modulo.codigo as modulo', 'accion.codigo as accion'])
+            ->map(fn ($p) => $p->modulo.'.'.$p->accion)->unique()->values()->all();
+    }
+
+    /** Llamar si cambian sus roles o permisos durante la misma petición. */
+    public function olvidarPermisos(): void
+    {
+        $this->codigosPermiso = null;
+        $this->esAdmin = null;
+    }
+
+    private function esAdministradorEnCache(): bool
+    {
+        return $this->esAdmin ??= $this->esAdministrador();
     }
 
     public function registrarLogin(): void

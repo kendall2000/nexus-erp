@@ -26,12 +26,12 @@ class SeguridadAccesoTest extends TestCase
     {
         $this->get('/sistema/dashboard')->assertRedirect('/login');
         $this->get('/sistema/productos')->assertRedirect('/login');
-        $this->get('/modulos-js/bodegas/index.js')->assertRedirect('/login');
+        $this->get('/modulos-js/recepciones/index.js')->assertRedirect('/login');
     }
 
     public function test_sin_sesion_la_api_responde_401_en_json(): void
     {
-        $this->getJson('/api/v1/inventario/bodegas')
+        $this->getJson('/api/v1/auth/me')
             ->assertStatus(401)
             ->assertJson(['success' => false]);
     }
@@ -158,25 +158,33 @@ class SeguridadAccesoTest extends TestCase
             ->assertJson(['ok' => true]);
     }
 
-    public function test_permisos_por_rol_y_administrador(): void
+    public function test_permisos_por_rol_extras_por_usuario_y_administrador(): void
     {
-        Route::middleware(['web', 'auth', 'permiso:INV.PRODUCTOS.VER'])->get('/_prueba-permiso', fn () => 'ok');
+        Route::middleware(['web', 'auth', 'permiso:productos.ver'])->get('/_prueba-permiso', fn () => 'ok');
         Route::middleware(['web', 'auth', 'admin'])->get('/_prueba-admin', fn () => 'ok');
 
         $admin = $this->crearUsuario();
         $vendedor = $this->crearUsuario(['username' => 'ventas', 'email' => 'ventas@nexus.test'], 'Ventas');
         $bodeguero = $this->crearUsuario(['username' => 'bodega', 'email' => 'bodega@nexus.test'], 'Bodega');
-        $idPermiso = DB::table('permiso')->insertGetId(['codigo' => 'INV.PRODUCTOS.VER']);
-        $idRolBodega = DB::table('usuario_rol')->where('id_usuario', $bodeguero->id_usuario)->value('id_rol');
-        DB::table('rol_permiso')->insert(['id_rol' => $idRolBodega, 'id_permiso' => $idPermiso]);
+        $this->darPermisos($bodeguero, ['productos.ver']);
 
-        $this->assertTrue($admin->puede('CUALQUIER.COSA'));
-        $this->assertTrue($bodeguero->puede('INV.PRODUCTOS.VER'));
-        $this->assertFalse($vendedor->puede('INV.PRODUCTOS.VER'));
+        $this->assertTrue($admin->puede('cualquier.cosa'));
+        $this->assertTrue($bodeguero->puede('productos.ver'));
+        $this->assertFalse($bodeguero->puede('productos.crear'));
+        $this->assertFalse($vendedor->fresh()->puede('productos.ver'));
 
-        $this->actingAs($bodeguero)->get('/_prueba-permiso')->assertOk();
-        $this->actingAs($vendedor)->get('/_prueba-permiso')->assertForbidden();
-        $this->actingAs($bodeguero)->get('/_prueba-admin')->assertForbidden();
+        // Extra por usuario: el vendedor recibe productos.ver sin cambiar su rol.
+        DB::table('usuario_permiso')->insert(['id_usuario' => $vendedor->id_usuario, 'id_permiso' => $this->permiso('productos.ver')]);
+        $this->assertTrue($vendedor->fresh()->puede('productos.ver'));
+
+        // Un módulo inactivo deja de dar permisos.
+        DB::table('modulo')->where('codigo', 'productos')->update(['activo' => false]);
+        $this->assertFalse($bodeguero->fresh()->puede('productos.ver'));
+        DB::table('modulo')->where('codigo', 'productos')->update(['activo' => true]);
+
+        $this->actingAs($bodeguero->fresh())->get('/_prueba-permiso')->assertOk();
+        $this->actingAs($this->crearUsuario(['username' => 'x', 'email' => 'x@nexus.test'], 'Otro'))->get('/_prueba-permiso')->assertForbidden();
+        $this->actingAs($bodeguero->fresh())->get('/_prueba-admin')->assertForbidden();
         $this->actingAs($admin)->get('/_prueba-admin')->assertOk();
     }
 
@@ -216,7 +224,7 @@ class SeguridadAccesoTest extends TestCase
         DB::table('rol')->update(['requiere_2fa' => true]);
 
         $this->actingAs($usuario)->get('/sistema/dashboard')->assertRedirect(route('cuenta.seguridad'));
-        $this->actingAs($usuario)->getJson('/api/v1/inventario/bodegas')->assertForbidden();
+        $this->actingAs($usuario)->getJson('/api/v1/auth/me')->assertForbidden();
         $this->actingAs($usuario)->get(route('cuenta.seguridad'))
             ->assertOk()
             ->assertSee('Tu rol exige la verificación en dos pasos');
@@ -322,15 +330,15 @@ class SeguridadAccesoTest extends TestCase
 
     // ── Paso 3a: layout nuevo, menú lateral y dashboard ─────────────────────
 
-    private function crearMenu(): array
+    /** Módulos del menú: Inventario (productos, bodegas), Configuración (usuarios y «sistema», solo admin) y un submenú. */
+    private function crearMenu(): void
     {
-        $grupo = DB::table('menu')->insertGetId(['id_empresa' => 1, 'nombre' => 'Inventario', 'orden' => 1]);
-        $productos = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $grupo, 'nombre' => 'Productos', 'icono' => 'package', 'ruta' => '/sistema/productos', 'orden' => 1]);
-        $bodegas = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $grupo, 'nombre' => 'Bodegas', 'icono' => 'archive', 'ruta' => '/sistema/bodegas', 'orden' => 2]);
-        $vacio = DB::table('menu')->insertGetId(['id_empresa' => 1, 'nombre' => 'Solo admin', 'orden' => 2]);
-        $usuarios = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $vacio, 'nombre' => 'Usuarios', 'icono' => 'user', 'ruta' => '/sistema/usuarios', 'orden' => 1]);
-
-        return compact('productos', 'bodegas', 'usuarios');
+        $this->permiso('productos.ver', ['nombre' => 'Productos', 'grupo' => 'Inventario', 'ruta' => '/sistema/productos', 'icono' => 'package', 'orden' => 301]);
+        $this->permiso('bodegas.ver', ['nombre' => 'Bodegas', 'grupo' => 'Inventario', 'ruta' => '/sistema/bodegas', 'icono' => 'archive', 'orden' => 302]);
+        $this->permiso('usuarios.ver', ['nombre' => 'Usuarios', 'grupo' => 'Configuración', 'ruta' => '/sistema/usuarios', 'orden' => 601]);
+        DB::table('modulo')->insert(['codigo' => 'sistema', 'nombre' => 'Solo admin', 'grupo' => 'Configuración', 'ruta' => '/sistema/configuracion', 'orden' => 602, 'activo' => true]);
+        $reportes = DB::table('modulo')->insertGetId(['codigo' => 'reportes', 'nombre' => 'Reportes', 'grupo' => 'Inventario', 'orden' => 303, 'activo' => true]);
+        $this->permiso('reportes.kardex.ver', ['nombre' => 'Kardex', 'ruta' => '/sistema/kardex', 'id_modulo_padre' => $reportes]);
     }
 
     public function test_dashboard_con_el_layout_nuevo_y_cifras_de_la_empresa(): void
@@ -350,33 +358,37 @@ class SeguridadAccesoTest extends TestCase
         $this->assertSame([2, 0, 0, 1], collect($respuesta->viewData('tarjetas'))->pluck('valor')->all());
     }
 
-    public function test_el_menu_lateral_respeta_los_roles(): void
+    public function test_el_menu_lateral_sale_de_los_modulos_que_puede_ver(): void
     {
-        $menu = $this->crearMenu();
+        $this->crearMenu();
         $admin = $this->crearUsuario();
         $bodeguero = $this->crearUsuario(['username' => 'bodega', 'email' => 'bodega@nexus.test'], 'Bodega');
-        $idRolBodega = DB::table('usuario_rol')->where('id_usuario', $bodeguero->id_usuario)->value('id_rol');
-        // Bodegas solo para el rol Bodega; Usuarios solo para otro rol: el bodeguero no lo ve.
-        $idOtroRol = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Contabilidad', 'activo' => true]);
-        DB::table('menu_rol')->insert([['id_menu' => $menu['bodegas'], 'id_rol' => $idRolBodega], ['id_menu' => $menu['usuarios'], 'id_rol' => $idOtroRol]]);
+        $this->darPermisos($bodeguero, ['bodegas.ver']);
 
-        $this->actingAs($admin)->get(route('dashboard'))->assertSee('Productos')->assertSee('Bodegas')->assertSee('Solo admin');
+        // El Administrador ve todo, incluidos los módulos sin permisos y los submenús.
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertSeeInOrder(['Inicio', 'Inventario', 'Productos', 'Bodegas', 'Reportes', 'Kardex', 'Configuración', 'Usuarios', 'Solo admin', 'Mi cuenta']);
 
+        // El bodeguero solo ve lo que tiene con «ver»; sin hijos visibles, el submenú no aparece.
         $this->actingAs($bodeguero)->get(route('dashboard'))
-            ->assertSee('Productos')->assertSee('Bodegas')
+            ->assertSee('Bodegas')->assertDontSee('>Productos<', false)->assertDontSee('Reportes')
             ->assertDontSee('Solo admin')->assertDontSee('Seguridad y accesos');
+
+        // Con un extra por usuario aparece la opción.
+        DB::table('usuario_permiso')->insert(['id_usuario' => $bodeguero->id_usuario, 'id_permiso' => $this->permiso('reportes.kardex.ver')]);
+        $this->actingAs($bodeguero->fresh())->get(route('dashboard'))->assertSee('Reportes')->assertSee('Kardex');
     }
 
     public function test_las_pantallas_vue_usan_el_layout_puente(): void
     {
         $this->crearMenu();
 
-        $this->actingAs($this->crearUsuario())->get('/sistema/bodegas')
+        $this->actingAs($this->crearUsuario())->get('/sistema/recepciones')
             ->assertOk()
             ->assertSee('navbar-vertical', false)
             ->assertSee('vue@2.5.16', false)
-            ->assertSee('/modulos-js/bodegas/index.js', false)
-            ->assertSee('Gestión de Bodegas');
+            ->assertSee('/modulos-js/recepciones/index.js', false)
+            ->assertSee('Recepciones de Mercadería');
     }
 
     public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void

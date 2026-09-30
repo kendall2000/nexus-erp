@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $idEmpresa = $usuario->id_empresa;
 
         $tarjetas = [
-            ['titulo' => 'Clientes activos', 'icono' => 'briefcase', 'color' => 'primary', 'enlace' => url('/sistema/clientes'),
+            ['titulo' => 'Clientes activos', 'icono' => 'briefcase', 'color' => 'primary', 'enlace' => $usuario->puede('clientes.ver') ? url('/sistema/clientes') : null,
                 'valor' => Cliente::where('id_empresa', $idEmpresa)->where('activo', 1)->count()],
             ['titulo' => 'Empleados', 'icono' => 'users', 'color' => 'success', 'enlace' => null,
                 'valor' => Empleado::where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')->count()],

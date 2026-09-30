@@ -7,20 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Tests\Concerns\EsquemaNexus;
 use Tests\TestCase;
 
-/** Paso 3c: Roles y permisos en Blade (CONFIG.ROLES.VER / GESTIONAR) sin escalada de privilegios. */
+/** Paso 3c + 4: Roles con matriz módulos × acciones (roles.ver/crear/editar/eliminar) sin escalada. */
 class RolesTest extends TestCase
 {
     use EsquemaNexus;
-
-    private int $modulo;
-
-    private function permiso(string $codigo): int
-    {
-        $this->modulo ??= DB::table('modulo_sistema')->insertGetId(['nombre' => 'Configuración', 'codigo' => 'CONFIG']);
-
-        return DB::table('permiso')->where('codigo', $codigo)->value('id_permiso')
-            ?? DB::table('permiso')->insertGetId(['id_modulo' => $this->modulo, 'codigo' => $codigo, 'descripcion' => $codigo]);
-    }
 
     private function idRol(Usuario $usuario): int
     {
@@ -32,13 +22,16 @@ class RolesTest extends TestCase
         return DB::table('rol_permiso')->where('id_rol', $idRol)->orderBy('id_permiso')->pluck('id_permiso')->map(fn ($id) => (int) $id)->all();
     }
 
-    /** Usuario con CONFIG.ROLES.GESTIONAR (y lo que se indique) que no es Administrador. */
+    private function rol(int $id): ?object
+    {
+        return DB::table('rol')->where('id_rol', $id)->first();
+    }
+
+    /** Usuario con roles.ver/crear/editar/eliminar (y lo que se indique) que no es Administrador. */
     private function gestor(array $extra = []): Usuario
     {
         $gestor = $this->crearUsuario(['username' => 'gestor', 'email' => 'gestor@nexus.test'], 'Jefe TI');
-        foreach (['CONFIG.ROLES.VER', 'CONFIG.ROLES.GESTIONAR', ...$extra] as $codigo) {
-            DB::table('rol_permiso')->insert(['id_rol' => $this->idRol($gestor), 'id_permiso' => $this->permiso($codigo)]);
-        }
+        $this->darPermisos($gestor, ['roles.ver', 'roles.crear', 'roles.editar', 'roles.eliminar', ...$extra]);
 
         return $gestor;
     }
@@ -54,25 +47,26 @@ class RolesTest extends TestCase
             ->assertOk()->assertSee('Administrador')->assertSee('Bodega')->assertDontSee('Rol Ajeno');
     }
 
-    public function test_crea_un_rol_con_permisos_y_opciones_del_menu(): void
+    public function test_crea_un_rol_con_la_matriz_de_permisos(): void
     {
         $admin = $this->crearUsuario();
-        $ver = $this->permiso('INV.PRODUCTOS.VER');
-        $grupo = DB::table('menu')->insertGetId(['id_empresa' => 1, 'nombre' => 'Inventario']);
-        $item = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $grupo, 'nombre' => 'Productos', 'ruta' => '/sistema/productos']);
+        $ver = $this->permiso('bodegas.ver', ['nombre' => 'Bodegas', 'grupo' => 'Inventario']);
+        $crear = $this->permiso('bodegas.crear');
+        DB::table('modulo')->insert(['codigo' => 'sistema', 'nombre' => 'Solo admin', 'activo' => true]);
 
-        $this->actingAs($admin)->get(route('roles.create'))->assertOk()->assertSee('INV.PRODUCTOS.VER')->assertSee('Productos');
+        // La matriz muestra el módulo con sus acciones; los módulos sin acciones no aparecen.
+        $this->actingAs($admin)->get(route('roles.create'))->assertOk()
+            ->assertSee('Bodegas')->assertSee('Inventario')->assertSee('value="'.$crear.'"', false)->assertDontSee('Solo admin');
 
         $this->actingAs($admin)->post(route('roles.store'), [
             'nombre' => ' Bodeguero ', 'descripcion' => 'Maneja la bodega', 'activo' => '1', 'requiere_2fa' => '1',
-            'permisos' => [$ver], 'menu' => [$item],
+            'permisos' => [$ver, $crear],
         ])->assertRedirect(route('roles.index'))->assertSessionHasNoErrors();
 
         $rol = DB::table('rol')->where('nombre', 'Bodeguero')->first();
         $this->assertSame(1, (int) $rol->id_empresa);
         $this->assertTrue((bool) $rol->requiere_2fa);
-        $this->assertSame([$ver], $this->permisosDe($rol->id_rol));
-        $this->assertSame([$item], DB::table('menu_rol')->where('id_rol', $rol->id_rol)->pluck('id_menu')->map(fn ($i) => (int) $i)->all());
+        $this->assertSame([$ver, $crear], $this->permisosDe($rol->id_rol));
     }
 
     public function test_el_nombre_administrador_esta_reservado(): void
@@ -89,17 +83,29 @@ class RolesTest extends TestCase
         $idAdmin = $this->idRol($admin);
 
         $this->actingAs($admin)->put(route('roles.update', $idAdmin), [
-            'nombre' => 'Jefe', 'descripcion' => 'Todo el sistema', 'activo' => '0', 'permisos' => [$this->permiso('X.Y')],
+            'nombre' => 'Jefe', 'descripcion' => 'Todo el sistema', 'activo' => '0', 'permisos' => [$this->permiso('x.ver')],
         ])->assertSessionHasNoErrors();
 
-        $rol = DB::table('rol')->where('id_rol', $idAdmin)->first();
+        $rol = $this->rol($idAdmin);
         $this->assertSame('Administrador', $rol->nombre);
         $this->assertSame('Todo el sistema', $rol->descripcion);
         $this->assertTrue((bool) $rol->activo);
         $this->assertSame([], $this->permisosDe($idAdmin));
 
         $this->actingAs($admin)->delete(route('roles.destroy', $idAdmin))->assertSessionHasErrors('rol');
-        $this->assertNotNull(DB::table('rol')->where('id_rol', $idAdmin)->first());
+        $this->assertNotNull($this->rol($idAdmin));
+    }
+
+    public function test_cada_accion_de_roles_exige_su_permiso(): void
+    {
+        $lector = $this->crearUsuario(['username' => 'l', 'email' => 'l@nexus.test'], 'Consulta');
+        $this->darPermisos($lector, ['roles.ver']);
+        $otro = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Ventas', 'activo' => true]);
+
+        $this->actingAs($lector)->get(route('roles.edit', $otro))->assertOk()->assertDontSee('Guardar rol');
+        $this->actingAs($lector)->get(route('roles.create'))->assertForbidden();
+        $this->actingAs($lector)->put(route('roles.update', $otro), ['nombre' => 'X'])->assertForbidden();
+        $this->actingAs($lector)->delete(route('roles.destroy', $otro))->assertForbidden();
     }
 
     public function test_quien_no_es_admin_no_puede_editar_su_propio_rol(): void
@@ -109,29 +115,41 @@ class RolesTest extends TestCase
 
         $this->actingAs($gestor)->get(route('roles.edit', $idPropio))->assertOk()->assertSee('No puedes modificar un rol que tú mismo tienes');
         $this->actingAs($gestor)->put(route('roles.update', $idPropio), [
-            'nombre' => 'Jefe TI', 'permisos' => [$this->permiso('CONFIG.USUARIOS.EDITAR')],
+            'nombre' => 'Jefe TI', 'permisos' => [$this->permiso('usuarios.editar')],
         ])->assertSessionHasErrors('rol');
-        $this->assertNotContains($this->permiso('CONFIG.USUARIOS.EDITAR'), $this->permisosDe($idPropio));
+        $this->assertNotContains($this->permiso('usuarios.editar'), $this->permisosDe($idPropio));
     }
 
     public function test_quien_no_es_admin_solo_da_permisos_que_tiene_y_conserva_los_ajenos(): void
     {
-        $gestor = $this->gestor(['INV.PRODUCTOS.VER']);
+        $gestor = $this->gestor(['productos.ver']);
         $otro = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Ventas', 'activo' => true]);
-        $ajeno = $this->permiso('FINANZAS.FACTURAS.ANULAR');
+        $ajeno = $this->permiso('facturas.anular');
         DB::table('rol_permiso')->insert(['id_rol' => $otro, 'id_permiso' => $ajeno]);
 
         // Intentar dar un permiso que no tiene → 403.
         $this->actingAs($gestor)->put(route('roles.update', $otro), [
-            'nombre' => 'Ventas', 'activo' => '1', 'permisos' => [$this->permiso('CONFIG.USUARIOS.EDITAR')],
+            'nombre' => 'Ventas', 'activo' => '1', 'permisos' => [$this->permiso('usuarios.editar')],
         ])->assertForbidden();
 
         // Dar uno que sí tiene: el ajeno que ya tenía el rol se conserva.
         $this->actingAs($gestor)->put(route('roles.update', $otro), [
-            'nombre' => 'Ventas', 'activo' => '1', 'permisos' => [$this->permiso('INV.PRODUCTOS.VER')],
+            'nombre' => 'Ventas', 'activo' => '1', 'permisos' => [$this->permiso('productos.ver')],
         ])->assertSessionHasNoErrors();
 
-        $this->assertEqualsCanonicalizing([$ajeno, $this->permiso('INV.PRODUCTOS.VER')], $this->permisosDe($otro));
+        $this->assertEqualsCanonicalizing([$ajeno, $this->permiso('productos.ver')], $this->permisosDe($otro));
+    }
+
+    public function test_los_extras_propios_tambien_cuentan_para_dar_permisos(): void
+    {
+        $gestor = $this->gestor();
+        DB::table('usuario_permiso')->insert(['id_usuario' => $gestor->id_usuario, 'id_permiso' => $this->permiso('pagos.ver')]);
+        $otro = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Caja', 'activo' => true]);
+
+        $this->actingAs($gestor->fresh())->put(route('roles.update', $otro), [
+            'nombre' => 'Caja', 'activo' => '1', 'permisos' => [$this->permiso('pagos.ver')],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame([$this->permiso('pagos.ver')], $this->permisosDe($otro));
     }
 
     public function test_no_elimina_roles_con_usuarios_y_si_los_vacios(): void
@@ -139,15 +157,13 @@ class RolesTest extends TestCase
         $admin = $this->crearUsuario();
         $conUsuarios = $this->idRol($this->crearUsuario(['username' => 'v', 'email' => 'v@nexus.test'], 'Ventas'));
         $vacio = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Temporal', 'activo' => true]);
-        DB::table('rol_permiso')->insert(['id_rol' => $vacio, 'id_permiso' => $this->permiso('X.Y')]);
-        DB::table('menu_rol')->insert(['id_rol' => $vacio, 'id_menu' => 1]);
+        DB::table('rol_permiso')->insert(['id_rol' => $vacio, 'id_permiso' => $this->permiso('x.ver')]);
 
         $this->actingAs($admin)->delete(route('roles.destroy', $conUsuarios))->assertSessionHasErrors('rol');
         $this->actingAs($admin)->delete(route('roles.destroy', $vacio))->assertRedirect(route('roles.index'));
 
-        $this->assertNull(DB::table('rol')->where('id_rol', $vacio)->first());
+        $this->assertNull($this->rol($vacio));
         $this->assertSame(0, DB::table('rol_permiso')->where('id_rol', $vacio)->count());
-        $this->assertSame(0, DB::table('menu_rol')->where('id_rol', $vacio)->count());
     }
 
     public function test_los_roles_de_sistema_son_de_solo_lectura(): void
@@ -156,7 +172,7 @@ class RolesTest extends TestCase
         $sistema = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Auditor', 'activo' => true, 'es_rol_sistema' => true]);
 
         $this->actingAs($admin)->put(route('roles.update', $sistema), ['nombre' => 'Otro'])->assertSessionHasErrors('rol');
-        $this->assertSame('Auditor', DB::table('rol')->where('id_rol', $sistema)->first()->nombre);
+        $this->assertSame('Auditor', $this->rol($sistema)->nombre);
     }
 
     public function test_desactivar_el_rol_impide_entrar_a_sus_usuarios(): void
@@ -167,10 +183,5 @@ class RolesTest extends TestCase
         $this->actingAs($admin)->put(route('roles.update', $this->idRol($vendedor)), ['nombre' => 'Ventas'])->assertSessionHasNoErrors();
 
         $this->assertFalse($vendedor->fresh()->puedeEntrar());
-    }
-
-    public function test_la_api_de_roles_ya_no_existe(): void
-    {
-        $this->actingAs($this->crearUsuario())->getJson('/api/v1/roles')->assertNotFound();
     }
 }

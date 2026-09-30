@@ -1,11 +1,14 @@
 @extends('layouts.app', ['titulo' => 'Usuarios'])
 
 @section('contenido')
-    @php $puedeEditar = auth()->user()->puede('CONFIG.USUARIOS.EDITAR'); @endphp
+    @php
+        $yo = auth()->user();
+        [$puedeEditar, $puedeEliminar] = [$yo->puede('usuarios.editar'), $yo->puede('usuarios.eliminar')];
+    @endphp
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 class="mb-0 text-1100">Usuarios</h2>
-        @if (auth()->user()->puede('CONFIG.USUARIOS.CREAR'))
+        @if ($yo->puede('usuarios.crear'))
             <a class="btn btn-primary" href="{{ route('usuarios.create') }}"><span class="fas fa-plus me-2"></span>Nuevo usuario</a>
         @endif
     </div>
@@ -71,12 +74,14 @@
                                             @method('DELETE')
                                             <button class="btn btn-phoenix-warning btn-sm" type="submit">Cerrar sesiones</button>
                                         </form>
-                                        <form method="POST" action="{{ route('usuarios.destroy', $u->id_usuario) }}" class="d-inline" onsubmit="return confirm(@js('¿Eliminar al usuario '.$u->username.'? Ya no podrá entrar al sistema.'))">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="btn btn-link text-danger btn-sm px-1" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
-                                        </form>
                                     @endif
+                                @endif
+                                @if ($puedeEliminar && $u->id_usuario !== auth()->id())
+                                    <form method="POST" action="{{ route('usuarios.destroy', $u->id_usuario) }}" class="d-inline" onsubmit="return confirm(@js('¿Eliminar al usuario '.$u->username.'? Ya no podrá entrar al sistema.'))">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-link text-danger btn-sm px-1" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
+                                    </form>
                                 @endif
                             </td>
                         </tr>

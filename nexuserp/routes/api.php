@@ -2,10 +2,8 @@
 
 use App\Http\Controllers\Api\V1\Core\AuthController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
 use App\Http\Controllers\Api\V1\Core\GeografiaController;
 use App\Http\Controllers\Api\V1\Inventario\ProductoController;
-use App\Http\Controllers\Api\V1\Inventario\BodegaController;
 use App\Http\Controllers\Api\V1\Inventario\ProveedorController;
 use App\Http\Controllers\Api\V1\Inventario\OrdenCompraController;
 use App\Http\Controllers\Api\V1\Inventario\RecepcionController;
@@ -24,36 +22,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
 
-    // ── Módulo Inventario ──────────────────────────────────────────
-    // Bodegas 
-    Route::get('inventario/bodegas/catalogos',    [BodegaController::class, 'catalogos']);
-    Route::get('inventario/bodegas',              [BodegaController::class, 'index']);
-    Route::post('inventario/bodegas',              [BodegaController::class, 'store']);
-    Route::get('inventario/bodegas/{id}',         [BodegaController::class, 'show']);
-    Route::put('inventario/bodegas/{id}',         [BodegaController::class, 'update']);
-    Route::patch ('inventario/bodegas/{id}/toggle',  [BodegaController::class, 'toggle']);
-    Route::delete('inventario/bodegas/{id}',         [BodegaController::class, 'destroy']);
-
-    // Productos
-    Route::get ('inventario/productos/catalogos',     [ProductoController::class, 'catalogos']); 
-    Route::get ('inventario/productos',               [ProductoController::class, 'index']);
-    Route::post('inventario/productos',               [ProductoController::class, 'store']);
-    Route::get ('inventario/productos/{id}',          [ProductoController::class, 'show']);
-    Route::put ('inventario/productos/{id}',          [ProductoController::class, 'update']);
-    Route::patch('inventario/productos/{id}/toggle', [ProductoController::class, 'toggle']);
-    Route::delete('inventario/productos/{id}',        [ProductoController::class, 'destroy']);
-
-    // ── Inventario: Categorías ─────────────────────────────────────
-    Route::prefix('inventario')->group(function () {
-        Route::get('categorias/catalogos',     [CategoriaProductoController::class, 'catalogos']);
-        Route::get('categorias',               [CategoriaProductoController::class, 'index']);
-        Route::post('categorias',               [CategoriaProductoController::class, 'store']);
-        Route::get('categorias/{id}',          [CategoriaProductoController::class, 'show']);
-        Route::put('categorias/{id}',          [CategoriaProductoController::class, 'update']);
-        Route::patch ('categorias/{id}/toggle',   [CategoriaProductoController::class, 'toggle']);
-        Route::delete('categorias/{id}',          [CategoriaProductoController::class, 'destroy']);
-    });
-
     // ── Geografía: catálogos de solo lectura para los selects en cascada de Clientes
     //    (la administración está en /sistema/geografia) ────
     Route::get('geografia/divisiones/{idPais}',            [GeografiaController::class, 'divisionesPorPais']);
@@ -62,25 +30,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('geografia/municipio/{id}/cascada', [GeografiaController::class, 'datosParaCascada']);
 
     
-
-    // ── Proveedores ────────────────────────────────────────────────
-    Route::get('inventario/proveedores/catalogos',    [ProveedorController::class, 'catalogos']);
-    Route::get('inventario/proveedores',              [ProveedorController::class, 'index']);
-    Route::post('inventario/proveedores',              [ProveedorController::class, 'store']);
-    Route::get('inventario/proveedores/{id}',         [ProveedorController::class, 'show']);
-    Route::put('inventario/proveedores/{id}',         [ProveedorController::class, 'update']);
-    Route::patch ('inventario/proveedores/{id}/toggle',  [ProveedorController::class, 'toggle']);
-    Route::delete('inventario/proveedores/{id}',         [ProveedorController::class, 'destroy']);
-
-    // ── Órdenes de Compra ──────────────────────────────────────────
-    Route::get('inventario/ordenes-compra/catalogos',     [OrdenCompraController::class, 'catalogos']);
-    Route::get('inventario/ordenes-compra',               [OrdenCompraController::class, 'index']);
-    Route::post('inventario/ordenes-compra',               [OrdenCompraController::class, 'store']);
-    Route::get('inventario/ordenes-compra/{id}',          [OrdenCompraController::class, 'show']);
-    Route::put('inventario/ordenes-compra/{id}',          [OrdenCompraController::class, 'update']);
-    Route::patch ('inventario/ordenes-compra/{id}/aprobar',  [OrdenCompraController::class, 'aprobar']);
-    Route::patch ('inventario/ordenes-compra/{id}/cancelar', [OrdenCompraController::class, 'cancelar']);
-    Route::delete('inventario/ordenes-compra/{id}',          [OrdenCompraController::class, 'destroy']);
 
     // ── Recepciones de Mercadería ──────────────────────────────────
     Route::get('inventario/recepciones/catalogos',        [RecepcionController::class, 'catalogos']);

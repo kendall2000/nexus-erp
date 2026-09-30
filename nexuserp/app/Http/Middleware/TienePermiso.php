@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Uso en rutas: ->middleware('permiso:INV.PRODUCTOS.VER'). El Administrador pasa siempre. */
+/** Uso en rutas: ->middleware('permiso:productos.ver'). El Administrador pasa siempre. */
 class TienePermiso
 {
     public function handle(Request $request, Closure $next, string $permiso): Response

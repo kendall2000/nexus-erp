@@ -169,7 +169,11 @@ class PresupuestoAnual extends Model
             throw new \DomainException('Solo presupuestos aprobados aceptan ejecución.');
         }
 
-        $this->increment("eje_" . self::MESES[$mes], $monto);
+        // increment() no dispara «saving»: se actualizan juntos el mes y el total
+        // (antes solo el mes, y el saldo disponible quedaba desactualizado).
+        $columna = "eje_" . self::MESES[$mes];
+        static::query()->whereKey($this->getKey())->incrementEach([$columna => $monto, 'total_ejecutado' => $monto]);
+        $this->refresh();
     }
 
     // ── Scopes ─────────────────────────────────────────────────

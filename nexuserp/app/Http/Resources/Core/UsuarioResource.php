@@ -36,11 +36,8 @@ class UsuarioResource extends JsonResource
                 $this->roles->pluck('nombre')
             ),
 
-            'permisos' => $this->whenLoaded('roles', fn() =>
-                $this->roles->flatMap(fn($rol) =>
-                    $rol->permisos->pluck('codigo')
-                )->unique()->values()
-            ),
+            // Permisos efectivos «modulo.accion»: roles activos + extras del usuario.
+            'permisos' => $this->codigosPermiso(),
 
             // Timestamps
             'created_at' => $this->created_at?->toDateString(),

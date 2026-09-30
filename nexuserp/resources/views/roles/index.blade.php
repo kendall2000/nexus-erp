@@ -2,12 +2,15 @@
 
 {{-- Estructura: apps/e-commerce/admin/products.html (buscador + tabla ordenable con list.js). --}}
 @section('contenido')
-    @php $puedeGestionar = auth()->user()->puede('CONFIG.ROLES.GESTIONAR'); @endphp
+    @php
+        $yo = auth()->user();
+        [$puedeCrear, $puedeEditar, $puedeEliminar] = [$yo->puede('roles.crear'), $yo->puede('roles.editar'), $yo->puede('roles.eliminar')];
+    @endphp
     <div class="mb-9">
         <div class="row g-3 mb-4">
             <div class="col-auto">
                 <h2 class="mb-0">Roles y permisos</h2>
-                <p class="text-700 fw-semi-bold mb-0 mt-1">Qué puede hacer y ver cada puesto. El Administrador tiene acceso a todo.</p>
+                <p class="text-700 fw-semi-bold mb-0 mt-1">Qué puede hacer cada puesto en cada módulo. El Administrador tiene acceso a todo.</p>
             </div>
         </div>
 
@@ -20,7 +23,7 @@
                             <span class="fas fa-search search-box-icon"></span>
                         </form>
                     </div>
-                    @if ($puedeGestionar)
+                    @if ($puedeCrear)
                         <div class="ms-xxl-auto">
                             <a class="btn btn-primary" href="{{ route('roles.create') }}"><span class="fas fa-plus me-2"></span>Nuevo rol</a>
                         </div>
@@ -75,8 +78,8 @@
                                     <div class="font-sans-serif btn-reveal-trigger position-static">
                                         <button class="btn btn-sm dropdown-toggle dropdown-caret-none transition-none btn-reveal fs--2" type="button" data-bs-toggle="dropdown" data-boundary="window" aria-haspopup="true" aria-expanded="false" data-bs-reference="parent" aria-label="Acciones"><span class="fas fa-ellipsis-h fs--2"></span></button>
                                         <div class="dropdown-menu dropdown-menu-end py-2">
-                                            <a class="dropdown-item" href="{{ route('roles.edit', $rol->id_rol) }}">{{ $puedeGestionar ? 'Editar' : 'Ver' }}</a>
-                                            @if ($puedeGestionar && ! $rol->esProtegido() && $rol->usuarios_count === 0)
+                                            <a class="dropdown-item" href="{{ route('roles.edit', $rol->id_rol) }}">{{ $puedeEditar ? 'Editar' : 'Ver' }}</a>
+                                            @if ($puedeEliminar && ! $rol->esProtegido() && $rol->usuarios_count === 0)
                                                 <div class="dropdown-divider"></div>
                                                 <form method="POST" action="{{ route('roles.destroy', $rol->id_rol) }}" onsubmit="return confirm(@js('¿Eliminar el rol '.$rol->nombre.'?'))">
                                                     @csrf

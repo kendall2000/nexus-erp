@@ -6,9 +6,11 @@ use App\Models\Core\Rol;
 use App\Models\Core\Sucursal;
 use App\Models\Core\Usuario;
 use App\Support\Archivos;
+use App\Support\MatrizPermisos;
 use App\Support\Seguridad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -80,7 +82,50 @@ class UsuarioController extends Controller
             'idRol' => $usuario->roles->first()?->id_rol,
             'roles' => $this->roles($request),
             'sucursales' => $this->sucursales($request),
+            // Permisos extra (además de los del rol), como en sistema-inventario.
+            'matriz' => MatrizPermisos::datos(),
+            'heredados' => MatrizPermisos::idsPorRoles($usuario)->all(),
+            'extras' => MatrizPermisos::idsExtras($usuario)->all(),
+            'propios' => MatrizPermisos::idsDe($request->user()),
         ]);
+    }
+
+    /**
+     * Reemplaza los permisos extra del usuario. Quien no es Administrador solo puede
+     * dar los que él tiene; los extras que no puede tocar se conservan.
+     */
+    public function permisos(Request $request, int $usuario): RedirectResponse
+    {
+        $usuario = $this->deMiEmpresa($request)->findOrFail($usuario);
+        $request->validate([
+            'permisos' => ['array'],
+            'permisos.*' => ['integer', Rule::exists('permiso', 'id_permiso')],
+        ]);
+        $ids = array_values(array_unique(array_map('intval', $request->input('permisos', []))));
+        // Los que ya da su rol no se guardan como extra.
+        $ids = array_values(array_diff($ids, MatrizPermisos::idsPorRoles($usuario)->all()));
+
+        $propios = MatrizPermisos::idsDe($request->user());
+        if ($propios !== null) {
+            if (array_diff($ids, $propios)) {
+                abort(403, 'No puedes dar permisos que tú no tienes.');
+            }
+            $ids = array_values(array_unique([...$ids, ...array_diff(MatrizPermisos::idsExtras($usuario)->all(), $propios)]));
+        }
+
+        DB::transaction(function () use ($request, $usuario, $ids) {
+            DB::table('usuario_permiso')->where('id_usuario', $usuario->id_usuario)->whereNotIn('id_permiso', $ids)->delete();
+            $existentes = MatrizPermisos::idsExtras($usuario)->all();
+            DB::table('usuario_permiso')->insert(array_map(fn ($id) => [
+                'id_usuario' => $usuario->id_usuario, 'id_permiso' => $id,
+                'asignado_por' => $request->user()->id_usuario, 'asignado_at' => now(),
+            ], array_values(array_diff($ids, $existentes))));
+        });
+
+        $n = count($ids);
+
+        return redirect()->route('usuarios.edit', $usuario->id_usuario)
+            ->with('status', "Permisos extra de {$usuario->username} guardados ({$n} ".($n === 1 ? 'permiso' : 'permisos').').');
     }
 
     public function update(Request $request, int $usuario): RedirectResponse

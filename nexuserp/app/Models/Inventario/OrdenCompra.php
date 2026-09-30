@@ -3,9 +3,7 @@
 namespace App\Models\Inventario;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use App\Models\Core\Empresa;
-use App\Models\Finanzas\PresupuestoAnual;
 
 class OrdenCompra extends Model
 {
@@ -74,20 +72,19 @@ class OrdenCompra extends Model
     {
         $empresa     = Empresa::find($this->id_empresa);
         $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false; // OC default: precio sin IVA
+        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false;
 
-        $subtotal = $this->detalles()->sum('subtotal');
-        $iva      = round($subtotal * $tasaIva, 4);
+        $subtotal = (float) $this->detalles()->sum('subtotal');
+        if ($ivaIncluido) {
+            // Las líneas ya traen el IVA: el total es la suma y el IVA es la parte incluida.
+            $total = round($subtotal, 4);
+            $iva   = round($subtotal - $subtotal / (1 + $tasaIva), 4);
+        } else {
+            $iva   = round($subtotal * $tasaIva, 4);
+            $total = round($subtotal + $iva, 4);
+        }
 
-        $total = $ivaIncluido
-            ? round($subtotal, 4)              // IVA ya incluido en líneas
-            : round($subtotal + $iva, 4);      // IVA se suma al final
-
-        $this->update([
-            'subtotal' => $subtotal,
-            'iva'      => $iva,
-            'total'    => $total,
-        ]);
+        $this->update(['subtotal' => $subtotal, 'iva' => $iva, 'total' => $total]);
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────
@@ -101,126 +98,5 @@ class OrdenCompra extends Model
                  ->where('fecha_entrega_esperada', '<', today());
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // HOOK: actualizar presupuesto al aprobar / cancelar
-    // ════════════════════════════════════════════════════════════════════════
-    protected static function booted(): void
-    {
-        static::updated(function (self $oc) {
-            // Pasa a ENVIADA (aprobada) → SUMA al ejecutado del presupuesto
-            if ($oc->wasChanged('estado') && $oc->estado === 'ENVIADA') {
-                self::actualizarPresupuestoPorAprobacion($oc);
-            }
-
-            // Pasa a CANCELADA → REVIERTE lo que se sumó
-            if ($oc->wasChanged('estado') && $oc->estado === 'CANCELADA') {
-                $estadosOriginalSumaron = ['ENVIADA', 'PARCIAL', 'RECIBIDA'];
-                $estadoOriginal = $oc->getOriginal('estado');
-                if (in_array($estadoOriginal, $estadosOriginalSumaron)) {
-                    self::revertirPresupuestoPorCancelacion($oc);
-                }
-            }
-        });
-    }
-
-    /**
-     * Suma la BASE NETA (sin IVA) de cada línea al presupuesto de gastos.
-     */
-    private static function actualizarPresupuestoPorAprobacion(self $oc): void
-    {
-        $oc->load('detalles.producto');
-
-        $empresa     = Empresa::find($oc->id_empresa);
-        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false;
-
-        $mes  = $oc->fecha_emision->month;
-        $anio = $oc->fecha_emision->year;
-
-        foreach ($oc->detalles as $linea) {
-            $idCentro = $linea->centro_efectivo;
-            $idCuenta = $linea->cuenta_efectiva;
-
-            if (!$idCentro || !$idCuenta) continue;
-
-            $subtotal  = (float) $linea->subtotal;
-            // En OC asumimos que cada línea es afecta a IVA (los gastos típicamente lo son)
-            $montoNeto = self::calcularMontoNeto($subtotal, true, $tasaIva, $ivaIncluido);
-
-            $presupuesto = PresupuestoAnual::where('id_empresa', $oc->id_empresa)
-                ->where('id_centro', $idCentro)
-                ->where('id_cuenta', $idCuenta)
-                ->where('anio', $anio)
-                ->where('estado', 'APROBADO')
-                ->first();
-
-            if ($presupuesto) {
-                try {
-                    $presupuesto->registrarEjecucion($mes, $montoNeto);
-                } catch (\Exception $e) {
-                    Log::warning("No se pudo registrar ejecución de OC en presupuesto: {$e->getMessage()}", [
-                        'oc'         => $oc->id_oc,
-                        'linea'      => $linea->id_linea,
-                        'centro'     => $idCentro,
-                        'cuenta'     => $idCuenta,
-                        'monto_neto' => $montoNeto,
-                    ]);
-                }
-            }
-        }
-    }
-
-    /**
-     * Resta los montos al presupuesto cuando se cancela la OC.
-     */
-    private static function revertirPresupuestoPorCancelacion(self $oc): void
-    {
-        $oc->load('detalles.producto');
-
-        $empresa     = Empresa::find($oc->id_empresa);
-        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false;
-
-        $mes       = $oc->fecha_emision->month;
-        $anio      = $oc->fecha_emision->year;
-        $nombreMes = PresupuestoAnual::MESES[$mes] ?? null;
-
-        if (!$nombreMes) return;
-
-        foreach ($oc->detalles as $linea) {
-            $idCentro = $linea->centro_efectivo;
-            $idCuenta = $linea->cuenta_efectiva;
-
-            if (!$idCentro || !$idCuenta) continue;
-
-            $subtotal  = (float) $linea->subtotal;
-            $montoNeto = self::calcularMontoNeto($subtotal, true, $tasaIva, $ivaIncluido);
-
-            $presupuesto = PresupuestoAnual::where('id_empresa', $oc->id_empresa)
-                ->where('id_centro', $idCentro)
-                ->where('id_cuenta', $idCuenta)
-                ->where('anio', $anio)
-                ->first();
-
-            if ($presupuesto) {
-                $presupuesto->decrement("eje_{$nombreMes}", $montoNeto);
-                $presupuesto->decrement('total_ejecutado', $montoNeto);
-            }
-        }
-    }
-
-    /**
-     * Calcula el monto NETO (sin IVA) que va al presupuesto.
-     * Mismo helper que en Factura para consistencia.
-     */
-    private static function calcularMontoNeto(
-        float $subtotal,
-        bool $esAfectoIva,
-        float $tasaIva,
-        bool $ivaIncluido
-    ): float {
-        if (!$esAfectoIva)  return round($subtotal, 4);
-        if ($ivaIncluido)   return round($subtotal / (1 + $tasaIva), 4);
-        return round($subtotal, 4);
-    }
+    // La ejecución del presupuesto (al aprobar / cancelar) está en App\Support\EjecucionPresupuesto.
 }

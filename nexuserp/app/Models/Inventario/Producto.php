@@ -19,6 +19,8 @@ class Producto extends Model
         'unidad_medida',
         'precio_compra',
         'precio_venta',
+        'id_cuenta_gasto',
+        'id_centro_default',
         'moneda',
         'stock_minimo',
         'stock_maximo',
@@ -54,6 +56,17 @@ class Producto extends Model
     public function moneda()
     {
         return $this->belongsTo(\App\Models\Core\Moneda::class, 'moneda', 'codigo');
+    }
+
+    /** Cuenta contable de gasto y centro de costo por defecto (las líneas de compra los heredan). */
+    public function cuentaGasto()
+    {
+        return $this->belongsTo(\App\Models\Core\CuentaContable::class, 'id_cuenta_gasto');
+    }
+
+    public function centroDefault()
+    {
+        return $this->belongsTo(\App\Models\Core\CentroCosto::class, 'id_centro_default');
     }
 
     public function stocks()

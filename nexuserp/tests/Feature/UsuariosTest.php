@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\EsquemaNexus;
 use Tests\TestCase;
 
-/** Paso 3b: módulo Usuarios en Blade con permisos CONFIG.USUARIOS.*. */
+/** Paso 3b: módulo Usuarios en Blade con permisos usuarios.* y permisos extra por usuario. */
 class UsuariosTest extends TestCase
 {
     use EsquemaNexus;
@@ -49,7 +49,7 @@ class UsuariosTest extends TestCase
     {
         $lector = $this->crearUsuario(['username' => 'lector', 'email' => 'lector@nexus.test'], 'Consulta');
         $sinPermiso = $this->crearUsuario(['username' => 'nadie', 'email' => 'nadie@nexus.test'], 'Bodega');
-        $this->darPermisos($lector, ['CONFIG.USUARIOS.VER']);
+        $this->darPermisos($lector, ['usuarios.ver']);
 
         $this->actingAs($sinPermiso)->get(route('usuarios.index'))->assertForbidden();
         $this->actingAs($lector)->get(route('usuarios.index'))->assertOk()->assertDontSee('Nuevo usuario')->assertDontSee('Editar');
@@ -177,5 +177,60 @@ class UsuariosTest extends TestCase
 
         $this->assertSame('Nombre Nuevo', $admin->fresh()->nombre_completo);
         $this->assertNull($admin->fresh()->avatar_url);
+    }
+
+    // ── Permisos extra por usuario ──────────────────────────────────────────
+
+    private function extras(Usuario $usuario): array
+    {
+        return DB::table('usuario_permiso')->where('id_usuario', $usuario->id_usuario)->orderBy('id_permiso')->pluck('id_permiso')->map(fn ($i) => (int) $i)->all();
+    }
+
+    public function test_asigna_permisos_extra_sin_duplicar_los_del_rol(): void
+    {
+        $admin = $this->crearUsuario();
+        $vendedor = $this->crearUsuario(['username' => 'v', 'email' => 'v@nexus.test'], 'Ventas');
+        $this->darPermisos($vendedor, ['clientes.ver']);
+        [$verClientes, $verBodegas] = [$this->permiso('clientes.ver'), $this->permiso('bodegas.ver')];
+
+        $this->actingAs($admin)->get(route('usuarios.edit', $vendedor->id_usuario))->assertOk()->assertSee('Permisos extra');
+
+        $this->actingAs($admin)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => [$verClientes, $verBodegas]])
+            ->assertRedirect(route('usuarios.edit', $vendedor->id_usuario))->assertSessionHasNoErrors();
+
+        // clientes.ver ya lo da el rol: solo bodegas.ver queda como extra.
+        $this->assertSame([$verBodegas], $this->extras($vendedor));
+        $this->assertTrue($vendedor->fresh()->puede('bodegas.ver'));
+        $this->assertSame($admin->id_usuario, (int) DB::table('usuario_permiso')->value('asignado_por'));
+
+        // Guardar sin marcar nada los quita.
+        $this->actingAs($admin)->put(route('usuarios.permisos', $vendedor->id_usuario), []);
+        $this->assertSame([], $this->extras($vendedor));
+    }
+
+    public function test_extras_sin_escalada_y_conservando_los_ajenos(): void
+    {
+        $jefe = $this->crearUsuario(['username' => 'jefe', 'email' => 'jefe@nexus.test'], 'Jefe');
+        $this->darPermisos($jefe, ['usuarios.editar', 'bodegas.ver']);
+        $vendedor = $this->crearUsuario(['username' => 'v', 'email' => 'v@nexus.test'], 'Ventas');
+        $anular = $this->permiso('facturas.anular');
+        DB::table('usuario_permiso')->insert(['id_usuario' => $vendedor->id_usuario, 'id_permiso' => $anular]);
+
+        // No puede dar un permiso que no tiene.
+        $this->actingAs($jefe)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => [$this->permiso('roles.editar')]])
+            ->assertForbidden();
+
+        // Da bodegas.ver; facturas.anular (que él no tiene) se conserva.
+        $this->actingAs($jefe)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => [$this->permiso('bodegas.ver')]])
+            ->assertSessionHasNoErrors();
+        $this->assertEqualsCanonicalizing([$anular, $this->permiso('bodegas.ver')], $this->extras($vendedor));
+    }
+
+    public function test_extras_de_otra_empresa_no(): void
+    {
+        $ajeno = $this->crearUsuario(['id_empresa' => 2, 'username' => 'otra', 'email' => 'otra@nexus.test']);
+
+        $this->actingAs($this->crearUsuario())->put(route('usuarios.permisos', $ajeno->id_usuario), ['permisos' => [$this->permiso('bodegas.ver')]])
+            ->assertNotFound();
     }
 }

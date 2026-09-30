@@ -85,4 +85,26 @@
             </form>
         </div>
     </div>
+    @if ($usuario->exists)
+        {{-- Permisos extra: además de los de su rol (como en sistema-inventario). --}}
+        <div class="card mt-4">
+            <div class="card-body">
+                <h4 class="mb-1">Permisos extra</h4>
+                @if ($usuario->esAdministrador())
+                    <p class="text-700 fs--1 mb-0">Es Administrador: ya tiene todos los permisos.</p>
+                @else
+                    <p class="text-700 fs--1 mb-3">
+                        Se suman a los de su rol ({{ $usuario->roles->pluck('nombre')->join(', ') ?: 'sin rol' }}). Los que ya da el rol aparecen marcados y fijos.
+                        @if ($propios !== null) Solo puedes dar los permisos que tú tienes. @endif
+                    </p>
+                    <form method="POST" action="{{ route('usuarios.permisos', $usuario->id_usuario) }}">
+                        @csrf
+                        @method('PUT')
+                        @include('permisos.matriz', ['matriz' => $matriz, 'marcados' => $extras, 'propios' => $propios, 'heredados' => $heredados])
+                        <button class="btn btn-primary" type="submit">Guardar permisos extra</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
 @endsection
