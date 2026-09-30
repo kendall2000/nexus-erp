@@ -10,6 +10,7 @@ use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
@@ -156,12 +157,19 @@ Route::middleware('auth')->group(function () {
         Route::patch('{orden}/cancelar', 'cancelar')->whereNumber('orden')->middleware('permiso:ordenes_compra.cancelar')->name('cancelar');
     });
 
+    // Recepciones de mercadería (entrada al stock y al kardex; no se editan ni se anulan)
+    Route::prefix('sistema/recepciones')->name('recepciones.')->controller(RecepcionController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:recepciones.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:recepciones.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:recepciones.crear')->name('store');
+        Route::get('{recepcion}', 'show')->whereNumber('recepcion')->middleware('permiso:recepciones.ver')->name('show');
+        Route::get('{recepcion}/imprimir', 'imprimir')->whereNumber('recepcion')->middleware('permiso:recepciones.imprimir')->name('imprimir');
+    });
+
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // ── Pantallas que todavía son Vue + API (se migran en 4d y 5) ────
-    Route::get('/sistema/recepciones',    fn() => view('modulos.recepciones.index'));
-
+    // ── Pantallas que todavía son Vue + API (se migran en el paso 5) ──
     // ── Clientes ────────────────────────────────────────────────────
     Route::get('/sistema/clientes', fn() => view('modulos.clientes.index'));
 

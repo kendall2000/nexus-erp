@@ -383,12 +383,12 @@ class SeguridadAccesoTest extends TestCase
     {
         $this->crearMenu();
 
-        $this->actingAs($this->crearUsuario())->get('/sistema/recepciones')
+        $this->actingAs($this->crearUsuario())->get('/sistema/clientes')
             ->assertOk()
             ->assertSee('navbar-vertical', false)
             ->assertSee('vue@2.5.16', false)
-            ->assertSee('/modulos-js/recepciones/index.js', false)
-            ->assertSee('Recepciones de Mercadería');
+            ->assertSee('/modulos-js/clientes/index.js', false)
+            ->assertSee('Administra tu cartera de clientes');
     }
 
     public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void

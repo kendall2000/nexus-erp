@@ -3,10 +3,6 @@
 use App\Http\Controllers\Api\V1\Core\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Core\GeografiaController;
-use App\Http\Controllers\Api\V1\Inventario\ProductoController;
-use App\Http\Controllers\Api\V1\Inventario\ProveedorController;
-use App\Http\Controllers\Api\V1\Inventario\OrdenCompraController;
-use App\Http\Controllers\Api\V1\Inventario\RecepcionController;
 use App\Http\Controllers\Api\V1\Clientes\ClienteController;
 use App\Http\Controllers\Api\V1\Finanzas\FacturaController;
 use App\Http\Controllers\Api\V1\Finanzas\PagoController;
@@ -28,15 +24,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('geografia/municipios/{idDivision}',        [GeografiaController::class, 'municipiosPorDivision']);
 
     Route::get('geografia/municipio/{id}/cascada', [GeografiaController::class, 'datosParaCascada']);
-
-    
-
-    // ── Recepciones de Mercadería ──────────────────────────────────
-    Route::get('inventario/recepciones/catalogos',        [RecepcionController::class, 'catalogos']);
-    Route::get('inventario/recepciones/oc/{idOC}/lineas', [RecepcionController::class, 'lineasPorOC']);
-    Route::get('inventario/recepciones',                  [RecepcionController::class, 'index']);
-    Route::post('inventario/recepciones',                 [RecepcionController::class, 'store']);
-    Route::get('inventario/recepciones/{id}',             [RecepcionController::class, 'show']);
 
     // ── Clientes ───────────────────────────────────────────────────
     Route::get('clientes/clientes/catalogos',    [ClienteController::class, 'catalogos']);

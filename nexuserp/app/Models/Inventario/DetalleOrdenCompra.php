@@ -79,26 +79,5 @@ class DetalleOrdenCompra extends Model
         return round(($this->cantidad_pedida * $this->precio_unitario) - $this->descuento, 4);
     }
 
-    public function recibirCantidad(float $cantidad, int $idBodega, int $creadoPor): void
-    {
-        $this->increment('cantidad_recibida', $cantidad);
-
-        MovimientoInventario::create([
-            'id_empresa'      => $this->ordenCompra->id_empresa,
-            'id_producto'     => $this->id_producto,
-            'id_bodega'       => $idBodega,
-            'tipo_movimiento' => 'ENTRADA',
-            'cantidad'        => $cantidad,
-            'costo_unitario'  => $this->precio_unitario,
-            'moneda'          => $this->ordenCompra->moneda,
-            'referencia_tipo' => 'COMPRA',
-            'referencia_id'   => $this->id_oc,
-            'created_by'      => $creadoPor,
-        ]);
-
-        $oc = $this->ordenCompra;
-        $oc->refresh();
-        $todoRecibido = $oc->detalles()->get()->every(fn($d) => $d->estaCompleto());
-        $oc->update(['estado' => $todoRecibido ? 'RECIBIDA' : 'PARCIAL']);
-    }
+    // La recepción (kardex, stock y estado de la orden) está en App\Http\Controllers\RecepcionController.
 }

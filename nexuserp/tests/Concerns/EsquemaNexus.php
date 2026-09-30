@@ -320,7 +320,11 @@ trait EsquemaNexus
         Schema::create('detalle_recepcion', function (Blueprint $t) {
             $t->increments('id_detalle_rec');
             $t->unsignedInteger('id_recepcion')->nullable();
+            $t->unsignedInteger('id_linea')->nullable();
             $t->unsignedInteger('id_producto');
+            $t->decimal('cantidad_recibida', 12, 4)->default(0);
+            $t->decimal('costo_unitario', 15, 4)->default(0);
+            $t->decimal('subtotal', 15, 4)->default(0);
         });
         Schema::create('presupuesto_anual', function (Blueprint $t) {
             $t->increments('id_presupuesto');
@@ -349,14 +353,35 @@ trait EsquemaNexus
             $t->string('nombre_legal')->nullable();
             $t->string('nit')->nullable();
         });
-        foreach (['recepcion_mercaderia' => 'id_recepcion', 'movimiento_inventario' => 'id_movimiento'] as $tabla => $llave) {
-            Schema::create($tabla, function (Blueprint $t) use ($llave) {
-                $t->increments($llave);
-                $t->unsignedInteger('id_empresa');
-                $t->unsignedInteger('id_bodega')->nullable();
-                $t->unsignedInteger('id_producto')->nullable();
-            });
-        }
+        Schema::create('recepcion_mercaderia', function (Blueprint $t) {
+            $t->increments('id_recepcion');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_oc')->nullable();
+            $t->unsignedInteger('id_bodega')->nullable();
+            $t->string('numero_recepcion', 30)->nullable();
+            $t->date('fecha_recepcion')->nullable();
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('movimiento_inventario', function (Blueprint $t) {
+            $t->increments('id_movimiento');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_producto')->nullable();
+            $t->unsignedInteger('id_bodega')->nullable();
+            $t->string('tipo_movimiento')->default('ENTRADA');
+            $t->decimal('cantidad', 12, 4)->default(0);
+            $t->decimal('costo_unitario', 15, 4)->nullable();
+            $t->decimal('costo_total', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('referencia_tipo')->nullable();
+            $t->unsignedInteger('referencia_id')->nullable();
+            $t->string('numero_lote')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->string('observaciones', 300)->nullable();
+            $t->unsignedInteger('created_by')->default(0);
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::create('ConfiguracionSistema', function (Blueprint $t) {
             $t->increments('idConfig');
             $t->string('tipo');
