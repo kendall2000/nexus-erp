@@ -8,12 +8,14 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\LineaNegocioController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
@@ -259,6 +261,36 @@ Route::middleware('auth')->group(function () {
         Route::patch('{pago}/revertir', 'revertir')->whereNumber('pago')->middleware('permiso:pagos.eliminar')->name('revertir');
         Route::patch('{pago}/devolver', 'devolver')->whereNumber('pago')->middleware('permiso:pagos.devolver')->name('devolver');
     });
+
+    // Empleados (contrato laboral e historial salarial en la ficha)
+    Route::prefix('sistema/empleados')->name('empleados.')->controller(EmpleadoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:empleados.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:empleados.exportar')->name('exportar');
+        Route::get('nuevo', 'create')->middleware('permiso:empleados.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:empleados.crear')->name('store');
+        Route::get('{empleado}', 'show')->whereNumber('empleado')->middleware('permiso:empleados.ver')->name('show');
+        Route::middleware('permiso:empleados.editar')->group(function () {
+            Route::get('{empleado}/editar', 'edit')->whereNumber('empleado')->name('edit');
+            Route::put('{empleado}', 'update')->whereNumber('empleado')->name('update');
+            Route::patch('{empleado}/baja', 'baja')->whereNumber('empleado')->name('baja');
+            Route::patch('{empleado}/reactivar', 'reactivar')->whereNumber('empleado')->name('reactivar');
+            Route::post('{empleado}/contrato', 'guardarContrato')->whereNumber('empleado')->name('contrato');
+            Route::post('{empleado}/salario', 'cambiarSalario')->whereNumber('empleado')->name('salario');
+        });
+        Route::delete('{empleado}', 'destroy')->whereNumber('empleado')->middleware('permiso:empleados.eliminar')->name('destroy');
+    });
+
+    // Departamentos y cargos
+    Route::prefix('sistema/empleados/organizacion')->name('organizacion.')->controller(OrganizacionController::class)
+        ->middleware('permiso:empleados.configurar')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('departamentos', 'guardarDepartamento')->name('departamentos.store');
+            Route::put('departamentos/{departamento}', 'guardarDepartamento')->whereNumber('departamento')->name('departamentos.update');
+            Route::delete('departamentos/{departamento}', 'eliminarDepartamento')->whereNumber('departamento')->name('departamentos.destroy');
+            Route::post('cargos', 'guardarCargo')->name('cargos.store');
+            Route::put('cargos/{cargo}', 'guardarCargo')->whereNumber('cargo')->name('cargos.update');
+            Route::delete('cargos/{cargo}', 'eliminarCargo')->whereNumber('cargo')->name('cargos.destroy');
+        });
 
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
