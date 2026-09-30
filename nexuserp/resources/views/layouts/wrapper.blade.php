@@ -104,14 +104,22 @@
                                 <small class="text-muted">{{ auth()->user()->email }}</small>
                             </div>
                         </div>
-                        <div class="overflow-auto scrollbar" style="height:3rem;">
+                        <div>
                             <ul class="nav d-flex flex-column mb-2 pb-1">
                                 <li class="nav-item">
-                                    <a class="nav-link px-3" href="{{ url('/sistema/perfil') }}">
-                                        <span class="me-2 text-900" data-feather="user"></span>
-                                        <span>Mi Perfil</span>
+                                    <a class="nav-link px-3" href="{{ route('cuenta.seguridad') }}">
+                                        <span class="me-2 text-900" data-feather="lock"></span>
+                                        <span>Seguridad de mi cuenta</span>
                                     </a>
                                 </li>
+                                @if (auth()->user()->esAdministrador())
+                                    <li class="nav-item">
+                                        <a class="nav-link px-3" href="{{ route('seguridad.index') }}">
+                                            <span class="me-2 text-900" data-feather="shield"></span>
+                                            <span>Seguridad y accesos</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </div>
                         <div class="card-footer p-0 border-top">

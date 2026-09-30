@@ -16,11 +16,13 @@ class Rol extends Model
         'descripcion',
         'es_rol_sistema',
         'activo',
+        'requiere_2fa',
     ];
 
     protected $casts = [
         'es_rol_sistema' => 'boolean',
         'activo'         => 'boolean',
+        'requiere_2fa'   => 'boolean',
         'created_at'     => 'datetime',
     ];
 

@@ -10,7 +10,9 @@ use App\Models\Core\Rol;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Support\Seguridad;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UsuarioController extends Controller
 {
@@ -54,13 +56,12 @@ class UsuarioController extends Controller
             'nombre_completo' => 'required|string|max:200',
             'username'        => 'required|string|max:60|unique:usuario,username',
             'email'           => 'required|email|max:150|unique:usuario,email',
-            'password'        => 'required|string|min:8',
+            'password'        => ['required', 'string', Password::default()],
             'id_sucursal'     => 'nullable|exists:sucursal,id_sucursal',
             'id_rol'          => 'nullable|exists:rol,id_rol',
         ], [
             'username.unique'  => 'Este nombre de usuario ya está en uso.',
             'email.unique'     => 'Este correo ya está registrado.',
-            'password.min'     => 'La contraseña debe tener al menos 8 caracteres.',
         ]);
 
         $usuario = Usuario::create([
@@ -186,7 +187,7 @@ class UsuarioController extends Controller
     public function resetPassword(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'password_nuevo' => 'required|string|min:8',
+            'password_nuevo' => ['required', 'string', Password::default()],
         ]);
 
         $usuario = Usuario::where('id_empresa', $request->user()->id_empresa)
@@ -198,8 +199,10 @@ class UsuarioController extends Controller
             'bloqueado_hasta'   => null,
         ]);
 
-        // Revocar todos los tokens activos del usuario
+        // Cerrar sus sesiones abiertas (y revocar tokens antiguos que no hayan expirado)
+        Seguridad::cerrarSesiones($usuario->id_usuario);
         $usuario->tokens()->delete();
+        Seguridad::registrar('RESET_PASSWORD', $usuario->username, $usuario->id_usuario, 'Restablecida por '.$request->user()->username);
 
         return response()->json([
             'success' => true,

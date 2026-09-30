@@ -3,11 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Core\Usuario;
+use App\Support\Seguridad;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 /**
@@ -34,6 +39,10 @@ class SeguridadAccesoTest extends TestCase
             $t->string('username', 60);
             $t->string('email', 150)->nullable();
             $t->string('password_hash');
+            $t->string('remember_token', 100)->nullable();
+            $t->text('two_factor_secret')->nullable();
+            $t->text('two_factor_recovery_codes')->nullable();
+            $t->timestamp('two_factor_confirmed_at')->nullable();
             $t->string('nombre_completo')->nullable();
             $t->string('avatar_url')->nullable();
             $t->dateTime('ultimo_login')->nullable();
@@ -52,6 +61,7 @@ class SeguridadAccesoTest extends TestCase
             $t->string('descripcion')->nullable();
             $t->boolean('es_rol_sistema')->default(false);
             $t->boolean('activo')->default(true);
+            $t->boolean('requiere_2fa')->default(false);
             $t->dateTime('created_at')->nullable();
         });
         Schema::create('usuario_rol', function (Blueprint $t) {
@@ -80,8 +90,36 @@ class SeguridadAccesoTest extends TestCase
             $t->string('accion');
             $t->string('ip_address', 45)->nullable();
             $t->string('user_agent', 500)->nullable();
+            $t->string('detalle')->nullable();
             $t->dateTime('created_at')->useCurrent();
         });
+        Schema::create('sessions', function (Blueprint $t) {
+            $t->string('id')->primary();
+            $t->unsignedInteger('user_id')->nullable()->index();
+            $t->string('ip_address', 45)->nullable();
+            $t->text('user_agent')->nullable();
+            $t->longText('payload');
+            $t->integer('last_activity')->index();
+        });
+        Schema::create('password_reset_tokens', function (Blueprint $t) {
+            $t->string('email')->primary();
+            $t->string('token');
+            $t->timestamp('created_at')->nullable();
+        });
+        Schema::create('ConfiguracionSistema', function (Blueprint $t) {
+            $t->increments('idConfig');
+            $t->string('tipo');
+            $t->string('nombreSistema')->nullable();
+            $t->unsignedSmallInteger('maxIntentosSesion')->nullable();
+            $t->unsignedSmallInteger('bloqueoMinutos')->default(15);
+            $t->unsignedSmallInteger('sesionExpiraMin')->nullable();
+            $t->unsignedInteger('actualizadoPor')->nullable();
+            $t->dateTime('fechaActualizacion')->nullable();
+            $t->boolean('estado')->default(true);
+        });
+        foreach (['login', 'general'] as $tipo) {
+            DB::table('ConfiguracionSistema')->insert(['tipo' => $tipo, 'nombreSistema' => 'Nexus ERP', 'maxIntentosSesion' => 5, 'sesionExpiraMin' => 120]);
+        }
     }
 
     private function crearUsuario(array $datos = [], string $rol = 'Administrador', bool $rolActivo = true): Usuario
@@ -196,7 +234,7 @@ class SeguridadAccesoTest extends TestCase
     {
         $this->crearUsuario();
 
-        // Sin tabla ConfiguracionSistema se usan los valores por defecto: 5 intentos.
+        // ConfiguracionSistema de prueba: 5 intentos.
         for ($i = 0; $i < 5; $i++) {
             $this->from('/login')->post('/login', ['login' => 'admin', 'password' => 'mala']);
         }
@@ -261,5 +299,154 @@ class SeguridadAccesoTest extends TestCase
         $this->actingAs($vendedor)->get('/_prueba-permiso')->assertForbidden();
         $this->actingAs($bodeguero)->get('/_prueba-admin')->assertForbidden();
         $this->actingAs($admin)->get('/_prueba-admin')->assertOk();
+    }
+
+    // ── Paso 2 ──────────────────────────────────────────────────────────────
+
+    public function test_recordar_sesion_guarda_el_token(): void
+    {
+        $usuario = $this->crearUsuario();
+
+        $this->post('/login', ['login' => 'admin', 'password' => 'Clave-Segura-2026', 'remember' => 'on'])
+            ->assertRedirect('/sistema/dashboard');
+
+        $this->assertNotNull($usuario->fresh()->remember_token);
+        $this->assertSame('Con «recordar sesión»', DB::table('auditoria_acceso')->where('accion', 'LOGIN_OK')->value('detalle'));
+    }
+
+    public function test_con_dos_pasos_pide_el_codigo_y_luego_entra(): void
+    {
+        $usuario = $this->crearUsuarioConDosPasos();
+
+        $this->post('/login', ['login' => 'admin', 'password' => 'Clave-Segura-2026'])
+            ->assertRedirect('/two-factor-challenge');
+        $this->assertGuest();
+
+        $this->post('/two-factor-challenge', ['code' => '000000'])->assertRedirect();
+        $this->assertGuest();
+        $this->assertSame(1, $this->auditoria('LOGIN_FAIL_2FA'));
+
+        $codigo = (new Google2FA)->getCurrentOtp(decrypt($usuario->fresh()->two_factor_secret));
+        $this->post('/two-factor-challenge', ['code' => $codigo])->assertRedirect('/sistema/dashboard');
+        $this->assertAuthenticatedAs($usuario);
+    }
+
+    public function test_rol_que_exige_dos_pasos_obliga_a_activarla(): void
+    {
+        $usuario = $this->crearUsuario([], 'Cajero');
+        DB::table('rol')->update(['requiere_2fa' => true]);
+
+        $this->actingAs($usuario)->get('/sistema/dashboard')->assertRedirect(route('cuenta.seguridad'));
+        $this->actingAs($usuario)->getJson('/api/v1/menu')->assertForbidden();
+        $this->actingAs($usuario)->get(route('cuenta.seguridad'))
+            ->assertOk()
+            ->assertSee('Tu rol exige la verificación en dos pasos');
+    }
+
+    public function test_confirmar_contrasena_usa_password_hash(): void
+    {
+        $usuario = $this->crearUsuario();
+
+        $this->actingAs($usuario)->post('/user/confirm-password', ['password' => 'otra'])->assertSessionHasErrors();
+        $this->actingAs($usuario)->post('/user/confirm-password', ['password' => 'Clave-Segura-2026'])->assertSessionHasNoErrors();
+    }
+
+    public function test_cambiar_contrasena_exige_la_regla_y_cierra_las_demas_sesiones(): void
+    {
+        $usuario = $this->crearUsuario();
+        DB::table('sessions')->insert(['id' => 'otra-sesion', 'user_id' => $usuario->id_usuario, 'payload' => '', 'last_activity' => time()]);
+
+        $this->actingAs($usuario)->put('/user/password', [
+            'current_password' => 'Clave-Segura-2026', 'password' => 'corta', 'password_confirmation' => 'corta',
+        ])->assertSessionHasErrorsIn('updatePassword', 'password');
+
+        $this->actingAs($usuario)->put('/user/password', [
+            'current_password' => 'Clave-Segura-2026', 'password' => 'Nueva-Clave-2027!', 'password_confirmation' => 'Nueva-Clave-2027!',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('Nueva-Clave-2027!', $usuario->fresh()->password_hash));
+        $this->assertSame(0, DB::table('sessions')->where('id', 'otra-sesion')->count());
+        $this->assertSame(1, $this->auditoria('CAMBIO_PASSWORD'));
+    }
+
+    public function test_cerrar_las_demas_sesiones_pide_la_contrasena(): void
+    {
+        $usuario = $this->crearUsuario();
+        DB::table('sessions')->insert(['id' => 'otra-sesion', 'user_id' => $usuario->id_usuario, 'payload' => '', 'last_activity' => time()]);
+
+        $this->actingAs($usuario)->delete(route('cuenta.sesiones.cerrar'), ['password' => 'mala'])->assertSessionHasErrors('password');
+        $this->assertSame(1, DB::table('sessions')->count());
+
+        $this->actingAs($usuario)->delete(route('cuenta.sesiones.cerrar'), ['password' => 'Clave-Segura-2026'])->assertSessionHasNoErrors();
+        $this->assertSame(0, DB::table('sessions')->where('id', 'otra-sesion')->count());
+        $this->assertSame(1, $this->auditoria('SESION_CERRADA'));
+    }
+
+    public function test_olvide_mi_contrasena_no_revela_si_el_correo_existe(): void
+    {
+        Notification::fake();
+        $usuario = $this->crearUsuario();
+
+        $conCuenta = $this->from('/forgot-password')->post('/forgot-password', ['email' => 'admin@nexus.test']);
+        $sinCuenta = $this->from('/forgot-password')->post('/forgot-password', ['email' => 'nadie@nexus.test']);
+
+        $conCuenta->assertSessionHasNoErrors()->assertSessionHas('status');
+        $sinCuenta->assertSessionHasNoErrors()->assertSessionHas('status', $conCuenta->getSession()->get('status'));
+        Notification::assertSentTo($usuario, ResetPassword::class);
+    }
+
+    public function test_recuperar_contrasena_con_el_enlace(): void
+    {
+        $usuario = $this->crearUsuario();
+        DB::table('sessions')->insert(['id' => 'sesion-vieja', 'user_id' => $usuario->id_usuario, 'payload' => '', 'last_activity' => time()]);
+        $token = Password::broker()->createToken($usuario);
+
+        $this->post('/reset-password', [
+            'token' => $token, 'email' => 'admin@nexus.test',
+            'password' => 'Recuperada-2027!', 'password_confirmation' => 'Recuperada-2027!',
+        ])->assertRedirect('/login');
+
+        $this->assertTrue(Hash::check('Recuperada-2027!', $usuario->fresh()->password_hash));
+        $this->assertSame(0, DB::table('sessions')->count());
+        $this->assertSame(1, $this->auditoria('RESET_PASSWORD'));
+    }
+
+    public function test_seguridad_y_accesos_solo_para_el_administrador(): void
+    {
+        $admin = $this->crearUsuario();
+        $vendedor = $this->crearUsuario(['username' => 'ventas', 'email' => 'ventas@nexus.test'], 'Ventas');
+        $idRolVentas = DB::table('usuario_rol')->where('id_usuario', $vendedor->id_usuario)->value('id_rol');
+
+        $this->actingAs($vendedor)->get(route('seguridad.index'))->assertForbidden();
+        $this->actingAs($admin)->get(route('seguridad.index'))->assertOk()->assertSee('Historial de accesos');
+
+        $this->actingAs($admin)->put(route('seguridad.guardar'), ['max_intentos' => 4, 'bloqueo_minutos' => 30, 'sesion_expira_min' => 90])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['intentos' => 4, 'bloqueo' => 30, 'expira' => 90], Seguridad::config());
+
+        $this->actingAs($admin)->put(route('seguridad.roles'), ['requiere_2fa' => [$idRolVentas]]);
+        $this->assertTrue((bool) DB::table('rol')->where('id_rol', $idRolVentas)->value('requiere_2fa'));
+        $this->assertTrue($vendedor->fresh()->debeActivarDosPasos());
+    }
+
+    public function test_usuarios_crea_con_la_regla_de_contrasena(): void
+    {
+        $admin = $this->crearUsuario();
+
+        $this->actingAs($admin)->postJson('/api/v1/usuarios', [
+            'nombre_completo' => 'Nuevo', 'username' => 'nuevo', 'email' => 'nuevo@nexus.test', 'password' => 'corta123',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
+    }
+
+    private function crearUsuarioConDosPasos(): Usuario
+    {
+        $usuario = $this->crearUsuario();
+        $usuario->forceFill([
+            'two_factor_secret' => encrypt((new Google2FA)->generateSecretKey()),
+            'two_factor_recovery_codes' => encrypt(json_encode(['codigo-1', 'codigo-2'])),
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        return $usuario;
     }
 }

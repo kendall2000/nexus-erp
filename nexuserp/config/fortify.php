@@ -162,9 +162,14 @@ return [
     |
     */
 
-    // Paso 1: solo inicio y cierre de sesión. Recuperar contraseña, cambiarla y
-    // verificación en dos pasos se activan en el paso 2 (requieren columnas nuevas).
     // Sin registro público: los usuarios los crea el administrador.
-    'features' => [],
+    'features' => [
+        Features::resetPasswords(),
+        Features::updatePasswords(),
+        Features::twoFactorAuthentication([
+            'confirm' => true,
+            'confirmPassword' => true,
+        ]),
+    ],
 
 ];

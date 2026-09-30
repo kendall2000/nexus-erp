@@ -15,7 +15,7 @@ class UsuarioActivo
     {
         $user = Auth::guard('web')->user();
         if ($user && ! $user->puedeEntrar()) {
-            Seguridad::registrar('LOGOUT', $user->username, $user->id_usuario);
+            Seguridad::registrar('DESACTIVADO', $user->username, $user->id_usuario, 'Sesión cerrada al estar desactivado');
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

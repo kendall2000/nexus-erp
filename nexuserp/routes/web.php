@@ -1,14 +1,28 @@
 <?php
 
+use App\Http\Controllers\CuentaSeguridadController;
+use App\Http\Controllers\SeguridadController;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
-// Login, logout y (en el paso 2) recuperación de contraseña y dos pasos:
+// Login, logout, recuperar y cambiar contraseña y verificación en dos pasos:
 // las rutas las registra Fortify (config/fortify.php).
 
 Route::redirect('/', '/sistema/dashboard');
 
 Route::middleware('auth')->group(function () {
+
+    // ── Seguridad de mi cuenta (cualquier usuario) ──────────────────
+    Route::get('cuenta/seguridad', [CuentaSeguridadController::class, 'show'])->name('cuenta.seguridad');
+    Route::delete('cuenta/sesiones', [CuentaSeguridadController::class, 'cerrarSesiones'])
+        ->middleware('throttle:6,1')->name('cuenta.sesiones.cerrar');
+
+    // ── Seguridad y accesos (solo administrador) ────────────────────
+    Route::middleware('admin')->group(function () {
+        Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
+        Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
+        Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
+    });
 
     // ── Sirve los JS de los módulos desde resources/views/modulos/ ──
     Route::get('/modulos-js/{modulo}/{archivo}.js', function (string $modulo, string $archivo) {

@@ -10,6 +10,19 @@ class AuditoriaAcceso extends Model
     protected $primaryKey = 'id_auditoria';
     public $timestamps    = false;
 
+    /** Acciones del enum con su nombre para mostrar. */
+    public const EVENTOS = [
+        'LOGIN_OK'        => 'Ingreso',
+        'LOGIN_FAIL'      => 'Fallido',
+        'LOGIN_FAIL_2FA'  => 'Fallido (2 pasos)',
+        'BLOQUEO'         => 'Bloqueo',
+        'DESACTIVADO'     => 'Desactivado',
+        'LOGOUT'          => 'Salida',
+        'SESION_CERRADA'  => 'Sesiones cerradas',
+        'CAMBIO_PASSWORD' => 'Cambio de contraseña',
+        'RESET_PASSWORD'  => 'Recuperó contraseña',
+    ];
+
     // Solo INSERT — nunca se actualiza ni elimina
     protected $fillable = [
         'id_usuario',
@@ -17,6 +30,7 @@ class AuditoriaAcceso extends Model
         'accion',
         'ip_address',
         'user_agent',
+        'detalle',
     ];
 
     protected $casts = [
@@ -55,12 +69,25 @@ class AuditoriaAcceso extends Model
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
+    /** Color de la etiqueta en el historial (badge-phoenix-*). */
+    public function color(): string
+    {
+        return match ($this->accion) {
+            'LOGIN_OK' => 'success',
+            'LOGIN_FAIL', 'LOGIN_FAIL_2FA' => 'warning',
+            'BLOQUEO', 'DESACTIVADO' => 'danger',
+            'CAMBIO_PASSWORD', 'RESET_PASSWORD', 'SESION_CERRADA' => 'info',
+            default => 'secondary',
+        };
+    }
+
     public static function registrar(
         string $accion,
         string $username,
         string $ip,
         ?int $idUsuario = null,
-        ?string $userAgent = null
+        ?string $userAgent = null,
+        ?string $detalle = null
     ): self {
         return self::create([
             'id_usuario'      => $idUsuario,
@@ -68,6 +95,7 @@ class AuditoriaAcceso extends Model
             'accion'          => $accion,
             'ip_address'      => $ip,
             'user_agent'      => $userAgent,
+            'detalle'         => $detalle,
         ]);
     }
 }

@@ -4,12 +4,15 @@ namespace App\Models\Core;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Support\Sistema;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
-    use HasApiTokens, Notifiable, SoftDeletes;
+    use HasApiTokens, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     protected $table      = 'usuario';
     protected $primaryKey = 'id_usuario';
@@ -38,6 +41,8 @@ class Usuario extends Authenticatable
         'password_hash',
         'token_reset',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     protected $casts = [
@@ -49,19 +54,28 @@ class Usuario extends Authenticatable
         'updated_at'        => 'datetime',
         'deleted_at'        => 'datetime',
         'intentos_fallidos' => 'integer',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
-    // Laravel espera 'password' — mapeamos a password_hash
+    // Laravel espera 'password' — mapeamos a password_hash (lectura y rehash)
+    public function getAuthPasswordName()
+    {
+        return 'password_hash';
+    }
+
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
-    // La tabla aún no tiene remember_token («Recordarme» llega en el paso 2):
-    // sin nombre de columna, Laravel nunca intenta escribirla.
-    public function getRememberTokenName()
+    /** El QR de 2 pasos muestra el nombre del sistema y el correo (o usuario) de la cuenta. */
+    public function twoFactorQrCodeUrl()
     {
-        return '';
+        return app(TwoFactorAuthenticationProvider::class)->qrCodeUrl(
+            Sistema::nombre(),
+            $this->email ?: $this->username,
+            decrypt($this->two_factor_secret)
+        );
     }
 
     // ── Relaciones ──────────────────────────────────────────────────────────
@@ -122,6 +136,18 @@ class Usuario extends Authenticatable
             ->where('rol.activo', true)
             ->where('rol.nombre', 'Administrador')
             ->exists();
+    }
+
+    /** Alguno de sus roles activos exige la verificación en dos pasos. */
+    public function rolExigeDosPasos(): bool
+    {
+        return $this->roles()->where('rol.activo', true)->where('rol.requiere_2fa', true)->exists();
+    }
+
+    /** Su rol exige 2 pasos y todavía no la activó (o no la confirmó). */
+    public function debeActivarDosPasos(): bool
+    {
+        return ! $this->two_factor_confirmed_at && $this->rolExigeDosPasos();
     }
 
     /** Uso: $usuario->puede('INV.PRODUCTOS.VER'). El Administrador puede todo. */

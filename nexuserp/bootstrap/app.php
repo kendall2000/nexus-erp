@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EncabezadosSeguridad;
 use App\Http\Middleware\PreventBackHistory;
+use App\Http\Middleware\RequiereDosFactores;
 use App\Http\Middleware\SoloAdministrador;
 use App\Http\Middleware\TienePermiso;
 use App\Http\Middleware\UsuarioActivo;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EncabezadosSeguridad::class,
             PreventBackHistory::class,
             UsuarioActivo::class,
+            RequiereDosFactores::class,
         ]);
 
         // La API se autentica con la sesión del navegador (cookie + CSRF), ya no con
@@ -35,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [
             EncabezadosSeguridad::class,
             UsuarioActivo::class,
+            RequiereDosFactores::class,
         ]);
 
         $middleware->alias(['admin' => SoloAdministrador::class, 'permiso' => TienePermiso::class]);

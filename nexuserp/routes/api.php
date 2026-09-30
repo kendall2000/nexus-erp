@@ -40,7 +40,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
-    Route::post('auth/cambiar-password', [AuthController::class, 'cambiarPassword']);
 
     // Menú dinámico
     Route::get ('menu',       [MenuController::class, 'index']);
