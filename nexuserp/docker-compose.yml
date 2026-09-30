@@ -12,9 +12,9 @@ services:
       - .env
     volumes:
       # .env del host (para cambiar config sin rebuild)
-      - ./.env:/var/www/html/.env
+      - ./.env:/var/www/nexuserp/.env
       # Persistencia de logs/sessions/cache de Laravel entre rebuilds
-      - sistema-nexuserp-storage:/var/www/html/storage
+      - sistema-nexuserp-storage:/var/www/nexuserp/storage
 
 volumes:
   sistema-nexuserp-storage:
