@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\V1\Core\AuthController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Core\MenuController;
-use App\Http\Controllers\Api\V1\Core\UsuarioController;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
 use App\Http\Controllers\Api\V1\Core\RolController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionSistemaController;
@@ -48,15 +47,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('menu/{id}',[MenuController::class, 'destroy']);
 
 
-     // Usuarios
-    Route::get('usuarios/catalogos',              [UsuarioController::class, 'catalogos']);
-    Route::get('usuarios',                        [UsuarioController::class, 'index']);
-    Route::post('usuarios',                        [UsuarioController::class, 'store']);
-    Route::get('usuarios/{id}',                   [UsuarioController::class, 'show']);
-    Route::put('usuarios/{id}',                   [UsuarioController::class, 'update']);
-    Route::patch ('usuarios/{id}/toggle',            [UsuarioController::class, 'toggle']);
-    Route::patch ('usuarios/{id}/reset-password',    [UsuarioController::class, 'resetPassword']);
-    Route::delete('usuarios/{id}',                   [UsuarioController::class, 'destroy']);
 
     // Roles
     Route::get('roles/catalogos',           [RolController::class, 'catalogos']);

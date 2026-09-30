@@ -3,6 +3,7 @@
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SeguridadController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
@@ -37,9 +38,24 @@ Route::middleware('auth')->group(function () {
             ->header('Content-Type', 'application/javascript');
     })->where(['modulo' => '[a-zA-Z0-9_-]+', 'archivo' => '[a-zA-Z0-9_-]+']);
 
+    // ── Usuarios ────────────────────────────────────────────────────
+    Route::prefix('sistema/usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:CONFIG.USUARIOS.VER')->name('index');
+        Route::middleware('permiso:CONFIG.USUARIOS.CREAR')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+        });
+        Route::middleware('permiso:CONFIG.USUARIOS.EDITAR')->group(function () {
+            Route::get('{usuario}/editar', 'edit')->whereNumber('usuario')->name('edit');
+            Route::put('{usuario}', 'update')->whereNumber('usuario')->name('update');
+            Route::patch('{usuario}/estado', 'estado')->whereNumber('usuario')->name('estado');
+            Route::delete('{usuario}/sesiones', 'sesiones')->whereNumber('usuario')->name('sesiones');
+            Route::delete('{usuario}', 'destroy')->whereNumber('usuario')->name('destroy');
+        });
+    });
+
     // ── Vistas del sistema ──────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/sistema/usuarios',      fn() => view('modulos.usuarios.index'));
     Route::get('/sistema/roles',         fn() => view('modulos.roles.index'));
     Route::get('/sistema/configuracion', fn() => view('modulos.configuracion.index'));
     Route::get('/sistema/menu',          fn() => view('modulos.menu.index'));
