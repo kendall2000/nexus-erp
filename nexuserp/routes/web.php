@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
@@ -291,6 +292,24 @@ Route::middleware('auth')->group(function () {
             Route::put('cargos/{cargo}', 'guardarCargo')->whereNumber('cargo')->name('cargos.update');
             Route::delete('cargos/{cargo}', 'eliminarCargo')->whereNumber('cargo')->name('cargos.destroy');
         });
+
+    // Contratos de servicio (sitios del cliente y personal asignado en la ficha)
+    Route::prefix('sistema/contratos')->name('contratos.')->controller(ContratoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:contratos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:contratos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:contratos.crear')->name('store');
+        Route::get('{contrato}', 'show')->whereNumber('contrato')->middleware('permiso:contratos.ver')->name('show');
+        Route::get('{contrato}/imprimir', 'imprimir')->whereNumber('contrato')->middleware('permiso:contratos.imprimir')->name('imprimir');
+        // El permiso de cada cambio de estado se revisa en el controlador (editar, cerrar o reabrir).
+        Route::patch('{contrato}/estado/{accion}', 'estado')->whereNumber('contrato')->whereAlpha('accion')->middleware('permiso:contratos.editar|contratos.cerrar|contratos.reabrir')->name('estado');
+        Route::middleware('permiso:contratos.editar')->group(function () {
+            Route::get('{contrato}/editar', 'edit')->whereNumber('contrato')->name('edit');
+            Route::put('{contrato}', 'update')->whereNumber('contrato')->name('update');
+            Route::post('{contrato}/sitios', 'guardarSitio')->whereNumber('contrato')->name('sitios.store');
+            Route::post('{contrato}/asignaciones', 'asignar')->whereNumber('contrato')->name('asignaciones.store');
+            Route::patch('{contrato}/asignaciones/{asignacion}/finalizar', 'finalizarAsignacion')->whereNumber(['contrato', 'asignacion'])->name('asignaciones.finalizar');
+        });
+    });
 
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');

@@ -4,7 +4,7 @@
     @php
         $v = fn (string $campo) => old($campo, $f->{$campo});
         $fecha = fn (string $campo) => old($campo, $f->{$campo}?->format('Y-m-d'));
-        $lineas = old('lineas', $f->exists
+        $lineas = old('lineas', $f->exists || $f->relationLoaded('detalles')
             ? $f->detalles->map(fn ($d) => $d->only(['id_tipo_servicio', 'descripcion', 'cantidad', 'precio_unitario', 'descuento', 'es_afecto_iva', 'id_centro', 'id_cuenta']))->all()
             : []);
         if (! $lineas) {
@@ -23,6 +23,11 @@
         @csrf
         @if ($f->exists)
             @method('PUT')
+        @endif
+        <input type="hidden" name="id_contrato" value="{{ old('id_contrato', $f->id_contrato) }}" />
+        @if (old('id_contrato', $f->id_contrato))
+            <div class="alert alert-soft-info fs--1"><span class="fas fa-file-contract me-2"></span>Factura del contrato {{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}: revisa el periodo y los montos antes de guardar.</div>
+            @error('id_contrato')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
         @endif
 
         <div class="card mb-4">

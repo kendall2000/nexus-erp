@@ -309,6 +309,61 @@ trait EsquemaNexus
             $t->unsignedInteger('id_cuenta_ingreso')->nullable();
             $t->unsignedInteger('id_centro_default')->nullable();
         });
+        Schema::table('contrato_servicio', function (Blueprint $t) {
+            $t->unsignedInteger('id_cliente')->nullable();
+            $t->unsignedInteger('id_vendedor')->nullable();
+            $t->string('numero_contrato', 60)->nullable();
+            $t->string('nombre_proyecto')->nullable();
+            $t->date('fecha_inicio')->nullable();
+            $t->date('fecha_fin')->nullable();
+            $t->date('fecha_firma')->nullable();
+            $t->decimal('valor_mensual', 15, 4)->default(0);
+            $t->decimal('valor_total_estimado', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('periodicidad_factura')->default('MENSUAL');
+            $t->unsignedTinyInteger('dia_facturacion')->nullable();
+            $t->string('url_contrato')->nullable();
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('updated_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('contrato_servicio_detalle', function (Blueprint $t) {
+            $t->increments('id_detalle');
+            $t->unsignedInteger('id_contrato');
+            $t->unsignedInteger('id_tipo_servicio');
+            $t->unsignedInteger('id_sitio')->nullable();
+            $t->string('descripcion', 300)->nullable();
+            $t->decimal('cantidad', 10, 2)->default(1);
+            $t->decimal('precio_unitario', 15, 4);
+            $t->decimal('descuento_pct', 5, 2)->default(0);
+            $t->decimal('subtotal', 15, 4);
+        });
+        Schema::create('sitio_trabajo', function (Blueprint $t) {
+            $t->increments('id_sitio');
+            $t->unsignedInteger('id_cliente');
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('nombre');
+            $t->string('direccion');
+            $t->decimal('latitud', 10, 7)->nullable();
+            $t->decimal('longitud', 10, 7)->nullable();
+            $t->string('responsable_cliente')->nullable();
+            $t->string('tel_responsable')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('asignacion_contrato', function (Blueprint $t) {
+            $t->increments('id_asignacion');
+            $t->unsignedInteger('id_contrato');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_sitio')->nullable();
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin')->nullable();
+            $t->string('rol_en_sitio')->nullable();
+            $t->string('turno')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::table('empleado', function (Blueprint $t) {
             $t->unsignedInteger('id_sucursal')->nullable();
             foreach (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada'] as $columna) {
