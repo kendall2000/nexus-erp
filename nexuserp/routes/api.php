@@ -3,7 +3,6 @@
 use App\Http\Controllers\Api\V1\Core\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
-use App\Http\Controllers\Api\V1\Core\SucursalController;
 use App\Http\Controllers\Api\V1\Core\GeografiaController;
 use App\Http\Controllers\Api\V1\Inventario\ProductoController;
 use App\Http\Controllers\Api\V1\Inventario\BodegaController;
@@ -55,41 +54,14 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::delete('categorias/{id}',          [CategoriaProductoController::class, 'destroy']);
     });
 
-    // ── Geografía: catálogos read-only para selects en cascada ────
-    Route::get('geografia/paises-activos',                 [GeografiaController::class, 'paisesActivos']);
+    // ── Geografía: catálogos de solo lectura para los selects en cascada de Clientes
+    //    (la administración está en /sistema/geografia) ────
     Route::get('geografia/divisiones/{idPais}',            [GeografiaController::class, 'divisionesPorPais']);
     Route::get('geografia/municipios/{idDivision}',        [GeografiaController::class, 'municipiosPorDivision']);
 
-    // ── Geografía: CRUD países ────────────────────────────────────
-    Route::get('geografia/paises',               [GeografiaController::class, 'paises']);
-    Route::post('geografia/paises',               [GeografiaController::class, 'storePais']);
-    Route::put('geografia/paises/{id}',          [GeografiaController::class, 'updatePais']);
-    Route::patch ('geografia/paises/{id}/toggle',   [GeografiaController::class, 'togglePais']);
-    Route::delete('geografia/paises/{id}',          [GeografiaController::class, 'destroyPais']);
-
-    // ── Geografía: CRUD divisiones ────────────────────────────────
-    Route::get('geografia/divisiones',                  [GeografiaController::class, 'divisiones']);
-    Route::post('geografia/divisiones',                  [GeografiaController::class, 'storeDivision']);
-    Route::put('geografia/divisiones/{id}',             [GeografiaController::class, 'updateDivision']);
-    Route::patch ('geografia/divisiones/{id}/toggle',      [GeografiaController::class, 'toggleDivision']);
-    Route::delete('geografia/divisiones/{id}',             [GeografiaController::class, 'destroyDivision']);
-
-    // ── Geografía: CRUD municipios ────────────────────────────────
-    Route::get('geografia/municipios',                  [GeografiaController::class, 'municipios']);
-    Route::post('geografia/municipios',                  [GeografiaController::class, 'storeMunicipio']);
-    Route::put('geografia/municipios/{id}',             [GeografiaController::class, 'updateMunicipio']);
-    Route::patch ('geografia/municipios/{id}/toggle',      [GeografiaController::class, 'toggleMunicipio']);
-    Route::delete('geografia/municipios/{id}',             [GeografiaController::class, 'destroyMunicipio']);
     Route::get('geografia/municipio/{id}/cascada', [GeografiaController::class, 'datosParaCascada']);
 
     
-    // ── Sucursales ─────────────────────────────────────────────────
-    Route::get('sucursales',             [SucursalController::class, 'index']);
-    Route::post('sucursales',             [SucursalController::class, 'store']);
-    Route::get('sucursales/{id}',        [SucursalController::class, 'show']);
-    Route::put('sucursales/{id}',        [SucursalController::class, 'update']);
-    Route::patch ('sucursales/{id}/toggle', [SucursalController::class, 'toggle']);
-    Route::delete('sucursales/{id}',        [SucursalController::class, 'destroy']);
 
     // ── Proveedores ────────────────────────────────────────────────
     Route::get('inventario/proveedores/catalogos',    [ProveedorController::class, 'catalogos']);

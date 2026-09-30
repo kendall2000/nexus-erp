@@ -55,6 +55,11 @@ class Sucursal extends Model
         return $this->hasMany(\App\Models\RRHH\Empleado::class, 'id_sucursal');
     }
 
+    public function usuarios()
+    {
+        return $this->hasMany(Usuario::class, 'id_sucursal');
+    }
+
     public function scopeActivas($query)
     {
         return $query->where('activo', true);

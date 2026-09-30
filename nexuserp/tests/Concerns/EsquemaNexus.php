@@ -133,6 +133,37 @@ trait EsquemaNexus
         Schema::create('sucursal', function (Blueprint $t) {
             $t->increments('id_sucursal');
             $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_pais')->nullable();
+            $t->unsignedInteger('id_division')->nullable();
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('nombre');
+            $t->string('direccion')->nullable();
+            $t->string('telefono')->nullable();
+            $t->string('email')->nullable();
+            $t->boolean('es_casa_matriz')->default(false);
+            $t->boolean('activo')->default(true);
+            $t->timestamps();
+        });
+        // Geografía (catálogo compartido).
+        Schema::create('pais', function (Blueprint $t) {
+            $t->increments('id_pais');
+            $t->string('codigo_iso2', 2)->nullable();
+            $t->string('codigo_iso3', 3)->nullable();
+            $t->string('nombre');
+            $t->string('prefijo_tel')->nullable();
+            $t->string('moneda_defecto')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('division_geografica', function (Blueprint $t) {
+            $t->increments('id_division');
+            $t->unsignedInteger('id_pais');
+            $t->string('nombre');
+            $t->string('tipo')->nullable();
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('municipio', function (Blueprint $t) {
+            $t->increments('id_municipio');
+            $t->unsignedInteger('id_division');
             $t->string('nombre');
             $t->boolean('activo')->default(true);
         });

@@ -3,9 +3,11 @@
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\GestionMenuController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
+use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +33,28 @@ Route::middleware('auth')->group(function () {
         // Configuración del sistema
         Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
         Route::put('sistema/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
+
+        // Sucursales
+        Route::prefix('sistema/sucursales')->name('sucursales.')->controller(SucursalController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('nueva', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('{sucursal}/editar', 'edit')->whereNumber('sucursal')->name('edit');
+            Route::put('{sucursal}', 'update')->whereNumber('sucursal')->name('update');
+            Route::patch('{sucursal}/estado', 'estado')->whereNumber('sucursal')->name('estado');
+            Route::delete('{sucursal}', 'destroy')->whereNumber('sucursal')->name('destroy');
+        });
+
+        // Geografía (catálogo compartido): {tipo} = pais | division | municipio
+        Route::prefix('sistema/geografia')->name('geografia.')->controller(GeografiaController::class)
+            ->where(['tipo' => 'pais|division|municipio', 'id' => '[0-9]+'])->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('{tipo}', 'store')->name('store');
+            Route::get('{tipo}/{id}/editar', 'edit')->name('edit');
+            Route::put('{tipo}/{id}', 'update')->name('update');
+            Route::patch('{tipo}/{id}/estado', 'estado')->name('estado');
+            Route::delete('{tipo}/{id}', 'destroy')->name('destroy');
+            });
 
         // Gestión del menú lateral
         Route::prefix('sistema/menu')->name('menu.')->controller(GestionMenuController::class)->group(function () {
@@ -95,10 +119,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/sistema/categorias',     fn() => view('modulos.categorias.index'));
     Route::get('/sistema/ordenes-compra', fn() => view('modulos.ordenes-compra.index'));
     Route::get('/sistema/recepciones',    fn() => view('modulos.recepciones.index'));
-
-    // ── Sucursales y geografía ──────────────────────────────────────
-    Route::get('/sistema/sucursales', fn() => view('modulos.sucursales.index'));
-    Route::get('/sistema/geografia',  fn() => view('modulos.geografia.index'));
 
     // ── Clientes ────────────────────────────────────────────────────
     Route::get('/sistema/clientes', fn() => view('modulos.clientes.index'));
