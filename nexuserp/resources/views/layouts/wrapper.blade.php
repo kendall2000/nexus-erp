@@ -81,13 +81,13 @@
             </li>
 
             {{-- Perfil usuario --}}
-            <li class="nav-item dropdown" id="perfil-app">
+            <li class="nav-item dropdown">
                 <a class="nav-link lh-1 pe-0" href="#!" role="button"
                     data-bs-toggle="dropdown" data-bs-auto-close="outside"
                     aria-haspopup="true" aria-expanded="false">
                     <div class="avatar avatar-l">
                         <img class="rounded-circle"
-                            :src="usuario.avatar_url || '{{ asset('assets/img/avatar/avatar.png') }}'"
+                            src="{{ auth()->user()->avatar_url ?: (\App\Support\Sistema::config()->imgAvatarDefault ?: asset('assets/img/avatar/avatar.png')) }}"
                             alt="Avatar" />
                     </div>
                 </a>
@@ -97,11 +97,11 @@
                             <div class="text-center pt-4 pb-3">
                                 <div class="avatar avatar-xl">
                                     <img class="rounded-circle"
-                                        :src="usuario.avatar_url || '{{ asset('assets/img/avatar/avatar.png') }}'"
+                                        src="{{ auth()->user()->avatar_url ?: (\App\Support\Sistema::config()->imgAvatarDefault ?: asset('assets/img/avatar/avatar.png')) }}"
                                         alt="Avatar" />
                                 </div>
-                                <h6 class="mt-2 text-black">@{{ usuario.nombre_completo }}</h6>
-                                <small class="text-muted">@{{ usuario.email }}</small>
+                                <h6 class="mt-2 text-black">{{ auth()->user()->nombre_completo }}</h6>
+                                <small class="text-muted">{{ auth()->user()->email }}</small>
                             </div>
                         </div>
                         <div class="overflow-auto scrollbar" style="height:3rem;">
@@ -116,11 +116,13 @@
                         </div>
                         <div class="card-footer p-0 border-top">
                             <div class="px-3 my-3">
-                                <button class="btn btn-phoenix-secondary d-flex flex-center w-100"
-                                    @click="cerrarSesion">
-                                    <span class="me-2" data-feather="log-out"></span>
-                                    Cerrar sesión
-                                </button>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button class="btn btn-phoenix-secondary d-flex flex-center w-100" type="submit">
+                                        <span class="me-2" data-feather="log-out"></span>
+                                        Cerrar sesión
+                                    </button>
+                                </form>
                             </div>
                             <div class="my-2 text-center fw-bold fs--2 text-600">
                                 <span>NexusERP v1.0</span>
@@ -146,30 +148,4 @@
 
     @yield('content')
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        new Vue({
-            el: '#perfil-app',
-            data: {
-                usuario: JSON.parse(sessionStorage.getItem('nexus_usuario') || '{}')
-            },
-            methods: {
-                async cerrarSesion() {
-                    try {
-                        await fetch(apiUrl + '/auth/logout', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + nexusToken
-                            }
-                        });
-                    } catch(e) {}
-                    sessionStorage.removeItem('nexus_token');
-                    sessionStorage.removeItem('nexus_usuario');
-                    window.location.href = server + '/login';
-                }
-            }
-        });
-    });
-    </script>
 {{-- NOTA: NO HAY </div> AQUÍ A PROPÓSITO --}}

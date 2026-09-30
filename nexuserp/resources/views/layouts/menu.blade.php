@@ -217,13 +217,9 @@ document.addEventListener('DOMContentLoaded', function () {
         methods: {
             cargarMenu: async function () {
                 try {
-                    var token = sessionStorage.getItem('nexus_token') || '';
-                    var res = await fetch(apiUrl + '/menu', { 
+                    var res = await fetch(apiUrl + '/menu', {
                         method:  'GET',
-                        headers: {
-                            'Content-Type':  'application/json',
-                            'Authorization': 'Bearer ' + token
-                        }
+                        headers: { 'Content-Type': 'application/json' }
                     });
                     if (res.ok) {
                         var json  = await res.json();

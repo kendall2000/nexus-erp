@@ -43,16 +43,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Verifica que haya token — si no, redirige al login
-    if (!sessionStorage.getItem('nexus_token')) {
-        window.location.href = server + '/login';
-        return;
-    }
-
     new Vue({
         el: '#dashboard-app',
         data: {
-            usuario: JSON.parse(sessionStorage.getItem('nexus_usuario') || '{}'),
+            usuario: @json([
+                'nombre_completo' => auth()->user()->nombre_completo,
+                'empresa'         => ['nombre_comercial' => auth()->user()->empresa?->nombre_comercial],
+            ]),
             tarjetas: [
                 { titulo: 'Clientes Activos',  icono: 'briefcase',   valor: '...' },
                 { titulo: 'Empleados',          icono: 'users',       valor: '...' },
@@ -69,11 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         methods: {
             async cargarResumen() {
                 try {
-                    const res = await fetch(apiUrl + '/dashboard/resumen', {
-                        headers: {
-                            'Authorization': 'Bearer ' + sessionStorage.getItem('nexus_token')
-                        }
-                    });
+                    const res = await fetch(apiUrl + '/dashboard/resumen');
                     if (res.ok) {
                         const data = await res.json();
                         if (data.data) {

@@ -57,6 +57,13 @@ class Usuario extends Authenticatable
         return $this->password_hash;
     }
 
+    // La tabla aún no tiene remember_token («Recordarme» llega en el paso 2):
+    // sin nombre de columna, Laravel nunca intenta escribirla.
+    public function getRememberTokenName()
+    {
+        return '';
+    }
+
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     public function empresa()
@@ -99,6 +106,35 @@ class Usuario extends Authenticatable
     public function estaBloqueado(): bool
     {
         return $this->bloqueado_hasta && $this->bloqueado_hasta->isFuture();
+    }
+
+    /** Puede iniciar sesión: usuario activo, no eliminado y con al menos un rol activo. */
+    public function puedeEntrar(): bool
+    {
+        return $this->activo && ! $this->trashed()
+            && $this->roles()->where('rol.activo', true)->exists();
+    }
+
+    /** Tiene el rol «Administrador» (activo) de su empresa: pasa todas las validaciones de permisos. */
+    public function esAdministrador(): bool
+    {
+        return $this->roles()
+            ->where('rol.activo', true)
+            ->where('rol.nombre', 'Administrador')
+            ->exists();
+    }
+
+    /** Uso: $usuario->puede('INV.PRODUCTOS.VER'). El Administrador puede todo. */
+    public function puede(string $codigoPermiso): bool
+    {
+        if ($this->esAdministrador()) {
+            return true;
+        }
+
+        return $this->roles()
+            ->where('rol.activo', true)
+            ->whereHas('permisos', fn ($q) => $q->where('codigo', $codigoPermiso))
+            ->exists();
     }
 
     public function tienePermiso(string $codigoPermiso): bool

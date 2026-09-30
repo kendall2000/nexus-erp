@@ -27,8 +27,7 @@ use App\Http\Controllers\Api\V1\Core\CuentaContableController;
 // ── Rutas PÚBLICAS (sin token) ───────────────────────────────
 Route::prefix('v1')->group(function () {
 
-    // Auth
-    Route::post('auth/login', [AuthController::class, 'login']);
+    // El inicio de sesión es por sesión web (Fortify: POST /login), ya no por token.
 
     // Configuración — pública para el login
     Route::get('configuracion/login',   [ConfiguracionController::class, 'login']);
@@ -36,14 +35,11 @@ Route::prefix('v1')->group(function () {
 
 });
 
-// ── Rutas PROTEGIDAS (requieren token Sanctum) ───────────────
+// ── Rutas PROTEGIDAS (sesión del navegador vía Sanctum) ───────────────
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
-    Route::post('auth/logout',           [AuthController::class, 'logout']);
-    Route::post('auth/logout-all',       [AuthController::class, 'logoutAll']);
-    Route::post('auth/refresh',          [AuthController::class, 'refresh']);
     Route::post('auth/cambiar-password', [AuthController::class, 'cambiarPassword']);
 
     // Menú dinámico

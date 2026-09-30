@@ -100,69 +100,44 @@
 <script>
 (function() {
     // ── 1. Interceptor global de fetch ──────────────────────────
+    // La API usa la sesión del navegador (cookie). A cada llamada a /api/v1 se le
+    // agrega el token CSRF y se le quita el «Authorization: Bearer» que algunas
+    // pantallas todavía mandan (ya no hay token en el navegador).
     const originalFetch = window.fetch;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     window.fetch = async function(url, options) {
         options = options || {};
-        options.headers = options.headers || {};
 
-        const token = sessionStorage.getItem('nexus_token');
-        if (token && typeof url === 'string' && url.indexOf('/api/v1') !== -1) {
-            options.headers['Authorization'] = 'Bearer ' + token;
+        if (typeof url === 'string' && url.indexOf('/api/v1') !== -1) {
+            const headers = new Headers(options.headers || {});
+            headers.delete('Authorization');
+            headers.set('X-CSRF-TOKEN', csrf);
+            headers.set('X-Requested-With', 'XMLHttpRequest');
+            if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+            options.headers = headers;
+            options.credentials = 'same-origin';
         }
 
         const response = await originalFetch(url, options);
 
-        if (response.status === 401 && !window.location.pathname.includes('/login')) {
-            sessionStorage.removeItem('nexus_token');
-            sessionStorage.removeItem('nexus_usuario');
+        // 401: la sesión expiró o el usuario fue desactivado. 419: token CSRF vencido.
+        if ((response.status === 401 || response.status === 419) && !window.location.pathname.includes('/login')) {
             window.location.href = '/login';
         }
 
         return response;
     };
 
-    // ── 2. Función de validación reutilizable ───────────────────
-    function validarSesion() {
-        if (window.location.pathname.includes('/login')) return;
-
-        const token = sessionStorage.getItem('nexus_token');
-
-        if (!token) {
-            window.location.href = '/login';
-            return;
-        }
-
-        // Ocultar contenido INMEDIATAMENTE mientras valida
-        document.documentElement.style.visibility = 'hidden';
-
-        fetch(apiUrl + '/auth/me')
-            .then(res => {
-                if (!res.ok) {
-                    sessionStorage.clear();
-                    window.location.href = '/login';
-                } else {
-                    // Token válido → mostrar contenido
-                    document.documentElement.style.visibility = 'visible';
-                }
-            })
-            .catch(() => {
-                sessionStorage.clear();
-                window.location.href = '/login';
-            });
-    }
-
-    // ── 3. Validar al cargar página ─────────────────────────────
-    document.addEventListener('DOMContentLoaded', validarSesion);
-
-    // ── 4. Validar al volver con back/forward (bfcache) ─────────
+    // ── 2. Al volver con «atrás» desde la caché del navegador, recargar
+    //       para que el servidor vuelva a validar la sesión ───────
     window.addEventListener('pageshow', function(event) {
         if (event.persisted) {
-            validarSesion();
+            window.location.reload();
         }
     });
 
-    // ── 5. Configuración visual de Phoenix ──────────────────────
+    // ── 3. Configuración visual de Phoenix ──────────────────────
     const navbarTopStyle = window.config?.config?.phoenixNavbarTopStyle;
     const navbarTop = document.querySelector('.navbar-top');
     if (navbarTopStyle === 'darker' && navbarTop) {

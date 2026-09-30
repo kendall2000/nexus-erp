@@ -6,13 +6,18 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class NoCache
+/**
+ * Evita que el navegador muestre páginas autenticadas desde caché después
+ * de cerrar sesión (botón «atrás»): obliga a recargar, y sin sesión el
+ * servidor redirige al login.
+ */
+class PreventBackHistory
 {
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
 
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, private');
         $response->headers->set('Pragma', 'no-cache');
         $response->headers->set('Expires', '0');
 

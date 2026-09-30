@@ -12,7 +12,9 @@
         const basePath   = '';
         const servidor   = server + basePath;
         const apiUrl     = server + '/api/v1';
-        const nexusToken = sessionStorage.getItem('nexus_token') || '';
+        // La sesión viaja en la cookie (ya no hay token en el navegador); se deja vacía
+        // para las pantallas que aún la leen mientras se migran.
+        const nexusToken = '';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
 

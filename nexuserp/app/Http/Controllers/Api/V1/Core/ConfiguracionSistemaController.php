@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Core;
 
 use App\Http\Controllers\Controller;
+use App\Support\Seguridad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -59,6 +60,7 @@ class ConfiguracionSistemaController extends Controller
             // Actualizamos todos los registros (si usas fila por 'tipo', puedes adaptarlo aquí)
             // Por simplicidad, actualizamos toda la tabla con los valores enviados.
             DB::table('ConfiguracionSistema')->update($updateData);
+            Seguridad::olvidar(); // intentos y expiración de sesión aplican de inmediato
 
             return response()->json([
                 'success' => true,
