@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.legacy')
 
 @section('breadcrumb', 'Usuarios')
 

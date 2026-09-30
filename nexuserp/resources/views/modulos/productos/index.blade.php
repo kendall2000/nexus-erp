@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.legacy')
 @section('breadcrumb', 'Catálogo de Productos')
 @section('content')
 <div id="productos-app" v-cloak>

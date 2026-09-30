@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Core;
 
 use App\Http\Controllers\Controller;
 use App\Models\Core\Menu;
+use App\Support\MenuLateral;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,54 +16,16 @@ class MenuController extends Controller
     // ────────────────────────────────────────────────────────────────────────
     public function index(Request $request): JsonResponse
     {
-        $usuario   = $request->user();
-        $idEmpresa = $usuario->id_empresa;
-        $idRoles   = $usuario->roles()->pluck('rol.id_rol')->toArray();
-
-        // Verifica si es admin — ve todo sin filtro
-        $esAdmin = $usuario->roles()
-                        ->where('nombre', 'Administrador')
-                        ->exists();
-
-        $grupos = Menu::with(['hijos' => function ($q) use ($idRoles, $esAdmin) {
-                        $q->where('activo', true)->orderBy('orden');
-
-                        // Si NO es admin, filtra por menu_rol
-                        if (!$esAdmin) {
-                            $q->where(function ($subQ) use ($idRoles) {
-                                $subQ->whereDoesntHave('roles')
-                                    ->orWhereHas('roles', fn($r) =>
-                                        $r->whereIn('menu_rol.id_rol', $idRoles)
-                                    );
-                            });
-                        }
-                    }])
-                    ->whereNull('id_padre')          // solo grupos padre
-                    ->where('id_empresa', $idEmpresa)
-                    ->where('activo', true)
-                    ->orderBy('orden')
-                    ->get();
-
-        $menuFormateado = $grupos->map(function ($grupo) {
-            return [
-                'id'     => $grupo->id_menu,
-                'nombre' => $grupo->nombre,
-                'items'  => $grupo->hijos->map(function ($item) {
-                    return [
-                        'id'       => $item->id_menu,
-                        'nombre'   => $item->nombre,
-                        'icono'    => $item->icono ?? 'chevrons-right',
-                        'ruta'     => $item->ruta ?? '#',
-                        'subitems' => [],
-                    ];
-                })->values(),
-            ];
-        })->filter(fn($g) => $g['items']->count() > 0) // oculta grupos vacíos
-        ->values();
+        // Misma regla que el menú lateral (App\Support\MenuLateral).
+        $menu = MenuLateral::para($request->user())->map(fn ($grupo) => [
+            'id'     => $grupo['id'],
+            'nombre' => $grupo['nombre'],
+            'items'  => $grupo['items']->map(fn ($item) => $item + ['subitems' => []]),
+        ]);
 
         return response()->json([
             'success' => true,
-            'data'    => $menuFormateado,
+            'data'    => $menu,
         ]);
     }
 

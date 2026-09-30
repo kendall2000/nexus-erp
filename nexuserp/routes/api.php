@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\V1\Core\AuthController;
 use App\Http\Controllers\Api\V1\Core\ConfiguracionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Core\MenuController;
-use App\Http\Controllers\Api\V1\Core\DashboardController;
 use App\Http\Controllers\Api\V1\Core\UsuarioController;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
 use App\Http\Controllers\Api\V1\Core\RolController;
@@ -48,8 +47,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::put ('menu/{id}',  [MenuController::class, 'update']);
     Route::delete('menu/{id}',[MenuController::class, 'destroy']);
 
-    // Dashboard
-    Route::get('dashboard/resumen', [DashboardController::class, 'resumen']);
 
      // Usuarios
     Route::get('usuarios/catalogos',              [UsuarioController::class, 'catalogos']);

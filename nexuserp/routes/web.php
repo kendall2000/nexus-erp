@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CuentaSeguridadController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SeguridadController;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -37,7 +38,7 @@ Route::middleware('auth')->group(function () {
     })->where(['modulo' => '[a-zA-Z0-9_-]+', 'archivo' => '[a-zA-Z0-9_-]+']);
 
     // ── Vistas del sistema ──────────────────────────────────────────
-    Route::get('/sistema/dashboard',     fn() => view('modulos.dashboard.index'));
+    Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/sistema/usuarios',      fn() => view('modulos.usuarios.index'));
     Route::get('/sistema/roles',         fn() => view('modulos.roles.index'));
     Route::get('/sistema/configuracion', fn() => view('modulos.configuracion.index'));
@@ -65,7 +66,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/sistema/centros-costo',     fn() => view('modulos.centros-costo.index'));
     Route::get('/sistema/cuentas-contables', fn() => view('modulos.cuentas-contables.index'));
 
-    // ── Catch-all (DEBE ir SIEMPRE al final) ────────────────────────
-    Route::get('/sistema/{any}', fn() => view('modulos.dashboard.index'))
+    // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
+    Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')
+        ->with('aviso', 'Esa pantalla todavía no está disponible.'))
         ->where('any', '.*');
 });

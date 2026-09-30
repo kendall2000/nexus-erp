@@ -1,12 +1,7 @@
-{{-- Layout actual del sistema; pasa al layout nuevo estilo restaurante en el paso 3. --}}
-@extends('layouts.app')
+@extends('layouts.app', ['titulo' => 'Seguridad de mi cuenta'])
 
-@section('breadcrumb', 'Seguridad de mi cuenta')
-
-@section('content')
+@section('contenido')
     <h2 class="mb-4 text-1100">Seguridad de mi cuenta</h2>
-
-    @include('partials.alertas')
 
     <div class="row g-4">
         {{-- Contraseña --}}

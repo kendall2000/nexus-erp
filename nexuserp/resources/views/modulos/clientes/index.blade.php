@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.legacy')
 @section('breadcrumb', 'Clientes')
 @section('content')
 <div id="clientes-app" v-cloak>

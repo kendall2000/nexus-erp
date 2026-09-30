@@ -106,6 +106,35 @@ class SeguridadAccesoTest extends TestCase
             $t->string('token');
             $t->timestamp('created_at')->nullable();
         });
+        // Menú lateral (Gestión de menú) y tablas que cuenta el dashboard.
+        Schema::create('menu', function (Blueprint $t) {
+            $t->increments('id_menu');
+            $t->unsignedInteger('id_empresa')->nullable();
+            $t->unsignedInteger('id_padre')->nullable();
+            $t->string('nombre');
+            $t->string('icono')->nullable();
+            $t->string('ruta')->nullable();
+            $t->integer('orden')->default(0);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('menu_rol', function (Blueprint $t) {
+            $t->unsignedInteger('id_menu');
+            $t->unsignedInteger('id_rol');
+        });
+        Schema::create('empresa', function (Blueprint $t) {
+            $t->increments('id_empresa');
+            $t->string('nombre_comercial')->nullable();
+        });
+        DB::table('empresa')->insert(['id_empresa' => 1, 'nombre_comercial' => 'Empresa Demo']);
+        foreach (['cliente' => 'id_cliente', 'empleado' => 'id_empleado', 'contrato_servicio' => 'id_contrato', 'ticket' => 'id_ticket'] as $tabla => $llave) {
+            Schema::create($tabla, function (Blueprint $t) use ($llave) {
+                $t->increments($llave);
+                $t->unsignedInteger('id_empresa');
+                $t->boolean('activo')->default(true);
+                $t->string('estado')->nullable();
+                $t->softDeletes();
+            });
+        }
         Schema::create('ConfiguracionSistema', function (Blueprint $t) {
             $t->increments('idConfig');
             $t->string('tipo');
@@ -448,5 +477,71 @@ class SeguridadAccesoTest extends TestCase
         ])->save();
 
         return $usuario;
+    }
+
+    // ── Paso 3a: layout nuevo, menú lateral y dashboard ─────────────────────
+
+    private function crearMenu(): array
+    {
+        $grupo = DB::table('menu')->insertGetId(['id_empresa' => 1, 'nombre' => 'Inventario', 'orden' => 1]);
+        $productos = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $grupo, 'nombre' => 'Productos', 'icono' => 'package', 'ruta' => '/sistema/productos', 'orden' => 1]);
+        $bodegas = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $grupo, 'nombre' => 'Bodegas', 'icono' => 'archive', 'ruta' => '/sistema/bodegas', 'orden' => 2]);
+        $vacio = DB::table('menu')->insertGetId(['id_empresa' => 1, 'nombre' => 'Solo admin', 'orden' => 2]);
+        $usuarios = DB::table('menu')->insertGetId(['id_empresa' => 1, 'id_padre' => $vacio, 'nombre' => 'Usuarios', 'icono' => 'user', 'ruta' => '/sistema/usuarios', 'orden' => 1]);
+
+        return compact('productos', 'bodegas', 'usuarios');
+    }
+
+    public function test_dashboard_con_el_layout_nuevo_y_cifras_de_la_empresa(): void
+    {
+        $admin = $this->crearUsuario();
+        $this->crearMenu();
+        DB::table('cliente')->insert([['id_empresa' => 1, 'activo' => 1], ['id_empresa' => 1, 'activo' => 1], ['id_empresa' => 2, 'activo' => 1]]);
+        DB::table('ticket')->insert([['id_empresa' => 1, 'estado' => 'ABIERTO'], ['id_empresa' => 1, 'estado' => 'CERRADO']]);
+
+        $respuesta = $this->actingAs($admin)->get(route('dashboard'));
+
+        $respuesta->assertOk()
+            ->assertSee('Hola, Administrador Nexus')
+            ->assertSee('Empresa Demo')
+            ->assertSee('navbar-vertical', false)
+            ->assertSee('Seguridad y accesos');
+        $this->assertSame([2, 0, 0, 1], collect($respuesta->viewData('tarjetas'))->pluck('valor')->all());
+    }
+
+    public function test_el_menu_lateral_respeta_los_roles(): void
+    {
+        $menu = $this->crearMenu();
+        $admin = $this->crearUsuario();
+        $bodeguero = $this->crearUsuario(['username' => 'bodega', 'email' => 'bodega@nexus.test'], 'Bodega');
+        $idRolBodega = DB::table('usuario_rol')->where('id_usuario', $bodeguero->id_usuario)->value('id_rol');
+        // Bodegas solo para el rol Bodega; Usuarios solo para otro rol: el bodeguero no lo ve.
+        $idOtroRol = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => 'Contabilidad', 'activo' => true]);
+        DB::table('menu_rol')->insert([['id_menu' => $menu['bodegas'], 'id_rol' => $idRolBodega], ['id_menu' => $menu['usuarios'], 'id_rol' => $idOtroRol]]);
+
+        $this->actingAs($admin)->get(route('dashboard'))->assertSee('Productos')->assertSee('Bodegas')->assertSee('Solo admin');
+
+        $this->actingAs($bodeguero)->get(route('dashboard'))
+            ->assertSee('Productos')->assertSee('Bodegas')
+            ->assertDontSee('Solo admin')->assertDontSee('Seguridad y accesos');
+    }
+
+    public function test_las_pantallas_vue_usan_el_layout_puente(): void
+    {
+        $this->crearMenu();
+
+        $this->actingAs($this->crearUsuario())->get('/sistema/bodegas')
+            ->assertOk()
+            ->assertSee('navbar-vertical', false)
+            ->assertSee('vue@2.5.16', false)
+            ->assertSee('/modulos-js/bodegas/index.js', false)
+            ->assertSee('Gestión de Bodegas');
+    }
+
+    public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void
+    {
+        $this->actingAs($this->crearUsuario())->get('/sistema/prospectos')
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('aviso', 'Esa pantalla todavía no está disponible.');
     }
 }
