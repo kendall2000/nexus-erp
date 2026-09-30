@@ -46,6 +46,7 @@ class OrdenCompra extends Model
     public function bodega()        { return $this->belongsTo(Bodega::class, 'id_bodega'); }
     public function monedaRel()     { return $this->belongsTo(\App\Models\Core\Moneda::class, 'moneda', 'codigo'); }
     public function detalles()      { return $this->hasMany(DetalleOrdenCompra::class, 'id_oc'); }
+    public function recepciones()   { return $this->hasMany(RecepcionMercaderia::class, 'id_oc'); }
     public function creadoPor()     { return $this->belongsTo(\App\Models\Core\Usuario::class, 'created_by'); }
     public function aprobadoPor()   { return $this->belongsTo(\App\Models\Core\Usuario::class, 'aprobado_por'); }
 

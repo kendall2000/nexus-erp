@@ -161,11 +161,12 @@ class SucursalesGeografiaTest extends TestCase
         $this->actingAs($this->crearUsuario())->post('/sistema/geografia/usuario', ['nombre' => 'x'])->assertMethodNotAllowed();
     }
 
-    public function test_la_api_conserva_solo_la_cascada_de_lectura(): void
+    public function test_la_api_de_geografia_ya_no_existe(): void
     {
         $admin = $this->crearUsuario();
 
-        $this->actingAs($admin)->getJson('/api/v1/geografia/municipios/'.$this->geo['guate'])->assertOk()->assertJsonPath('data.0.name', 'Mixco');
+        // Clientes (5b) ya filtra la cascada en el navegador: la API de lectura también se quitó.
+        $this->actingAs($admin)->getJson('/api/v1/geografia/municipios/'.$this->geo['guate'])->assertNotFound();
         $this->actingAs($admin)->postJson('/api/v1/geografia/paises', ['nombre' => 'X'])->assertNotFound();
         $this->actingAs($admin)->getJson('/api/v1/sucursales')->assertNotFound();
     }

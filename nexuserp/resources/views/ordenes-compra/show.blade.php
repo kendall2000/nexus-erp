@@ -24,6 +24,9 @@
             @if ($yo->puede('ordenes_compra.imprimir'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('ordenes-compra.imprimir', $oc->id_oc) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Imprimir</a>
             @endif
+            @if (in_array($oc->estado, \App\Http\Controllers\RecepcionController::RECIBIBLES, true) && $yo->puede('recepciones.crear'))
+                <a class="btn btn-primary" href="{{ route('recepciones.create', ['oc' => $oc->id_oc]) }}"><span class="fas fa-truck-loading me-2"></span>Registrar recepción</a>
+            @endif
             @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.editar'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('ordenes-compra.edit', $oc->id_oc) }}"><span class="fas fa-pen me-2"></span>Editar</a>
             @endif
@@ -120,6 +123,17 @@
                         <dt class="col-5 text-700">Aprobada por</dt><dd class="col-7">{{ $oc->aprobadoPor?->nombre_completo ?? '—' }}</dd>
                         @if ($oc->notas)<dt class="col-5 text-700">Notas</dt><dd class="col-7">{{ $oc->notas }}</dd>@endif
                     </dl>
+                    @if ($oc->recepciones->isNotEmpty())
+                        <h5 class="mt-4 mb-2">Recepciones</h5>
+                        <ul class="list-unstyled mb-0">
+                            @foreach ($oc->recepciones as $r)
+                                <li>
+                                    @if ($yo->puede('recepciones.ver'))<a href="{{ route('recepciones.show', $r->id_recepcion) }}">{{ $r->numero_recepcion }}</a>@else{{ $r->numero_recepcion }}@endif
+                                    <span class="text-600">· {{ $r->fecha_recepcion?->format('d/m/Y') }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             </div>
         </div>

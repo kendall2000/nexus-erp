@@ -10,11 +10,10 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
-    use HasApiTokens, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /** @var list<string>|null Códigos de permiso calculados (ver codigosPermiso). */
     private ?array $codigosPermiso = null;
@@ -28,7 +27,7 @@ class Usuario extends Authenticatable
     protected $primaryKey = 'id_usuario';
     public $timestamps    = true;
 
-    // Sanctum y Laravel buscan 'deleted_at' para SoftDeletes
+    // SoftDeletes usa 'deleted_at'
     const DELETED_AT = 'deleted_at';
 
     protected $fillable = [

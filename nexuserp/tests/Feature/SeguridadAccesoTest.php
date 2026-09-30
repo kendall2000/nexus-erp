@@ -26,14 +26,13 @@ class SeguridadAccesoTest extends TestCase
     {
         $this->get('/sistema/dashboard')->assertRedirect('/login');
         $this->get('/sistema/productos')->assertRedirect('/login');
-        $this->get('/modulos-js/recepciones/index.js')->assertRedirect('/login');
     }
 
-    public function test_sin_sesion_la_api_responde_401_en_json(): void
+    public function test_ya_no_hay_api_ni_modulos_js(): void
     {
-        $this->getJson('/api/v1/auth/me')
-            ->assertStatus(401)
-            ->assertJson(['success' => false]);
+        // Paso 6: todo es Blade; la API /api/v1 y los JS de Vue ya no existen.
+        $this->getJson('/api/v1/auth/me')->assertNotFound();
+        $this->actingAs($this->crearUsuario())->get('/modulos-js/recepciones/index.js')->assertNotFound();
     }
 
     public function test_ya_no_existe_el_login_por_token(): void
@@ -146,18 +145,6 @@ class SeguridadAccesoTest extends TestCase
         $this->assertSame(1, $this->auditoria('LOGOUT'));
     }
 
-    public function test_la_api_acepta_la_sesion_del_navegador(): void
-    {
-        Route::middleware(['api', 'auth:sanctum'])->get('/api/v1/_prueba', fn () => ['ok' => true]);
-        $usuario = $this->crearUsuario();
-
-        $this->actingAs($usuario, 'web')
-            ->withHeaders(['Referer' => 'http://localhost/sistema/dashboard'])
-            ->getJson('/api/v1/_prueba')
-            ->assertOk()
-            ->assertJson(['ok' => true]);
-    }
-
     public function test_permisos_por_rol_extras_por_usuario_y_administrador(): void
     {
         Route::middleware(['web', 'auth', 'permiso:productos.ver'])->get('/_prueba-permiso', fn () => 'ok');
@@ -224,7 +211,7 @@ class SeguridadAccesoTest extends TestCase
         DB::table('rol')->update(['requiere_2fa' => true]);
 
         $this->actingAs($usuario)->get('/sistema/dashboard')->assertRedirect(route('cuenta.seguridad'));
-        $this->actingAs($usuario)->getJson('/api/v1/auth/me')->assertForbidden();
+        $this->actingAs($usuario)->get('/sistema/productos')->assertRedirect(route('cuenta.seguridad'));
         $this->actingAs($usuario)->get(route('cuenta.seguridad'))
             ->assertOk()
             ->assertSee('Tu rol exige la verificación en dos pasos');
@@ -379,16 +366,16 @@ class SeguridadAccesoTest extends TestCase
         $this->actingAs($bodeguero->fresh())->get(route('dashboard'))->assertSee('Reportes')->assertSee('Kardex');
     }
 
-    public function test_las_pantallas_vue_usan_el_layout_puente(): void
+    public function test_la_ultima_pantalla_vue_ya_es_blade(): void
     {
         $this->crearMenu();
 
-        $this->actingAs($this->crearUsuario())->get('/sistema/recepciones')
+        // Pagos era la última pantalla con el layout puente de Vue (paso 5e).
+        $this->actingAs($this->crearUsuario())->get('/sistema/pagos')
             ->assertOk()
             ->assertSee('navbar-vertical', false)
-            ->assertSee('vue@2.5.16', false)
-            ->assertSee('/modulos-js/recepciones/index.js', false)
-            ->assertSee('Recepciones de Mercadería');
+            ->assertDontSee('vue@2.5.16', false)
+            ->assertDontSee('/modulos-js/', false);
     }
 
     public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void

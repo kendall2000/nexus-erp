@@ -3,7 +3,6 @@
 namespace App\Models\Finanzas;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 class Factura extends Model
 {
@@ -30,6 +29,9 @@ class Factura extends Model
         'iva',
         'total',
         'total_pagado',
+        'monto_condonado',
+        'condonado_por',
+        'fecha_condonacion',
         'saldo_pendiente',
         'estado',
         'uuid_fel',
@@ -55,6 +57,8 @@ class Factura extends Model
         'iva'                     => 'decimal:4',
         'total'                   => 'decimal:4',
         'total_pagado'            => 'decimal:4',
+        'monto_condonado'         => 'decimal:4',
+        'fecha_condonacion'       => 'datetime',
         'saldo_pendiente'         => 'decimal:4',
         'created_at'              => 'datetime',
         'updated_at'              => 'datetime',
@@ -95,6 +99,11 @@ class Factura extends Model
     public function pagos()
     {
         return $this->hasMany(Pago::class, 'id_factura');
+    }
+
+    public function condonadoPor()
+    {
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'condonado_por');
     }
 
     public function anuladaPor()
@@ -141,16 +150,29 @@ class Factura extends Model
         return 'MAS DE 90 DIAS';
     }
 
-    public function registrarPago(float $monto): void
-    {
-        $totalPagado    = $this->total_pagado + $monto;
-        $saldoPendiente = $this->total - $totalPagado;
+    /** Estados en los que el cobro mueve el estado de la factura. */
+    public const ESTADOS_COBRABLES = ['EMITIDA', 'ENVIADA', 'PARCIAL', 'PAGADA', 'VENCIDA'];
 
-        $this->update([
-            'total_pagado'    => $totalPagado,
-            'saldo_pendiente' => max(0, $saldoPendiente),
-            'estado'          => $saldoPendiente <= 0 ? 'PAGADA' : 'PARCIAL',
-        ]);
+    /**
+     * Recalcula lo pagado (suma de pagos APLICADOS), el saldo (total − pagado − condonado)
+     * y el estado: PAGADA sin saldo, PARCIAL con algo abonado, EMITIDA si ya no queda nada.
+     */
+    public function recalcularCobro(): void
+    {
+        if (! in_array($this->estado, self::ESTADOS_COBRABLES, true)) {
+            return;
+        }
+        $pagado = round((float) $this->pagos()->where('estado', 'APLICADO')->sum('monto'), 4);
+        $saldo = $this->tipo === 'NOTA_CREDITO' ? 0 : max(0, round((float) $this->total - $pagado - (float) $this->monto_condonado, 4));
+        $abonado = $pagado > 0 || (float) $this->monto_condonado > 0;
+        $estado = match (true) {
+            $saldo <= 0 => 'PAGADA',
+            $abonado => 'PARCIAL',
+            in_array($this->estado, ['PARCIAL', 'PAGADA'], true) => 'EMITIDA',
+            default => $this->estado,
+        };
+
+        $this->update(['total_pagado' => $pagado, 'saldo_pendiente' => $saldo, 'estado' => $estado]);
     }
 
     public function anular(int $idUsuario): void
@@ -214,130 +236,47 @@ class Factura extends Model
             default  => $query,
         };
     }
-    // ── Hook: actualizar presupuesto al emitir ──────────────────────────
-    protected static function booted(): void
-    {
-        static::updated(function (self $factura) {
-            // Solo cuando pasa a EMITIDA por primera vez
-            if ($factura->wasChanged('estado') && $factura->estado === 'EMITIDA') {
-                self::actualizarPresupuestoPorEmision($factura);
-            }
 
-            // Reversión si se anula
-            if ($factura->wasChanged('estado') && $factura->estado === 'ANULADA') {
-                self::revertirPresupuestoPorAnulacion($factura);
-            }
-        });
-    }
+    // La ejecución del presupuesto (al emitir / anular) está en App\Support\EjecucionPresupuesto.
 
     /**
-     * Suma la BASE IMPONIBLE de cada línea al presupuesto.
-     * No suma el IVA porque el IVA no es ingreso de la empresa, pertenece al SAT.
+     * Recalcula subtotal, base imponible, IVA, total y saldo a partir de las líneas.
+     * El descuento global se reparte entre lo afecto y lo exento en proporción a su
+     * importe y se aplica ANTES de separar o sumar el IVA (antes el IVA se calculaba
+     * sin el descuento y base, IVA y total no cuadraban).
      */
-    private static function actualizarPresupuestoPorEmision(self $factura): void
+    public function recalcularTotales(): void
     {
-        $factura->load('detalles.tipoServicio');
+        $empresa = \App\Models\Core\Empresa::find($this->id_empresa);
+        $tasa = $empresa ? (float) $empresa->tasa_iva_decimal : 0.12;
+        $incluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
 
-        // ── Cargar configuración fiscal de la empresa ──
-        $empresa     = \App\Models\Core\Empresa::find($factura->id_empresa);
-        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
+        $lineas = $this->detalles()->get();
+        $afecto = (float) $lineas->where('es_afecto_iva', true)->sum('subtotal');
+        $exento = (float) $lineas->where('es_afecto_iva', false)->sum('subtotal');
+        $subtotal = $afecto + $exento;
+        $descuento = min((float) $this->descuento, $subtotal);
+        $descAfecto = $subtotal > 0 ? $descuento * $afecto / $subtotal : 0;
+        [$afectoNeto, $exentoNeto] = [$afecto - $descAfecto, $exento - ($descuento - $descAfecto)];
 
-        $mes  = $factura->fecha_emision->month;
-        $anio = $factura->fecha_emision->year;
-
-        foreach ($factura->detalles as $linea) {
-            $idCentro = $linea->centro_efectivo;
-            $idCuenta = $linea->cuenta_efectiva;
-
-            if (!$idCentro || !$idCuenta) continue;
-
-            // ── Calcular el monto NETO (sin IVA) que va al presupuesto ──
-            $subtotal = (float) $linea->subtotal;
-            $montoNeto = self::calcularMontoNeto($subtotal, $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
-
-            $presupuesto = \App\Models\Finanzas\PresupuestoAnual::where('id_empresa', $factura->id_empresa)
-                ->where('id_centro', $idCentro)
-                ->where('id_cuenta', $idCuenta)
-                ->where('anio', $anio)
-                ->where('estado', 'APROBADO')
-                ->first();
-
-            if ($presupuesto) {
-                try {
-                    $presupuesto->registrarEjecucion($mes, $montoNeto);
-                } catch (\Exception $e) {
-                    Log::warning("No se pudo registrar ejecución de presupuesto: {$e->getMessage()}", [
-                        'factura'    => $factura->id_factura,
-                        'linea'      => $linea->id_linea,
-                        'centro'     => $idCentro,
-                        'cuenta'     => $idCuenta,
-                        'monto_neto' => $montoNeto,
-                    ]);
-                }
-            }
+        if ($incluido) {
+            $base = $afectoNeto / (1 + $tasa);
+            $iva = $afectoNeto - $base;
+            $total = $afectoNeto + $exentoNeto;
+        } else {
+            $base = $afectoNeto;
+            $iva = $afectoNeto * $tasa;
+            $total = $afectoNeto + $iva + $exentoNeto;
         }
-    }
+        $total = round($total, 4);
 
-    /**
-     * Resta la BASE IMPONIBLE al presupuesto cuando se anula la factura.
-     */
-    private static function revertirPresupuestoPorAnulacion(self $factura): void
-    {
-        $factura->load('detalles.tipoServicio');
-
-        $empresa     = \App\Models\Core\Empresa::find($factura->id_empresa);
-        $tasaIva     = $empresa ? $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
-
-        $mes  = $factura->fecha_emision->month;
-        $anio = $factura->fecha_emision->year;
-        $nombreMes = \App\Models\Finanzas\PresupuestoAnual::MESES[$mes] ?? null;
-
-        if (!$nombreMes) return;
-
-        foreach ($factura->detalles as $linea) {
-            $idCentro = $linea->centro_efectivo;
-            $idCuenta = $linea->cuenta_efectiva;
-
-            if (!$idCentro || !$idCuenta) continue;
-
-            $subtotal = (float) $linea->subtotal;
-            $montoNeto = self::calcularMontoNeto($subtotal, $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
-
-            $presupuesto = \App\Models\Finanzas\PresupuestoAnual::where('id_empresa', $factura->id_empresa)
-                ->where('id_centro', $idCentro)
-                ->where('id_cuenta', $idCuenta)
-                ->where('anio', $anio)
-                ->first();
-
-            if ($presupuesto) {
-                $presupuesto->decrement("eje_{$nombreMes}", $montoNeto);
-                $presupuesto->decrement('total_ejecutado', $montoNeto);
-            }
-        }
-    }
-
-    /**
-     * Calcula el monto NETO (sin IVA) que va al presupuesto.
-     *
-     * Casos:
-     *   - Línea exenta de IVA → todo el subtotal es base
-     *   - Precio incluye IVA  → subtotal / (1 + tasa)
-     *   - Precio sin IVA      → subtotal tal cual
-     */
-    private static function calcularMontoNeto(
-        float $subtotal,
-        bool $esAfectoIva,
-        float $tasaIva,
-        bool $ivaIncluido
-    ): float {
-        if (!$esAfectoIva) {
-            return round($subtotal, 4);
-        }
-        if ($ivaIncluido) {
-            return round($subtotal / (1 + $tasaIva), 4);
-        }
-        return round($subtotal, 4);
+        $this->update([
+            'subtotal' => round($subtotal, 4),
+            'descuento' => round($descuento, 4),
+            'base_imponible' => round($base + $exentoNeto, 4),
+            'iva' => round($iva, 4),
+            'total' => $total,
+            'saldo_pendiente' => $this->tipo === 'NOTA_CREDITO' ? 0 : max(0, round($total - (float) $this->total_pagado - (float) $this->monto_condonado, 4)),
+        ]);
     }
 }

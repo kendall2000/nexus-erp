@@ -125,18 +125,6 @@ trait EsquemaNexus
             $t->string('token');
             $t->timestamp('created_at')->nullable();
         });
-        // Menú lateral (Gestión de menú) y tablas que cuenta el dashboard.
-        // Tokens de Sanctum (se siguen revocando por si quedó alguno antiguo sin expirar).
-        Schema::create('personal_access_tokens', function (Blueprint $t) {
-            $t->id();
-            $t->morphs('tokenable');
-            $t->string('name');
-            $t->string('token', 64)->unique();
-            $t->text('abilities')->nullable();
-            $t->timestamp('last_used_at')->nullable();
-            $t->timestamp('expires_at')->nullable();
-            $t->timestamps();
-        });
         Schema::create('sucursal', function (Blueprint $t) {
             $t->increments('id_sucursal');
             $t->unsignedInteger('id_empresa');
@@ -188,6 +176,137 @@ trait EsquemaNexus
                 $t->softDeletes();
             });
         }
+        Schema::table('cliente', function (Blueprint $t) {
+            $t->unsignedInteger('id_industria')->nullable();
+            $t->unsignedInteger('id_pais')->nullable();
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('razon_social')->nullable();
+            $t->string('nombre_comercial')->nullable();
+            $t->string('nit', 20)->nullable();
+            $t->string('tipo_persona')->default('JURIDICA');
+            $t->string('email_principal')->nullable();
+            $t->string('telefono_principal')->nullable();
+            $t->string('sitio_web')->nullable();
+            $t->string('direccion_fiscal')->nullable();
+            $t->string('segmento')->nullable();
+            $t->string('categoria')->nullable();
+            $t->string('moneda_facturacion', 3)->default('GTQ');
+            $t->unsignedTinyInteger('dias_credito')->default(30);
+            $t->decimal('limite_credito', 15, 4)->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('updated_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('contacto_cliente', function (Blueprint $t) {
+            $t->increments('id_contacto');
+            $t->unsignedInteger('id_cliente');
+            $t->string('nombre');
+            $t->string('cargo')->nullable();
+            $t->string('email')->nullable();
+            $t->string('telefono')->nullable();
+            $t->string('whatsapp')->nullable();
+            $t->boolean('es_contacto_principal')->default(false);
+            $t->boolean('recibe_facturas')->default(false);
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('industria', function (Blueprint $t) {
+            $t->increments('id_industria');
+            $t->string('nombre');
+        });
+        Schema::create('factura', function (Blueprint $t) {
+            $t->increments('id_factura');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente');
+            $t->unsignedInteger('id_contrato')->nullable();
+            $t->unsignedInteger('id_serie')->nullable();
+            $t->unsignedInteger('numero_factura')->nullable();
+            $t->string('tipo')->default('FACTURA');
+            $t->date('periodo_servicio_inicio')->nullable();
+            $t->date('periodo_servicio_fin')->nullable();
+            $t->decimal('subtotal', 15, 4)->default(0);
+            $t->decimal('descuento', 15, 4)->default(0);
+            $t->decimal('base_imponible', 15, 4)->default(0);
+            $t->decimal('iva', 15, 4)->default(0);
+            $t->string('uuid_fel')->nullable();
+            $t->string('numero_autorizacion_fel')->nullable();
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('anulada_por')->nullable();
+            $t->dateTime('fecha_anulacion')->nullable();
+            $t->string('numero_completo', 30)->nullable();
+            $t->date('fecha_emision')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('total', 15, 4)->default(0);
+            $t->decimal('total_pagado', 15, 4)->default(0);
+            $t->decimal('monto_condonado', 15, 4)->default(0);
+            $t->unsignedInteger('condonado_por')->nullable();
+            $t->dateTime('fecha_condonacion')->nullable();
+            $t->decimal('saldo_pendiente', 15, 4)->default(0);
+            $t->string('estado')->default('BORRADOR');
+            $t->timestamps();
+        });
+        Schema::create('pago', function (Blueprint $t) {
+            $t->increments('id_pago');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente')->nullable();
+            $t->unsignedInteger('id_factura')->nullable();
+            $t->string('referencia')->nullable();
+            $t->string('forma_pago')->default('EFECTIVO');
+            $t->decimal('monto', 15, 4)->default(0);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->date('fecha_pago')->nullable();
+            $t->date('fecha_acreditado')->nullable();
+            $t->string('banco_origen')->nullable();
+            $t->string('comprobante_url')->nullable();
+            $t->string('notas')->nullable();
+            $t->string('estado')->default('APLICADO');
+            $t->unsignedInteger('revertido_por')->nullable();
+            $t->dateTime('fecha_reversion')->nullable();
+            $t->string('motivo_reversion')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('serie_facturacion', function (Blueprint $t) {
+            $t->increments('id_serie');
+            $t->unsignedInteger('id_empresa');
+            $t->string('codigo_serie', 10);
+            $t->string('tipo');
+            $t->string('descripcion')->nullable();
+            $t->unsignedInteger('ultimo_numero')->default(0);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('detalle_factura', function (Blueprint $t) {
+            $t->increments('id_linea');
+            $t->unsignedInteger('id_factura');
+            $t->unsignedInteger('id_tipo_servicio')->nullable();
+            $t->string('descripcion', 300);
+            $t->decimal('cantidad', 10, 2)->default(1);
+            $t->decimal('precio_unitario', 15, 4);
+            $t->decimal('descuento', 15, 4)->default(0);
+            $t->decimal('subtotal', 15, 4);
+            $t->boolean('es_afecto_iva')->default(true);
+            $t->unsignedInteger('id_cuenta')->nullable();
+            $t->unsignedInteger('id_centro')->nullable();
+        });
+        Schema::create('linea_negocio', function (Blueprint $t) {
+            $t->increments('id_linea');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('tipo_servicio', function (Blueprint $t) {
+            $t->increments('id_tipo_servicio');
+            $t->unsignedInteger('id_linea');
+            $t->string('nombre');
+            $t->string('unidad_medida')->default('MES');
+            $t->decimal('precio_base', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->boolean('activo')->default(true);
+            $t->unsignedInteger('id_cuenta_ingreso')->nullable();
+            $t->unsignedInteger('id_centro_default')->nullable();
+        });
         Schema::table('empleado', function (Blueprint $t) {
             $t->unsignedInteger('id_sucursal')->nullable();
             foreach (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada'] as $columna) {
@@ -320,7 +439,11 @@ trait EsquemaNexus
         Schema::create('detalle_recepcion', function (Blueprint $t) {
             $t->increments('id_detalle_rec');
             $t->unsignedInteger('id_recepcion')->nullable();
+            $t->unsignedInteger('id_linea')->nullable();
             $t->unsignedInteger('id_producto');
+            $t->decimal('cantidad_recibida', 12, 4)->default(0);
+            $t->decimal('costo_unitario', 15, 4)->default(0);
+            $t->decimal('subtotal', 15, 4)->default(0);
         });
         Schema::create('presupuesto_anual', function (Blueprint $t) {
             $t->increments('id_presupuesto');
@@ -349,14 +472,35 @@ trait EsquemaNexus
             $t->string('nombre_legal')->nullable();
             $t->string('nit')->nullable();
         });
-        foreach (['recepcion_mercaderia' => 'id_recepcion', 'movimiento_inventario' => 'id_movimiento'] as $tabla => $llave) {
-            Schema::create($tabla, function (Blueprint $t) use ($llave) {
-                $t->increments($llave);
-                $t->unsignedInteger('id_empresa');
-                $t->unsignedInteger('id_bodega')->nullable();
-                $t->unsignedInteger('id_producto')->nullable();
-            });
-        }
+        Schema::create('recepcion_mercaderia', function (Blueprint $t) {
+            $t->increments('id_recepcion');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_oc')->nullable();
+            $t->unsignedInteger('id_bodega')->nullable();
+            $t->string('numero_recepcion', 30)->nullable();
+            $t->date('fecha_recepcion')->nullable();
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('movimiento_inventario', function (Blueprint $t) {
+            $t->increments('id_movimiento');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_producto')->nullable();
+            $t->unsignedInteger('id_bodega')->nullable();
+            $t->string('tipo_movimiento')->default('ENTRADA');
+            $t->decimal('cantidad', 12, 4)->default(0);
+            $t->decimal('costo_unitario', 15, 4)->nullable();
+            $t->decimal('costo_total', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('referencia_tipo')->nullable();
+            $t->unsignedInteger('referencia_id')->nullable();
+            $t->string('numero_lote')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->string('observaciones', 300)->nullable();
+            $t->unsignedInteger('created_by')->default(0);
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::create('ConfiguracionSistema', function (Blueprint $t) {
             $t->increments('idConfig');
             $t->string('tipo');

@@ -66,8 +66,11 @@ class OrdenCompraController extends Controller
 
     public function show(Request $request, int $orden): View
     {
+        $oc = $this->cargar($request, $orden);
+        $oc->load(['recepciones' => fn ($q) => $q->orderBy('fecha_recepcion')->orderBy('id_recepcion')]);
+
         return view('ordenes-compra.show', [
-            'oc' => $this->cargar($request, $orden),
+            'oc' => $oc,
             'estados' => self::ESTADOS,
             'sobregiros' => session('sobregiros', []),
         ]);

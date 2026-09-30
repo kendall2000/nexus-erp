@@ -14,6 +14,9 @@ class Cliente extends Model
     public $timestamps    = true;
     const DELETED_AT      = 'deleted_at';
 
+    /** Estados de factura que aún pueden tener saldo por cobrar. */
+    public const ESTADOS_CON_SALDO = ['EMITIDA', 'ENVIADA', 'PARCIAL', 'VENCIDA'];
+
     protected $fillable = [
         'id_empresa',
         'id_industria',
@@ -135,7 +138,7 @@ class Cliente extends Model
     public function getSaldoPendienteAttribute(): float
     {
         return $this->facturas()
-            ->whereIn('estado', ['EMITIDA', 'ENVIADA', 'PARCIAL', 'VENCIDA'])
+            ->whereIn('estado', self::ESTADOS_CON_SALDO)
             ->sum('saldo_pendiente');
     }
 

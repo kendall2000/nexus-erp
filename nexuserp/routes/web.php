@@ -2,19 +2,25 @@
 
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CentroCostoController;
+use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\PagoController;
+use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UsuarioController;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
 // Login, logout, recuperar y cambiar contraseña y verificación en dos pasos:
@@ -75,18 +81,6 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // ── Sirve los JS de los módulos desde resources/views/modulos/ ──
-    Route::get('/modulos-js/{modulo}/{archivo}.js', function (string $modulo, string $archivo) {
-        $ruta = resource_path("views/modulos/{$modulo}/{$archivo}.js");
-
-        if (!File::exists($ruta)) {
-            abort(404);
-        }
-
-        return response(File::get($ruta), 200)
-            ->header('Content-Type', 'application/javascript');
-    })->where(['modulo' => '[a-zA-Z0-9_-]+', 'archivo' => '[a-zA-Z0-9_-]+']);
-
     // ── Módulos con permisos «modulo.accion» (ver, crear, editar, eliminar) ──
     // Usuarios
     Route::prefix('sistema/usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function () {
@@ -115,15 +109,29 @@ Route::middleware('auth')->group(function () {
         Route::delete('{rol}', 'destroy')->whereNumber('rol')->middleware('permiso:roles.eliminar')->name('destroy');
     });
 
-    // Catálogos de inventario y compras: [controlador, parámetro, ruta «nuevo», ¿exporta?]
+    // Catálogos: url => [controlador, parámetro, ruta «nuevo», ¿exporta?]. El permiso es la url con «_» (centros-costo → centros_costo.ver).
     $catalogos = [
         'bodegas' => [BodegaController::class, 'bodega', 'nueva', false],
         'categorias' => [CategoriaController::class, 'categoria', 'nueva', false],
         'productos' => [ProductoController::class, 'producto', 'nuevo', true],
         'proveedores' => [ProveedorController::class, 'proveedor', 'nuevo', true],
+        'centros-costo' => [CentroCostoController::class, 'centro', 'nuevo', true],
+        'cuentas-contables' => [CuentaContableController::class, 'cuenta', 'nueva', true],
     ];
-    foreach ($catalogos as $modulo => [$controlador, $parametro, $nuevo, $exporta]) {
-        Route::prefix("sistema/{$modulo}")->name("{$modulo}.")->controller($controlador)->group(function () use ($modulo, $parametro, $nuevo, $exporta) {
+
+    // Importar el plan de cuentas (va antes del bucle para que «importar» no choque con {cuenta}).
+    Route::prefix('sistema/cuentas-contables')->name('cuentas-contables.')->controller(CuentaContableController::class)
+        ->middleware(['permiso:cuentas_contables.crear', 'permiso:cuentas_contables.editar'])->group(function () {
+            Route::get('plantilla', 'plantilla')->name('plantilla');
+            Route::get('importar', 'importarForm')->name('importar');
+            Route::post('importar', 'importarPrevia')->middleware('throttle:20,1')->name('importar.previa');
+            Route::post('importar/confirmar', 'importarConfirmar')->name('importar.confirmar');
+            Route::post('importar/cancelar', 'importarCancelar')->name('importar.cancelar');
+        });
+
+    foreach ($catalogos as $url => [$controlador, $parametro, $nuevo, $exporta]) {
+        $modulo = str_replace('-', '_', $url);
+        Route::prefix("sistema/{$url}")->name("{$url}.")->controller($controlador)->group(function () use ($modulo, $parametro, $nuevo, $exporta) {
             Route::get('/', 'index')->middleware("permiso:{$modulo}.ver")->name('index');
             if ($exporta) {
                 Route::get('exportar', 'exportar')->middleware("permiso:{$modulo}.exportar")->name('exportar');
@@ -156,21 +164,90 @@ Route::middleware('auth')->group(function () {
         Route::patch('{orden}/cancelar', 'cancelar')->whereNumber('orden')->middleware('permiso:ordenes_compra.cancelar')->name('cancelar');
     });
 
+    // Recepciones de mercadería (entrada al stock y al kardex; no se editan ni se anulan)
+    Route::prefix('sistema/recepciones')->name('recepciones.')->controller(RecepcionController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:recepciones.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:recepciones.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:recepciones.crear')->name('store');
+        Route::get('{recepcion}', 'show')->whereNumber('recepcion')->middleware('permiso:recepciones.ver')->name('show');
+        Route::get('{recepcion}/imprimir', 'imprimir')->whereNumber('recepcion')->middleware('permiso:recepciones.imprimir')->name('imprimir');
+    });
+
+    // Clientes (ficha con contactos y estado de cuenta)
+    Route::prefix('sistema/clientes')->name('clientes.')->controller(ClienteController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:clientes.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:clientes.exportar')->name('exportar');
+        Route::get('nuevo', 'create')->middleware('permiso:clientes.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:clientes.crear')->name('store');
+        Route::get('{cliente}', 'show')->whereNumber('cliente')->middleware('permiso:clientes.ver')->name('show');
+        Route::get('{cliente}/imprimir', 'imprimir')->whereNumber('cliente')->middleware('permiso:clientes.imprimir')->name('imprimir');
+        Route::middleware('permiso:clientes.editar')->group(function () {
+            Route::get('{cliente}/editar', 'edit')->whereNumber('cliente')->name('edit');
+            Route::put('{cliente}', 'update')->whereNumber('cliente')->name('update');
+            Route::patch('{cliente}/estado', 'estado')->whereNumber('cliente')->name('estado');
+            Route::post('{cliente}/contactos', 'guardarContacto')->whereNumber('cliente')->name('contactos.store');
+            Route::put('{cliente}/contactos/{contacto}', 'guardarContacto')->whereNumber(['cliente', 'contacto'])->name('contactos.update');
+            Route::delete('{cliente}/contactos/{contacto}', 'eliminarContacto')->whereNumber(['cliente', 'contacto'])->name('contactos.destroy');
+        });
+        Route::delete('{cliente}', 'destroy')->whereNumber('cliente')->middleware('permiso:clientes.eliminar')->name('destroy');
+    });
+
+    // Presupuesto anual (borrador → aprobado → cerrado; reabrir vuelve a aprobado)
+    Route::prefix('sistema/presupuesto')->name('presupuesto.')->controller(PresupuestoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:presupuesto.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:presupuesto.exportar')->name('exportar');
+        Route::middleware('permiso:presupuesto.crear')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::post('clonar', 'clonar')->name('clonar');
+        });
+        Route::get('{presupuesto}', 'show')->whereNumber('presupuesto')->middleware('permiso:presupuesto.ver')->name('show');
+        Route::middleware('permiso:presupuesto.editar')->group(function () {
+            Route::get('{presupuesto}/editar', 'edit')->whereNumber('presupuesto')->name('edit');
+            Route::put('{presupuesto}', 'update')->whereNumber('presupuesto')->name('update');
+            Route::delete('{presupuesto}', 'destroy')->whereNumber('presupuesto')->name('destroy');
+        });
+        Route::patch('{presupuesto}/aprobar', 'aprobar')->whereNumber('presupuesto')->middleware('permiso:presupuesto.aprobar')->name('aprobar');
+        Route::patch('{presupuesto}/cerrar', 'cerrar')->whereNumber('presupuesto')->middleware('permiso:presupuesto.cerrar')->name('cerrar');
+        Route::patch('{presupuesto}/reabrir', 'reabrir')->whereNumber('presupuesto')->middleware('permiso:presupuesto.reabrir')->name('reabrir');
+    });
+
+    // Facturas (borrador → emitida → enviada → pagada; anular sin pagos)
+    Route::prefix('sistema/facturas')->name('facturas.')->controller(FacturaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:facturas.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:facturas.exportar')->name('exportar');
+        Route::get('nueva', 'create')->middleware('permiso:facturas.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:facturas.crear')->name('store');
+        Route::get('{factura}', 'show')->whereNumber('factura')->middleware('permiso:facturas.ver')->name('show');
+        Route::get('{factura}/imprimir', 'imprimir')->whereNumber('factura')->middleware('permiso:facturas.imprimir')->name('imprimir');
+        Route::middleware('permiso:facturas.editar')->group(function () {
+            Route::get('{factura}/editar', 'edit')->whereNumber('factura')->name('edit');
+            Route::put('{factura}', 'update')->whereNumber('factura')->name('update');
+            Route::delete('{factura}', 'destroy')->whereNumber('factura')->name('destroy');
+            Route::patch('{factura}/emitir', 'emitir')->whereNumber('factura')->name('emitir');
+            Route::patch('{factura}/enviar', 'enviar')->whereNumber('factura')->name('enviar');
+        });
+        Route::patch('{factura}/anular', 'anular')->whereNumber('factura')->middleware('permiso:facturas.anular')->name('anular');
+        Route::patch('{factura}/condonar', 'condonar')->whereNumber('factura')->middleware('permiso:facturas.condonar')->name('condonar');
+    });
+
+    // Pagos (cobros): no se borran, se revierten o se devuelven
+    Route::prefix('sistema/pagos')->name('pagos.')->controller(PagoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:pagos.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:pagos.exportar')->name('exportar');
+        Route::middleware('permiso:pagos.crear|facturas.cobrar')->group(function () {
+            Route::get('nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::patch('{pago}/acreditar', 'acreditar')->whereNumber('pago')->name('acreditar');
+        });
+        Route::get('{pago}', 'show')->whereNumber('pago')->middleware('permiso:pagos.ver')->name('show');
+        Route::get('{pago}/imprimir', 'imprimir')->whereNumber('pago')->middleware('permiso:pagos.imprimir')->name('imprimir');
+        Route::patch('{pago}/revertir', 'revertir')->whereNumber('pago')->middleware('permiso:pagos.eliminar')->name('revertir');
+        Route::patch('{pago}/devolver', 'devolver')->whereNumber('pago')->middleware('permiso:pagos.devolver')->name('devolver');
+    });
+
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // ── Pantallas que todavía son Vue + API (se migran en 4d y 5) ────
-    Route::get('/sistema/recepciones',    fn() => view('modulos.recepciones.index'));
-
-    // ── Clientes ────────────────────────────────────────────────────
-    Route::get('/sistema/clientes', fn() => view('modulos.clientes.index'));
-
-    // ── Finanzas ────────────────────────────────────────────────────
-    Route::get('/sistema/facturas',          fn() => view('modulos.facturas.index'));
-    Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));
-    Route::get('/sistema/presupuesto',       fn() => view('modulos.presupuesto.index'));
-    Route::get('/sistema/centros-costo',     fn() => view('modulos.centros-costo.index'));
-    Route::get('/sistema/cuentas-contables', fn() => view('modulos.cuentas-contables.index'));
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')
