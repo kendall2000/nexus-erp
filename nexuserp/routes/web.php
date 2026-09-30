@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GestionMenuController;
@@ -26,6 +27,10 @@ Route::middleware('auth')->group(function () {
         Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
         Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
         Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
+
+        // Configuración del sistema
+        Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
+        Route::put('sistema/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
 
         // Gestión del menú lateral
         Route::prefix('sistema/menu')->name('menu.')->controller(GestionMenuController::class)->group(function () {
@@ -82,7 +87,6 @@ Route::middleware('auth')->group(function () {
 
     // ── Vistas del sistema ──────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/sistema/configuracion', fn() => view('modulos.configuracion.index'));
 
     // ── Inventario ──────────────────────────────────────────────────
     Route::get('/sistema/bodegas',        fn() => view('modulos.bodegas.index'));

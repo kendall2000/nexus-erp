@@ -154,6 +154,52 @@ trait EsquemaNexus
             $t->increments('idConfig');
             $t->string('tipo');
             $t->string('nombreSistema')->nullable();
+            foreach (array (
+  0 => 'nombreEmpresa',
+  1 => 'slogan',
+  2 => 'nit',
+  3 => 'telefono',
+  4 => 'correoContacto',
+  5 => 'direccion',
+  6 => 'sitioWeb',
+  7 => 'moneda',
+  8 => 'monedaCodigo',
+  9 => 'zonaHoraria',
+  10 => 'formatoFecha',
+  11 => 'colorPrimario',
+  12 => 'colorSecundario',
+  13 => 'colorAccent',
+  14 => 'loginTitulo',
+  15 => 'loginSubtitulo',
+  16 => 'loginMensajeBienve',
+  17 => 'loginLabelUsuario',
+  18 => 'loginPlaceholderUs',
+  19 => 'loginLabelPassword',
+  20 => 'loginLabelRecordar',
+  21 => 'loginLinkOlvide',
+  22 => 'loginTextBoton',
+  23 => 'footerTexto',
+  24 => 'footerVersion',
+  25 => 'emailAsuntoReset',
+  26 => 'emailAsuntoBienve',
+  27 => 'emailAsuntoCuota',
+  28 => 'emailFirma',
+  29 => 'imgLogo',
+  30 => 'imgLogoOscuro',
+  31 => 'imgFavicon',
+  32 => 'imgFondoLogin',
+  33 => 'imgAvatarDefault',
+  34 => 'imgBannerDashboard',
+  35 => 'imgLogoEmail',
+  36 => 'imgFondoEmail',
+  37 => 'imgLogoReporte',
+  38 => 'imgFondoError404',
+) as $columna) {
+                $t->text($columna)->nullable();
+            }
+            $t->integer('diasMora')->nullable();
+            $t->decimal('porcentajeMora', 5, 2)->nullable();
+            $t->integer('footerAnio')->nullable();
             $t->unsignedSmallInteger('maxIntentosSesion')->nullable();
             $t->unsignedSmallInteger('bloqueoMinutos')->default(15);
             $t->unsignedSmallInteger('sesionExpiraMin')->nullable();

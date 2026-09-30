@@ -1,10 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Core\AuthController;
-use App\Http\Controllers\Api\V1\Core\ConfiguracionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Inventario\CategoriaProductoController;
-use App\Http\Controllers\Api\V1\Core\ConfiguracionSistemaController;
 use App\Http\Controllers\Api\V1\Core\SucursalController;
 use App\Http\Controllers\Api\V1\Core\GeografiaController;
 use App\Http\Controllers\Api\V1\Inventario\ProductoController;
@@ -19,31 +17,13 @@ use App\Http\Controllers\Api\V1\Finanzas\PresupuestoController;
 use App\Http\Controllers\Api\V1\Core\CentroCostoController;
 use App\Http\Controllers\Api\V1\Core\CuentaContableController;
 
-// ── Rutas PÚBLICAS (sin token) ───────────────────────────────
-Route::prefix('v1')->group(function () {
-
-    // El inicio de sesión es por sesión web (Fortify: POST /login), ya no por token.
-
-    // Configuración — pública para el login
-    Route::get('configuracion/login',   [ConfiguracionController::class, 'login']);
-    Route::get('configuracion/general', [ConfiguracionController::class, 'general']);
-
-});
+// El inicio de sesión es por sesión web (Fortify: POST /login); ya no hay rutas públicas.
 
 // ── Rutas PROTEGIDAS (sesión del navegador vía Sanctum) ───────────────
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::get ('auth/me',               [AuthController::class, 'me']);
-
-
-
-
-
-    // Gestión de Configuracion
-    Route::get('/core/configuracion', [ConfiguracionSistemaController::class, 'index']);
-    Route::post('/core/configuracion', [ConfiguracionSistemaController::class, 'update']);
-
 
     // ── Módulo Inventario ──────────────────────────────────────────
     // Bodegas 

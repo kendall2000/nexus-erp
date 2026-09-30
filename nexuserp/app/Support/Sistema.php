@@ -11,23 +11,24 @@ use Throwable;
  */
 class Sistema
 {
-    private static ?ConfiguracionSistema $config = null;
-
-    private static bool $cargada = false;
-
-    /** Configuración «login» (la que edita la pantalla Configuración); vacía si no hay conexión. */
+    /**
+     * Configuración «login» (la que edita la pantalla Configuración); vacía si no hay conexión.
+     * Se guarda en la petición actual (no en una variable estática) para que cada petición
+     * lea los valores vigentes.
+     */
     public static function config(): ConfiguracionSistema
     {
-        if (! self::$cargada) {
-            self::$cargada = true;
+        $atributos = request()->attributes;
+        if (! $atributos->has('sistema.config')) {
             try {
-                self::$config = ConfiguracionSistema::obtenerLogin();
+                $config = ConfiguracionSistema::obtenerLogin();
             } catch (Throwable) {
-                self::$config = null;
+                $config = null;
             }
+            $atributos->set('sistema.config', $config ?? new ConfiguracionSistema);
         }
 
-        return self::$config ?? new ConfiguracionSistema;
+        return $atributos->get('sistema.config');
     }
 
     public static function nombre(): string
