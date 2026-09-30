@@ -446,6 +446,77 @@ trait EsquemaNexus
             $t->date('fecha_baja')->nullable();
             $t->timestamps();
         });
+        Schema::create('periodo_nomina', function (Blueprint $t) {
+            $t->increments('id_periodo');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('tipo')->default('QUINCENAL');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->date('fecha_pago');
+            $t->string('estado')->default('ABIERTO');
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('total_bruto', 15, 4)->default(0);
+            $t->decimal('total_deducciones', 15, 4)->default(0);
+            $t->decimal('total_neto', 15, 4)->default(0);
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('concepto_nomina', function (Blueprint $t) {
+            $t->increments('id_concepto');
+            $t->unsignedInteger('id_empresa');
+            $t->string('codigo', 20);
+            $t->string('nombre');
+            $t->string('tipo');
+            $t->boolean('afecta_igss')->default(false);
+            $t->boolean('afecta_isr')->default(false);
+            $t->boolean('es_fijo')->default(true);
+            $t->string('formula')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->unique(['id_empresa', 'codigo']);
+        });
+        Schema::create('detalle_nomina', function (Blueprint $t) {
+            $t->increments('id_detalle');
+            $t->unsignedInteger('id_periodo');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->string('cargo_snapshot')->nullable();
+            $t->decimal('salario_base', 15, 4);
+            $t->decimal('dias_trabajados', 5, 2)->default(0);
+            $t->decimal('horas_extra', 8, 2)->default(0);
+            foreach (['total_ingresos', 'total_deducciones', 'liquido_pagar', 'cuota_igss_emp', 'cuota_igss_pat', 'isr_retenido'] as $c) {
+                $t->decimal($c, 15, 4)->default(0);
+            }
+            $t->string('estado_pago')->default('CALCULADO');
+            $t->string('numero_cheque')->nullable();
+            $t->string('banco_destino')->nullable();
+            $t->string('cuenta_destino')->nullable();
+            $t->date('fecha_pago')->nullable();
+            $t->timestamps();
+            $t->unique(['id_periodo', 'id_empleado']);
+        });
+        Schema::create('detalle_nomina_concepto', function (Blueprint $t) {
+            $t->increments('id_linea');
+            $t->unsignedInteger('id_detalle');
+            $t->unsignedInteger('id_concepto');
+            $t->string('tipo');
+            $t->decimal('monto', 15, 4);
+            $t->string('descripcion')->nullable();
+        });
+        Schema::create('prestamo_empleado', function (Blueprint $t) {
+            $t->increments('id_prestamo');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->decimal('monto_total', 15, 4);
+            $t->decimal('monto_pendiente', 15, 4);
+            $t->decimal('cuota_quincenal', 15, 4);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->date('fecha_otorgamiento');
+            $t->string('motivo')->nullable();
+            $t->string('estado')->default('ACTIVO');
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->timestamps();
+        });
         Schema::create('departamento_org', function (Blueprint $t) {
             $t->increments('id_depto_org');
             $t->unsignedInteger('id_empresa');

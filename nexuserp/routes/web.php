@@ -15,6 +15,7 @@ use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\LineaNegocioController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\NominaController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\PagoController;
@@ -331,6 +332,23 @@ Route::middleware('auth')->group(function () {
         Route::patch('{ticket}/asignar', 'asignar')->whereNumber('ticket')->middleware('permiso:tickets.asignar')->name('asignar');
         Route::patch('{ticket}/cerrar', 'cerrar')->whereNumber('ticket')->middleware('permiso:tickets.cerrar')->name('cerrar');
         Route::patch('{ticket}/reabrir', 'reabrir')->whereNumber('ticket')->middleware('permiso:tickets.reabrir')->name('reabrir');
+    });
+
+    // Nómina (periodos, cálculo, préstamos y boletas)
+    Route::prefix('sistema/nomina')->name('nomina.')->controller(NominaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:nomina.ver')->name('index');
+        Route::get('{periodo}', 'show')->whereNumber('periodo')->middleware('permiso:nomina.ver')->name('show');
+        Route::get('{periodo}/boletas', 'imprimir')->whereNumber('periodo')->middleware('permiso:nomina.imprimir')->name('imprimir');
+        Route::middleware('permiso:nomina.procesar')->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::patch('{periodo}/procesar', 'procesar')->whereNumber('periodo')->name('procesar');
+            Route::patch('{periodo}/detalles/{detalle}', 'ajustar')->whereNumber(['periodo', 'detalle'])->name('ajustar');
+            Route::delete('{periodo}/conceptos/{linea}', 'quitarConcepto')->whereNumber(['periodo', 'linea'])->name('conceptos.destroy');
+            Route::patch('{periodo}/pagar', 'pagar')->whereNumber('periodo')->name('pagar');
+            Route::post('prestamos', 'guardarPrestamo')->name('prestamos.store');
+        });
+        Route::patch('{periodo}/cerrar', 'cerrar')->whereNumber('periodo')->middleware('permiso:nomina.cerrar')->name('cerrar');
+        Route::patch('{periodo}/reabrir', 'reabrir')->whereNumber('periodo')->middleware('permiso:nomina.reabrir')->name('reabrir');
     });
 
     // ── Inicio ──────────────────────────────────────────────────────
