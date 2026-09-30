@@ -1,28 +1,23 @@
 services:
-
-  # ── Nexus ERP (PHP 8.4 + Apache) ──────────────────────────────
-  # La base de datos es externa (servidor MySQL compartido): no hay contenedor de BD.
-  # No hay cola ni scheduler aparte: QUEUE_CONNECTION=sync y hoy no hay tareas
-  # programadas. Si se agregan, poner ENABLE_SCHEDULER=true en el .env (cron dentro
-  # de este mismo contenedor, ver docker-entrypoint.sh).
-  app:
+  sistema-nexuserp-php:
+    image: sistema-nexuserp-php
+    container_name: sistema-nexuserp-php
     build: .
-    image: nexuserp-app
-    container_name: nexuserp_app
-    restart: unless-stopped
+    ports:
+      - "8080:80"
+    networks:
+      - red-external-network
+    restart: always
     env_file:
       - .env
     volumes:
-      # .env del servidor (para cambiar config sin reconstruir). Nunca va dentro de la imagen.
-      - ./.env:/var/www/nexuserp/.env
-      # Logs y caché de Laravel entre reconstrucciones. Las sesiones están en la BD
-      # y las imágenes subidas en Contabo: no necesitan volumen.
-      # (No montar bootstrap/cache: debe ser el de la imagen, sin paquetes de desarrollo.)
-      - ./storage:/var/www/nexuserp/storage
-    ports:
-      - "${APP_PORT:-8080}:80"
-    networks:
-      - red-external-network
+      # .env del host (para cambiar config sin rebuild)
+      - ./.env:/var/www/html/.env
+      # Persistencia de logs/sessions/cache de Laravel entre rebuilds
+      - sistema-nexuserp-storage:/var/www/html/storage
+
+volumes:
+  sistema-nexuserp-storage:
 
 networks:
   red-external-network:
