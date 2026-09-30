@@ -9,6 +9,9 @@ class Rol extends Model
     /** Nombre reservado: tiene todos los permisos (Usuario::esAdministrador). */
     public const ADMINISTRADOR = 'Administrador';
 
+    /** Roles con acceso total: ven y hacen todo sin permisos asignados (sin distinguir mayúsculas). */
+    public const ACCESO_TOTAL = [self::ADMINISTRADOR, 'Superadmin', 'Super Administrador'];
+
     protected $table      = 'rol';
     protected $primaryKey = 'id_rol';
     public $timestamps    = false;
@@ -55,7 +58,18 @@ class Rol extends Model
 
     public function esAdministrador(): bool
     {
-        return $this->nombre === self::ADMINISTRADOR;
+        return self::esNombreDeAccesoTotal((string) $this->nombre);
+    }
+
+    public static function esNombreDeAccesoTotal(string $nombre): bool
+    {
+        return in_array(mb_strtolower(trim($nombre)), self::nombresAccesoTotal(), true);
+    }
+
+    /** @return list<string> Nombres de ACCESO_TOTAL en minúsculas. */
+    public static function nombresAccesoTotal(): array
+    {
+        return array_map('mb_strtolower', self::ACCESO_TOTAL);
     }
 
     /** El Administrador y los roles de sistema no se renombran, desactivan, limitan ni eliminan. */

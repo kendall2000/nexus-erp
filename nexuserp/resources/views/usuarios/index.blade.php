@@ -61,7 +61,7 @@
                                 @endif
                             </td>
                             <td class="text-end text-nowrap">
-                                @if ($puedeEditar)
+                                @if ($puedeEditar && $yo->puedeGestionar($u))
                                     <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('usuarios.edit', $u->id_usuario) }}">Editar</a>
                                     @if ($u->id_usuario !== auth()->id())
                                         <form method="POST" action="{{ route('usuarios.estado', $u->id_usuario) }}" class="d-inline">
@@ -76,7 +76,7 @@
                                         </form>
                                     @endif
                                 @endif
-                                @if ($puedeEliminar && $u->id_usuario !== auth()->id())
+                                @if ($puedeEliminar && $u->id_usuario !== auth()->id() && $yo->puedeGestionar($u))
                                     <form method="POST" action="{{ route('usuarios.destroy', $u->id_usuario) }}" class="d-inline" onsubmit="return confirm(@js('¿Eliminar al usuario '.$u->username.'? Ya no podrá entrar al sistema.'))">
                                         @csrf
                                         @method('DELETE')

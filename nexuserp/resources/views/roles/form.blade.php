@@ -46,7 +46,7 @@
                     <h4 class="mb-2">Permisos</h4>
                     @if ($esAdmin)
                         <div class="alert alert-soft-primary fs--1" role="alert">
-                            El Administrador tiene todos los permisos y ve todo el menú. No se puede limitar.
+                            Este rol tiene acceso total: todos los permisos y todo el menú. No se puede limitar.
                         </div>
                     @else
                         <p class="text-700 fs--1 mb-3">

@@ -124,7 +124,7 @@ class RolController extends Controller
             return 'No puedes modificar un rol que tú mismo tienes. Pídeselo al Administrador.';
         }
         if (! $usuario->esAdministrador() && $rol->esAdministrador()) {
-            return 'Solo el Administrador puede modificar el rol Administrador.';
+            return 'Solo un administrador puede modificar los roles con acceso total.';
         }
 
         return null;
@@ -144,11 +144,16 @@ class RolController extends Controller
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:100',
                 Rule::unique('rol', 'nombre')->where('id_empresa', $idEmpresa)->ignore($rol?->id_rol, 'id_rol'),
-                ...($rol?->esAdministrador() ? [] : [Rule::notIn([Rol::ADMINISTRADOR])])],
+                // Un nombre de acceso total (Administrador, Superadmin…) da todos los permisos:
+                // solo quien ya tiene acceso total puede crearlo o ponérselo a otro rol.
+                function (string $atributo, mixed $valor, \Closure $fallar) use ($request, $rol) {
+                    if (! $rol?->esAdministrador() && Rol::esNombreDeAccesoTotal((string) $valor) && ! $request->user()->esAdministrador()) {
+                        $fallar('Ese nombre está reservado para los roles con acceso total ('.implode(', ', Rol::ACCESO_TOTAL).').');
+                    }
+                }],
             'descripcion' => ['nullable', 'string', 'max:300'],
         ], [
             'nombre.unique' => 'Ya existe un rol con ese nombre.',
-            'nombre.not_in' => 'Ese nombre está reservado para el rol Administrador.',
         ]);
 
         return $datos + [

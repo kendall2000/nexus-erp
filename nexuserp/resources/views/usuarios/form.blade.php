@@ -91,7 +91,7 @@
             <div class="card-body">
                 <h4 class="mb-1">Permisos extra</h4>
                 @if ($usuario->esAdministrador())
-                    <p class="text-700 fs--1 mb-0">Es Administrador: ya tiene todos los permisos.</p>
+                    <p class="text-700 fs--1 mb-0">Tiene acceso total: ya tiene todos los permisos.</p>
                 @else
                     <p class="text-700 fs--1 mb-3">
                         Se suman a los de su rol ({{ $usuario->roles->pluck('nombre')->join(', ') ?: 'sin rol' }}). Los que ya da el rol aparecen marcados y fijos.
