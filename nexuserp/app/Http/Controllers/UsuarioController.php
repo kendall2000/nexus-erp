@@ -156,7 +156,6 @@ class UsuarioController extends Controller
             if (! $esYo) {
                 // Contraseña restablecida por otra persona: se cierran sus sesiones.
                 Seguridad::cerrarSesiones($usuario->id_usuario);
-                $usuario->tokens()->delete();
                 Seguridad::registrar('RESET_PASSWORD', $usuario->username, $usuario->id_usuario, 'Restablecida por '.$request->user()->username);
             }
         }
@@ -180,7 +179,6 @@ class UsuarioController extends Controller
         $usuario->update(['activo' => ! $usuario->activo]);
         if (! $usuario->activo) {
             Seguridad::cerrarSesiones($usuario->id_usuario);
-            $usuario->tokens()->delete();
         }
 
         return back()->with('status', $usuario->activo
@@ -206,7 +204,6 @@ class UsuarioController extends Controller
         }
 
         Seguridad::cerrarSesiones($usuario->id_usuario);
-        $usuario->tokens()->delete();
         $usuario->delete();
 
         return redirect()->route('usuarios.index')->with('status', "Usuario {$usuario->username} eliminado.");

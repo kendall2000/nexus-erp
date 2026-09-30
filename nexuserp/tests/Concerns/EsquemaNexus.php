@@ -125,18 +125,6 @@ trait EsquemaNexus
             $t->string('token');
             $t->timestamp('created_at')->nullable();
         });
-        // Menú lateral (Gestión de menú) y tablas que cuenta el dashboard.
-        // Tokens de Sanctum (se siguen revocando por si quedó alguno antiguo sin expirar).
-        Schema::create('personal_access_tokens', function (Blueprint $t) {
-            $t->id();
-            $t->morphs('tokenable');
-            $t->string('name');
-            $t->string('token', 64)->unique();
-            $t->text('abilities')->nullable();
-            $t->timestamp('last_used_at')->nullable();
-            $t->timestamp('expires_at')->nullable();
-            $t->timestamps();
-        });
         Schema::create('sucursal', function (Blueprint $t) {
             $t->increments('id_sucursal');
             $t->unsignedInteger('id_empresa');

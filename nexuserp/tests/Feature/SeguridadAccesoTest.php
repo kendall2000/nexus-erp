@@ -26,14 +26,13 @@ class SeguridadAccesoTest extends TestCase
     {
         $this->get('/sistema/dashboard')->assertRedirect('/login');
         $this->get('/sistema/productos')->assertRedirect('/login');
-        $this->get('/modulos-js/recepciones/index.js')->assertRedirect('/login');
     }
 
-    public function test_sin_sesion_la_api_responde_401_en_json(): void
+    public function test_ya_no_hay_api_ni_modulos_js(): void
     {
-        $this->getJson('/api/v1/auth/me')
-            ->assertStatus(401)
-            ->assertJson(['success' => false]);
+        // Paso 6: todo es Blade; la API /api/v1 y los JS de Vue ya no existen.
+        $this->getJson('/api/v1/auth/me')->assertNotFound();
+        $this->actingAs($this->crearUsuario())->get('/modulos-js/recepciones/index.js')->assertNotFound();
     }
 
     public function test_ya_no_existe_el_login_por_token(): void
@@ -146,18 +145,6 @@ class SeguridadAccesoTest extends TestCase
         $this->assertSame(1, $this->auditoria('LOGOUT'));
     }
 
-    public function test_la_api_acepta_la_sesion_del_navegador(): void
-    {
-        Route::middleware(['api', 'auth:sanctum'])->get('/api/v1/_prueba', fn () => ['ok' => true]);
-        $usuario = $this->crearUsuario();
-
-        $this->actingAs($usuario, 'web')
-            ->withHeaders(['Referer' => 'http://localhost/sistema/dashboard'])
-            ->getJson('/api/v1/_prueba')
-            ->assertOk()
-            ->assertJson(['ok' => true]);
-    }
-
     public function test_permisos_por_rol_extras_por_usuario_y_administrador(): void
     {
         Route::middleware(['web', 'auth', 'permiso:productos.ver'])->get('/_prueba-permiso', fn () => 'ok');
@@ -224,7 +211,7 @@ class SeguridadAccesoTest extends TestCase
         DB::table('rol')->update(['requiere_2fa' => true]);
 
         $this->actingAs($usuario)->get('/sistema/dashboard')->assertRedirect(route('cuenta.seguridad'));
-        $this->actingAs($usuario)->getJson('/api/v1/auth/me')->assertForbidden();
+        $this->actingAs($usuario)->get('/sistema/productos')->assertRedirect(route('cuenta.seguridad'));
         $this->actingAs($usuario)->get(route('cuenta.seguridad'))
             ->assertOk()
             ->assertSee('Tu rol exige la verificación en dos pasos');

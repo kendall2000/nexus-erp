@@ -21,7 +21,6 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UsuarioController;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
 // Login, logout, recuperar y cambiar contraseña y verificación en dos pasos:
@@ -81,18 +80,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('{modulo}', 'destroy')->whereNumber('modulo')->name('destroy');
         });
     });
-
-    // ── Sirve los JS de los módulos desde resources/views/modulos/ ──
-    Route::get('/modulos-js/{modulo}/{archivo}.js', function (string $modulo, string $archivo) {
-        $ruta = resource_path("views/modulos/{$modulo}/{$archivo}.js");
-
-        if (!File::exists($ruta)) {
-            abort(404);
-        }
-
-        return response(File::get($ruta), 200)
-            ->header('Content-Type', 'application/javascript');
-    })->where(['modulo' => '[a-zA-Z0-9_-]+', 'archivo' => '[a-zA-Z0-9_-]+']);
 
     // ── Módulos con permisos «modulo.accion» (ver, crear, editar, eliminar) ──
     // Usuarios
