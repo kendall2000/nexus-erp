@@ -1,60 +1,29 @@
 services:
 
-  # ── Aplicación Laravel ────────────────────────────────────────
+  # ── Nexus ERP (PHP 8.4 + Apache) ──────────────────────────────
+  # La base de datos es externa (servidor MySQL compartido): no hay contenedor de BD.
+  # No hay cola ni scheduler aparte: QUEUE_CONNECTION=sync y hoy no hay tareas
+  # programadas. Si se agregan, poner ENABLE_SCHEDULER=true en el .env (cron dentro
+  # de este mismo contenedor, ver docker-entrypoint.sh).
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        user: nexuserp
-        uid: 1000
+    build: .
     image: nexuserp-app
     container_name: nexuserp_app
     restart: unless-stopped
-    working_dir: /var/www/nexuserp
     env_file:
       - .env
     volumes:
+      # .env del servidor (para cambiar config sin reconstruir). Nunca va dentro de la imagen.
+      - ./.env:/var/www/nexuserp/.env
+      # Logs y caché de Laravel entre reconstrucciones. Las sesiones están en la BD
+      # y las imágenes subidas en Contabo: no necesitan volumen.
+      # (No montar bootstrap/cache: debe ser el de la imagen, sin paquetes de desarrollo.)
       - ./storage:/var/www/nexuserp/storage
-      - ./bootstrap/cache:/var/www/nexuserp/bootstrap/cache
     ports:
       - "${APP_PORT:-8080}:80"
     networks:
-      - red-external-network # <-- CORREGIDO: Ahora está bien indentado y referenciado
-
-  # ── Queue Worker (opcional, puedes comentar si no lo usas) ───
-  queue:
-    image: nexuserp-app
-    container_name: nexuserp_queue
-    restart: unless-stopped
-    working_dir: /var/www/nexuserp
-    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
-    env_file:
-      - .env
-    depends_on:
-      - app
-    networks:
       - red-external-network
 
-  # ── Scheduler (opcional, puedes comentar si no lo usas) ──────
-  scheduler:
-    image: nexuserp-app
-    container_name: nexuserp_scheduler
-    restart: unless-stopped
-    working_dir: /var/www/nexuserp
-    command: >
-      sh -c "while true; do
-        php artisan schedule:run --verbose --no-interaction;
-        sleep 60;
-      done"
-    env_file:
-      - .env
-    depends_on:
-      - app
-    networks:
-      - red-external-network
-
-# ── Configuración Global de Redes ─────────────────────────────
 networks:
   red-external-network:
-    external: true 
+    external: true
