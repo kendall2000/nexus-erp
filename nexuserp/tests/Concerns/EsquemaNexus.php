@@ -294,12 +294,14 @@ trait EsquemaNexus
             $t->increments('id_linea');
             $t->unsignedInteger('id_empresa');
             $t->string('nombre');
+            $t->text('descripcion')->nullable();
             $t->boolean('activo')->default(true);
         });
         Schema::create('tipo_servicio', function (Blueprint $t) {
             $t->increments('id_tipo_servicio');
             $t->unsignedInteger('id_linea');
             $t->string('nombre');
+            $t->text('descripcion')->nullable();
             $t->string('unidad_medida')->default('MES');
             $t->decimal('precio_base', 15, 4)->nullable();
             $t->string('moneda', 3)->default('GTQ');

@@ -10,6 +10,7 @@ use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
+use App\Http\Controllers\LineaNegocioController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\OrdenCompraController;
@@ -19,8 +20,10 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\SerieFacturacionController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
+use App\Http\Controllers\TipoServicioController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -118,6 +121,9 @@ Route::middleware('auth')->group(function () {
         'proveedores' => [ProveedorController::class, 'proveedor', 'nuevo', true],
         'centros-costo' => [CentroCostoController::class, 'centro', 'nuevo', true],
         'cuentas-contables' => [CuentaContableController::class, 'cuenta', 'nueva', true],
+        'lineas-negocio' => [LineaNegocioController::class, 'linea', 'nueva', false],
+        'tipos-servicio' => [TipoServicioController::class, 'servicio', 'nuevo', true],
+        'series-facturacion' => [SerieFacturacionController::class, 'serie', 'nueva', false],
     ];
 
     // Importar el plan de cuentas (va antes del bucle para que «importar» no choque con {cuenta}).
