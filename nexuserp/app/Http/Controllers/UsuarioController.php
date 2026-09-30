@@ -75,12 +75,12 @@ class UsuarioController extends Controller
 
     public function edit(Request $request, int $usuario): View
     {
-        $usuario = $this->deMiEmpresa($request)->with('roles')->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario, ['roles']);
 
         return view('usuarios.form', [
             'usuario' => $usuario,
             'idRol' => $usuario->roles->first()?->id_rol,
-            'roles' => $this->roles($request),
+            'roles' => $this->roles($request, $usuario->roles->first()?->id_rol),
             'sucursales' => $this->sucursales($request),
             // Permisos extra (además de los del rol), como en sistema-inventario.
             'matriz' => MatrizPermisos::datos(),
@@ -96,7 +96,7 @@ class UsuarioController extends Controller
      */
     public function permisos(Request $request, int $usuario): RedirectResponse
     {
-        $usuario = $this->deMiEmpresa($request)->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario);
         $request->validate([
             'permisos' => ['array'],
             'permisos.*' => ['integer', Rule::exists('permiso', 'id_permiso')],
@@ -130,7 +130,7 @@ class UsuarioController extends Controller
 
     public function update(Request $request, int $usuario): RedirectResponse
     {
-        $usuario = $this->deMiEmpresa($request)->with('roles')->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario, ['roles']);
         $datos = $this->validar($request, $usuario);
         $esYo = $usuario->is($request->user());
 
@@ -172,7 +172,7 @@ class UsuarioController extends Controller
     /** Activar / desactivar. Al desactivar se cierran sus sesiones. */
     public function estado(Request $request, int $usuario): RedirectResponse
     {
-        $usuario = $this->deMiEmpresa($request)->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario);
         if ($usuario->is($request->user())) {
             return back()->withErrors(['usuario' => 'No puedes desactivarte a ti mismo.']);
         }
@@ -190,7 +190,7 @@ class UsuarioController extends Controller
 
     public function sesiones(Request $request, int $usuario): RedirectResponse
     {
-        $usuario = $this->deMiEmpresa($request)->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario);
         $n = Seguridad::cerrarSesiones($usuario->id_usuario);
         Seguridad::registrar('SESION_CERRADA', $usuario->username, $usuario->id_usuario, "{$n} sesiones · por ".$request->user()->username);
 
@@ -200,7 +200,7 @@ class UsuarioController extends Controller
     /** Eliminación lógica (queda en la base con deleted_at). */
     public function destroy(Request $request, int $usuario): RedirectResponse
     {
-        $usuario = $this->deMiEmpresa($request)->findOrFail($usuario);
+        $usuario = $this->gestionable($request, $usuario);
         if ($usuario->is($request->user())) {
             return back()->withErrors(['usuario' => 'No puedes eliminar tu propia cuenta.']);
         }
@@ -215,6 +215,16 @@ class UsuarioController extends Controller
     private function deMiEmpresa(Request $request)
     {
         return Usuario::query()->where('id_empresa', $request->user()->id_empresa);
+    }
+
+    /** Usuario de mi empresa que puedo gestionar: nadie toca a quien tiene más acceso que él. */
+    private function gestionable(Request $request, int $id, array $con = []): Usuario
+    {
+        $usuario = $this->deMiEmpresa($request)->with($con)->findOrFail($id);
+        abort_unless($request->user()->puedeGestionar($usuario), 403,
+            'Este usuario tiene más acceso que tú: solo un administrador puede modificarlo.');
+
+        return $usuario;
     }
 
     /** @return array<string, mixed> */
@@ -232,7 +242,16 @@ class UsuarioController extends Controller
                 Rule::unique('usuario', 'username')->ignore($usuario?->id_usuario, 'id_usuario')],
             'email' => ['required', 'email', 'max:150',
                 Rule::unique('usuario', 'email')->ignore($usuario?->id_usuario, 'id_usuario')],
-            'id_rol' => ['required', Rule::exists('rol', 'id_rol')->where('id_empresa', $idEmpresa)->where('activo', true)],
+            'id_rol' => ['required', Rule::exists('rol', 'id_rol')->where('id_empresa', $idEmpresa)->where('activo', true),
+                // Sin escalada: no se asigna un rol con acceso total ni con permisos que uno no tiene
+                // (si el usuario ya lo tenía, se puede conservar).
+                function (string $atributo, mixed $valor, \Closure $fallar) use ($request, $usuario) {
+                    $rol = Rol::query()->find((int) $valor);
+                    $yaLoTiene = $usuario && $usuario->roles->contains('id_rol', (int) $valor);
+                    if ($rol && ! $yaLoTiene && ! $request->user()->puedeAsignarRol($rol)) {
+                        $fallar('No puedes asignar un rol con más acceso que el tuyo.');
+                    }
+                }],
             'id_sucursal' => ['nullable', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
             'password' => [$usuario ? 'nullable' : 'required', 'string', Password::default(), 'confirmed'],
             'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -279,9 +298,13 @@ class UsuarioController extends Controller
         ]]);
     }
 
-    private function roles(Request $request)
+    /** Roles que puedo asignar (más el que ya tiene el usuario, para no perderlo al guardar). */
+    private function roles(Request $request, ?int $actual = null)
     {
-        return Rol::query()->where('id_empresa', $request->user()->id_empresa)->where('activo', true)->orderBy('nombre')->get();
+        $yo = $request->user();
+
+        return Rol::query()->where('id_empresa', $yo->id_empresa)->where('activo', true)->orderBy('nombre')->get()
+            ->filter(fn (Rol $rol) => $rol->id_rol === $actual || $yo->puedeAsignarRol($rol))->values();
     }
 
     private function sucursales(Request $request)

@@ -71,10 +71,12 @@ class RolesTest extends TestCase
 
     public function test_el_nombre_administrador_esta_reservado(): void
     {
-        $admin = $this->crearUsuario();
-        DB::table('rol')->where('nombre', 'Administrador')->update(['id_empresa' => 3]); // que no choque por «único»
+        // Quien no tiene acceso total no puede crear un rol que lo daría (ver también AccesoTotalTest).
+        $jefe = $this->crearUsuario(['username' => 'jefe', 'email' => 'jefe@nexus.test'], 'Jefe');
+        $this->darPermisos($jefe, ['roles.ver', 'roles.crear']);
 
-        $this->actingAs($admin->fresh())->post(route('roles.store'), ['nombre' => 'Administrador'])->assertSessionHasErrors('nombre');
+        $this->actingAs($jefe)->post(route('roles.store'), ['nombre' => ' administrador '])->assertSessionHasErrors('nombre');
+        $this->assertSame(1, DB::table('rol')->count());
     }
 
     public function test_el_rol_administrador_no_se_renombra_limita_ni_elimina(): void

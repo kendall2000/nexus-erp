@@ -208,22 +208,24 @@ class UsuariosTest extends TestCase
         $this->assertSame([], $this->extras($vendedor));
     }
 
-    public function test_extras_sin_escalada_y_conservando_los_ajenos(): void
+    public function test_extras_sin_escalada(): void
     {
         $jefe = $this->crearUsuario(['username' => 'jefe', 'email' => 'jefe@nexus.test'], 'Jefe');
         $this->darPermisos($jefe, ['usuarios.editar', 'bodegas.ver']);
         $vendedor = $this->crearUsuario(['username' => 'v', 'email' => 'v@nexus.test'], 'Ventas');
-        $anular = $this->permiso('facturas.anular');
-        DB::table('usuario_permiso')->insert(['id_usuario' => $vendedor->id_usuario, 'id_permiso' => $anular]);
 
         // No puede dar un permiso que no tiene.
         $this->actingAs($jefe)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => [$this->permiso('roles.editar')]])
             ->assertForbidden();
 
-        // Da bodegas.ver; facturas.anular (que él no tiene) se conserva.
         $this->actingAs($jefe)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => [$this->permiso('bodegas.ver')]])
             ->assertSessionHasNoErrors();
-        $this->assertEqualsCanonicalizing([$anular, $this->permiso('bodegas.ver')], $this->extras($vendedor));
+        $this->assertSame([$this->permiso('bodegas.ver')], $this->extras($vendedor));
+
+        // Con un extra que el jefe no tiene, el vendedor pasa a tener más acceso: ya no lo gestiona.
+        DB::table('usuario_permiso')->insert(['id_usuario' => $vendedor->id_usuario, 'id_permiso' => $this->permiso('facturas.anular')]);
+        $this->actingAs($jefe)->put(route('usuarios.permisos', $vendedor->id_usuario), ['permisos' => []])->assertForbidden();
+        $this->assertCount(2, $this->extras($vendedor));
     }
 
     public function test_extras_de_otra_empresa_no(): void

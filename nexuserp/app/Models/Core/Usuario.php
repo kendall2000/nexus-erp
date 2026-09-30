@@ -4,8 +4,10 @@ namespace App\Models\Core;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Support\MatrizPermisos;
 use App\Support\Sistema;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -16,6 +18,9 @@ class Usuario extends Authenticatable
 
     /** @var list<string>|null Códigos de permiso calculados (ver codigosPermiso). */
     private ?array $codigosPermiso = null;
+
+    /** @var list<int>|null Ids de permiso propios (ver idsPermisoPropios). */
+    private ?array $idsPermiso = null;
 
     private ?bool $esAdmin = null;
 
@@ -134,12 +139,12 @@ class Usuario extends Authenticatable
             && $this->roles()->where('rol.activo', true)->exists();
     }
 
-    /** Tiene el rol «Administrador» (activo) de su empresa: pasa todas las validaciones de permisos. */
+    /** Tiene un rol de acceso total activo (Administrador o Superadmin): pasa todas las validaciones de permisos. */
     public function esAdministrador(): bool
     {
         return $this->roles()
             ->where('rol.activo', true)
-            ->where('rol.nombre', Rol::ADMINISTRADOR)
+            ->whereIn(DB::raw('LOWER(rol.nombre)'), Rol::nombresAccesoTotal())
             ->exists();
     }
 
@@ -194,10 +199,42 @@ class Usuario extends Authenticatable
             ->map(fn ($p) => $p->modulo.'.'.$p->accion)->unique()->values()->all();
     }
 
+    /**
+     * Anti-escalada: quien no tiene acceso total solo gestiona (edita, cambia la contraseña,
+     * desactiva, elimina) a usuarios sin acceso total cuyos permisos también tiene él.
+     */
+    public function puedeGestionar(Usuario $otro): bool
+    {
+        if ($this->esAdministradorEnCache()) {
+            return true;
+        }
+        $delOtro = MatrizPermisos::idsDe($otro);
+
+        return $delOtro !== null && ! array_diff($delOtro, $this->idsPermisoPropios());
+    }
+
+    /** Solo asigna roles sin acceso total cuyos permisos también tiene él. */
+    public function puedeAsignarRol(Rol $rol): bool
+    {
+        if ($this->esAdministradorEnCache()) {
+            return true;
+        }
+        $delRol = $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all();
+
+        return ! $rol->esAdministrador() && ! array_diff($delRol, $this->idsPermisoPropios());
+    }
+
+    /** @return list<int> */
+    private function idsPermisoPropios(): array
+    {
+        return $this->idsPermiso ??= MatrizPermisos::idsDe($this) ?? [];
+    }
+
     /** Llamar si cambian sus roles o permisos durante la misma petición. */
     public function olvidarPermisos(): void
     {
         $this->codigosPermiso = null;
+        $this->idsPermiso = null;
         $this->esAdmin = null;
     }
 

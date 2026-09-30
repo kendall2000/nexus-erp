@@ -10,7 +10,7 @@
         <div class="row g-3 mb-4">
             <div class="col-auto">
                 <h2 class="mb-0">Roles y permisos</h2>
-                <p class="text-700 fw-semi-bold mb-0 mt-1">Qué puede hacer cada puesto en cada módulo. El Administrador tiene acceso a todo.</p>
+                <p class="text-700 fw-semi-bold mb-0 mt-1">Qué puede hacer cada puesto en cada módulo. Los roles Administrador y Superadmin tienen acceso a todo.</p>
             </div>
         </div>
 
