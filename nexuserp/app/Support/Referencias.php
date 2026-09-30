@@ -12,17 +12,19 @@ use Illuminate\Support\Facades\Schema;
 class Referencias
 {
     /**
-     * @param  array<string, string>  $tablas  tabla => nombre para el mensaje («clientes»)
+     * @param  array<string, string>  $tablas  tabla => nombre para el mensaje («clientes»);
+     *                                          «tabla.columna» si en esa tabla la columna se llama distinto
      * @return string|null «2 clientes y 1 sucursal» o null si nadie lo usa
      */
     public static function enUso(string $columna, int $id, array $tablas): ?string
     {
         $usos = [];
-        foreach ($tablas as $tabla => $nombre) {
-            if (! Schema::hasTable($tabla) || ! Schema::hasColumn($tabla, $columna)) {
+        foreach ($tablas as $clave => $nombre) {
+            [$tabla, $columnaTabla] = str_contains($clave, '.') ? explode('.', $clave, 2) : [$clave, $columna];
+            if (! Schema::hasTable($tabla) || ! Schema::hasColumn($tabla, $columnaTabla)) {
                 continue;
             }
-            $consulta = DB::table($tabla)->where($columna, $id);
+            $consulta = DB::table($tabla)->where($columnaTabla, $id);
             if (Schema::hasColumn($tabla, 'deleted_at')) {
                 $consulta->whereNull('deleted_at');
             }

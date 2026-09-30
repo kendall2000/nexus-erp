@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeografiaController;
@@ -116,15 +118,29 @@ Route::middleware('auth')->group(function () {
         Route::delete('{rol}', 'destroy')->whereNumber('rol')->middleware('permiso:roles.eliminar')->name('destroy');
     });
 
-    // Catálogos de inventario y compras: [controlador, parámetro, ruta «nuevo», ¿exporta?]
+    // Catálogos: url => [controlador, parámetro, ruta «nuevo», ¿exporta?]. El permiso es la url con «_» (centros-costo → centros_costo.ver).
     $catalogos = [
         'bodegas' => [BodegaController::class, 'bodega', 'nueva', false],
         'categorias' => [CategoriaController::class, 'categoria', 'nueva', false],
         'productos' => [ProductoController::class, 'producto', 'nuevo', true],
         'proveedores' => [ProveedorController::class, 'proveedor', 'nuevo', true],
+        'centros-costo' => [CentroCostoController::class, 'centro', 'nuevo', true],
+        'cuentas-contables' => [CuentaContableController::class, 'cuenta', 'nueva', true],
     ];
-    foreach ($catalogos as $modulo => [$controlador, $parametro, $nuevo, $exporta]) {
-        Route::prefix("sistema/{$modulo}")->name("{$modulo}.")->controller($controlador)->group(function () use ($modulo, $parametro, $nuevo, $exporta) {
+
+    // Importar el plan de cuentas (va antes del bucle para que «importar» no choque con {cuenta}).
+    Route::prefix('sistema/cuentas-contables')->name('cuentas-contables.')->controller(CuentaContableController::class)
+        ->middleware(['permiso:cuentas_contables.crear', 'permiso:cuentas_contables.editar'])->group(function () {
+            Route::get('plantilla', 'plantilla')->name('plantilla');
+            Route::get('importar', 'importarForm')->name('importar');
+            Route::post('importar', 'importarPrevia')->middleware('throttle:20,1')->name('importar.previa');
+            Route::post('importar/confirmar', 'importarConfirmar')->name('importar.confirmar');
+            Route::post('importar/cancelar', 'importarCancelar')->name('importar.cancelar');
+        });
+
+    foreach ($catalogos as $url => [$controlador, $parametro, $nuevo, $exporta]) {
+        $modulo = str_replace('-', '_', $url);
+        Route::prefix("sistema/{$url}")->name("{$url}.")->controller($controlador)->group(function () use ($modulo, $parametro, $nuevo, $exporta) {
             Route::get('/', 'index')->middleware("permiso:{$modulo}.ver")->name('index');
             if ($exporta) {
                 Route::get('exportar', 'exportar')->middleware("permiso:{$modulo}.exportar")->name('exportar');
@@ -177,8 +193,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/sistema/facturas',          fn() => view('modulos.facturas.index'));
     Route::get('/sistema/pagos',             fn() => view('modulos.pagos.index'));
     Route::get('/sistema/presupuesto',       fn() => view('modulos.presupuesto.index'));
-    Route::get('/sistema/centros-costo',     fn() => view('modulos.centros-costo.index'));
-    Route::get('/sistema/cuentas-contables', fn() => view('modulos.cuentas-contables.index'));
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')

@@ -7,8 +7,6 @@ use App\Http\Controllers\Api\V1\Clientes\ClienteController;
 use App\Http\Controllers\Api\V1\Finanzas\FacturaController;
 use App\Http\Controllers\Api\V1\Finanzas\PagoController;
 use App\Http\Controllers\Api\V1\Finanzas\PresupuestoController;
-use App\Http\Controllers\Api\V1\Core\CentroCostoController;
-use App\Http\Controllers\Api\V1\Core\CuentaContableController;
 
 // El inicio de sesión es por sesión web (Fortify: POST /login); ya no hay rutas públicas.
 
@@ -66,29 +64,4 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::patch ('finanzas/presupuestos/{id}/aprobar',  [PresupuestoController::class, 'aprobar']);
     Route::patch ('finanzas/presupuestos/{id}/cerrar',   [PresupuestoController::class, 'cerrar']);
     Route::delete('finanzas/presupuestos/{id}',          [PresupuestoController::class, 'destroy']);
-
-    // ── Centros de Costo ─────────────────────────────────────────────
-    Route::prefix('core/centros-costo')->group(function () {
-        Route::get   ('catalogo',     [CentroCostoController::class, 'catalogo']);
-        Route::get   ('',             [CentroCostoController::class, 'index']);
-        Route::post  ('',             [CentroCostoController::class, 'store']);
-        Route::get   ('{id}',         [CentroCostoController::class, 'show']);
-        Route::put   ('{id}',         [CentroCostoController::class, 'update']);
-        Route::patch ('{id}/toggle',  [CentroCostoController::class, 'toggle']);
-        Route::delete('{id}',         [CentroCostoController::class, 'destroy']);
-    });
-
-    // ── Cuentas Contables ────────────────────────────────────────────
-    Route::prefix('core/cuentas-contables')->group(function () {
-        Route::get   ('catalogo',         [CuentaContableController::class, 'catalogo']);
-        Route::get   ('arbol',            [CuentaContableController::class, 'arbol']);
-        Route::post  ('import/preview',   [CuentaContableController::class, 'importPreview']);
-        Route::post  ('import/commit',    [CuentaContableController::class, 'importCommit']);
-        Route::get   ('',                 [CuentaContableController::class, 'index']);
-        Route::post  ('',                 [CuentaContableController::class, 'store']);
-        Route::get   ('{id}',             [CuentaContableController::class, 'show']);
-        Route::put   ('{id}',             [CuentaContableController::class, 'update']);
-        Route::patch ('{id}/toggle',      [CuentaContableController::class, 'toggle']);
-        Route::delete('{id}',             [CuentaContableController::class, 'destroy']);
-    });
 });
