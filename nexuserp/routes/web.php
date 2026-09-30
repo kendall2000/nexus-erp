@@ -26,6 +26,8 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\SerieFacturacionController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
+use App\Http\Controllers\TicketConfiguracionController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TipoServicioController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -309,6 +311,26 @@ Route::middleware('auth')->group(function () {
             Route::post('{contrato}/asignaciones', 'asignar')->whereNumber('contrato')->name('asignaciones.store');
             Route::patch('{contrato}/asignaciones/{asignacion}/finalizar', 'finalizarAsignacion')->whereNumber(['contrato', 'asignacion'])->name('asignaciones.finalizar');
         });
+    });
+
+    // Tickets de servicio con SLA
+    Route::prefix('sistema/tickets/configuracion')->name('tickets.')->controller(TicketConfiguracionController::class)
+        ->middleware('permiso:tickets.configurar')->group(function () {
+            Route::get('/', 'index')->name('configuracion');
+            Route::post('categorias', 'guardarCategoria')->name('categorias.store');
+            Route::put('categorias/{categoria}', 'guardarCategoria')->whereNumber('categoria')->name('categorias.update');
+            Route::post('slas', 'guardarSla')->name('slas.store');
+            Route::put('slas/{sla}', 'guardarSla')->whereNumber('sla')->name('slas.update');
+        });
+    Route::prefix('sistema/tickets')->name('tickets.')->controller(TicketController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:tickets.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:tickets.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:tickets.crear')->name('store');
+        Route::get('{ticket}', 'show')->whereNumber('ticket')->middleware('permiso:tickets.ver')->name('show');
+        Route::post('{ticket}/responder', 'responder')->whereNumber('ticket')->middleware('permiso:tickets.editar')->name('responder');
+        Route::patch('{ticket}/asignar', 'asignar')->whereNumber('ticket')->middleware('permiso:tickets.asignar')->name('asignar');
+        Route::patch('{ticket}/cerrar', 'cerrar')->whereNumber('ticket')->middleware('permiso:tickets.cerrar')->name('cerrar');
+        Route::patch('{ticket}/reabrir', 'reabrir')->whereNumber('ticket')->middleware('permiso:tickets.reabrir')->name('reabrir');
     });
 
     // ── Inicio ──────────────────────────────────────────────────────

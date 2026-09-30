@@ -309,6 +309,68 @@ trait EsquemaNexus
             $t->unsignedInteger('id_cuenta_ingreso')->nullable();
             $t->unsignedInteger('id_centro_default')->nullable();
         });
+        Schema::table('ticket', function (Blueprint $t) {
+            foreach (['id_cliente', 'id_contrato', 'id_categoria', 'id_asignado_a', 'id_sla', 'sla_primera_respuesta_hrs', 'sla_resolucion_hrs', 'calificacion_cliente', 'created_by', 'updated_by'] as $c) {
+                $t->unsignedInteger($c)->nullable();
+            }
+            foreach (['numero_ticket', 'asunto', 'canal_origen', 'prioridad', 'tipo', 'comentario_calificacion'] as $c) {
+                $t->string($c)->nullable();
+            }
+            $t->text('descripcion')->nullable();
+            foreach (['fecha_apertura', 'fecha_limite_respuesta', 'fecha_limite_resolucion', 'fecha_primera_respuesta', 'fecha_resolucion', 'fecha_cierre'] as $c) {
+                $t->dateTime($c)->nullable();
+            }
+            $t->timestamps();
+        });
+        Schema::create('ticket_comentario', function (Blueprint $t) {
+            $t->increments('id_comentario');
+            $t->unsignedInteger('id_ticket');
+            $t->unsignedInteger('id_autor')->nullable();
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->boolean('es_nota_interna')->default(false);
+            $t->text('contenido');
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('escalacion_ticket', function (Blueprint $t) {
+            $t->increments('id_escalacion');
+            $t->unsignedInteger('id_ticket');
+            $t->unsignedInteger('escalado_por')->nullable();
+            $t->unsignedInteger('escalado_a');
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->string('motivo', 500);
+            $t->unsignedTinyInteger('nivel')->default(1);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('categoria_ticket', function (Blueprint $t) {
+            $t->increments('id_categoria');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->string('prioridad_default')->default('MEDIA');
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('sla_config', function (Blueprint $t) {
+            $t->increments('id_sla');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('prioridad');
+            $t->unsignedTinyInteger('tiempo_primera_respuesta_hrs');
+            $t->unsignedSmallInteger('tiempo_resolucion_hrs');
+            $t->boolean('aplica_fines_semana')->default(false);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('evaluacion_satisfaccion', function (Blueprint $t) {
+            $t->increments('id_evaluacion');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente');
+            $t->unsignedInteger('id_contrato')->nullable();
+            $t->unsignedInteger('id_ticket')->nullable();
+            $t->string('tipo')->default('CSAT');
+            $t->unsignedTinyInteger('puntuacion');
+            $t->text('comentarios')->nullable();
+            $t->string('canal')->default('EMAIL');
+            $t->dateTime('fecha_respuesta')->nullable();
+        });
         Schema::table('contrato_servicio', function (Blueprint $t) {
             $t->unsignedInteger('id_cliente')->nullable();
             $t->unsignedInteger('id_vendedor')->nullable();

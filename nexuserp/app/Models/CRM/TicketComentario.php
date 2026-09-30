@@ -13,6 +13,7 @@ class TicketComentario extends Model
     protected $fillable = [
         'id_ticket',
         'id_autor',
+        'id_usuario',
         'es_nota_interna',
         'contenido',
     ];
@@ -45,5 +46,11 @@ class TicketComentario extends Model
     public function scopeInternos($query)
     {
         return $query->where('es_nota_interna', true);
+    }
+
+    /** Usuario del sistema que escribió o escaló (puede no ser empleado). */
+    public function usuario()
+    {
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'id_usuario');
     }
 }
