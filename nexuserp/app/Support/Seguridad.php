@@ -20,6 +20,7 @@ use Throwable;
  *  - intentos: intentos fallidos permitidos antes del bloqueo (maxIntentosSesion).
  *  - bloqueo: minutos que dura el bloqueo, por usuario/correo + IP (bloqueoMinutos).
  *  - expira: minutos sin actividad tras los que la sesión se cierra (sesionExpiraMin).
+ *  - zona: zona horaria del sistema (zonaHoraria), que AppServiceProvider aplica a PHP y a MySQL.
  */
 class Seguridad
 {
@@ -28,7 +29,7 @@ class Seguridad
     /** Minutos de la cookie de «Recordar sesión» (los mismos que usa Laravel por defecto). */
     private const DURACION_RECORDAR = 576000;
 
-    /** @return array{intentos: int, bloqueo: int, expira: int} */
+    /** @return array{intentos: int, bloqueo: int, expira: int, zona: string} */
     public static function config(): array
     {
         try {
@@ -38,12 +39,14 @@ class Seguridad
             $c = ConfiguracionSistema::obtenerLogin();
         } catch (Throwable) {
             // Sin conexión o sin tabla: valores por defecto, sin guardarlos en caché.
-            return ['intentos' => 5, 'bloqueo' => 15, 'expira' => 120];
+            return ['intentos' => 5, 'bloqueo' => 15, 'expira' => 120, 'zona' => config('app.timezone')];
         }
         $config = [
             'intentos' => max(1, (int) ($c?->maxIntentosSesion ?: 5)),
             'bloqueo' => max(1, (int) ($c?->bloqueoMinutos ?: 15)),
             'expira' => max(5, (int) ($c?->sesionExpiraMin ?: 120)),
+            // Zona horaria elegida en Configuración (si no es válida, la de config/app.php).
+            'zona' => in_array($c?->zonaHoraria, \DateTimeZone::listIdentifiers(), true) ? $c->zonaHoraria : config('app.timezone'),
         ];
         Cache::put(self::CACHE, $config, 600);
 

@@ -40,6 +40,7 @@ php artisan serve                                     # servidor local (composer
   - `Archivos`: subida al bucket Contabo (disco `contabo`, público); en BD se guarda la URL completa.
   - `Sistema`: nombre, logo y colores desde `ConfiguracionSistema`.
   - `Seguridad` y `MatrizPermisos`: apoyo a autenticación y permisos.
+- **Zona horaria:** la de Configuración (`ConfiguracionSistema.zonaHoraria`, por defecto `America/Guatemala`) la aplica `AppServiceProvider` a PHP y a la sesión de MySQL en cada petición. En pruebas, congelar la fecha con `Carbon::setTestNow()` si la lógica depende de «hoy» (asistencia y pagos no aceptan fechas futuras).
 - **Ojo con `$request->validate()` + `[...]`:** los campos `nullable` enviados vacíos llegan como clave con `null`, y el operador `+` no los reemplaza. Para poner un valor por defecto sobre un campo validado, usar `$datos['campo'] ??= …` o `array_merge`, no `$datos + ['campo' => …]`.
 - **Documentos con flujo:** se validan las transiciones dentro de `DB::transaction` con `lockForUpdate()` sobre el registro (y sobre la serie o factura que se consume) para evitar dobles aprobaciones, cobros o números repetidos.
   - Órdenes de compra: BORRADOR → ENVIADA (aprobada) → PARCIAL / RECIBIDA; se cancelan sin mercadería recibida.

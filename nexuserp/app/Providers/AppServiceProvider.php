@@ -12,6 +12,19 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void {}
 
+    private function aplicarZonaHoraria(string $zona): void
+    {
+        config(['app.timezone' => $zona]);
+        date_default_timezone_set($zona);
+        try {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement('SET time_zone = ?', [now($zona)->format('P')]);
+            }
+        } catch (\Throwable) {
+            // Sin conexión: se aplicará en la siguiente petición.
+        }
+    }
+
     public function boot(): void
     {
         // Forzar HTTPS si la request llega por HTTPS
@@ -31,7 +44,14 @@ class AppServiceProvider extends ServiceProvider
             return app()->isProduction() ? $regla->uncompromised() : $regla;
         });
 
+        $seguridad = Seguridad::config();
+
         // Minutos sin actividad tras los que se cierra la sesión (ConfiguracionSistema.sesionExpiraMin).
-        config(['session.lifetime' => Seguridad::config()['expira']]);
+        config(['session.lifetime' => $seguridad['expira']]);
+
+        // Zona horaria de Configuración para PHP y para la sesión de MySQL (las columnas con
+        // CURRENT_TIMESTAMP también quedan en hora local). Sin esto todo corría en UTC y «hoy»
+        // cambiaba de día a las 18:00 en Guatemala.
+        $this->aplicarZonaHoraria($seguridad['zona']);
     }
 }

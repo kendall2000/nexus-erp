@@ -296,7 +296,7 @@ class SeguridadAccesoTest extends TestCase
 
         $this->actingAs($admin)->put(route('seguridad.guardar'), ['max_intentos' => 4, 'bloqueo_minutos' => 30, 'sesion_expira_min' => 90])
             ->assertSessionHasNoErrors();
-        $this->assertSame(['intentos' => 4, 'bloqueo' => 30, 'expira' => 90], Seguridad::config());
+        $this->assertSame(['intentos' => 4, 'bloqueo' => 30, 'expira' => 90, 'zona' => 'America/Guatemala'], Seguridad::config());
 
         $this->actingAs($admin)->put(route('seguridad.roles'), ['requiere_2fa' => [$idRolVentas]]);
         $this->assertTrue((bool) DB::table('rol')->where('id_rol', $idRolVentas)->value('requiere_2fa'));
