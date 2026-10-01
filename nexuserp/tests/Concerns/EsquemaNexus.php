@@ -29,6 +29,8 @@ trait EsquemaNexus
             $t->string('username', 60);
             $t->string('email', 150)->nullable();
             $t->string('password_hash');
+            $t->dateTime('password_cambiado_at')->nullable();
+            $t->boolean('debe_cambiar_password')->default(false);
             $t->string('remember_token', 100)->nullable();
             $t->text('two_factor_secret')->nullable();
             $t->text('two_factor_recovery_codes')->nullable();
@@ -110,6 +112,12 @@ trait EsquemaNexus
             $t->string('ip_address', 45)->nullable();
             $t->string('user_agent', 500)->nullable();
             $t->string('detalle')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('historial_password', function (Blueprint $t) {
+            $t->bigIncrements('id_historial');
+            $t->unsignedInteger('id_usuario');
+            $t->string('password_hash');
             $t->dateTime('created_at')->useCurrent();
         });
         Schema::create('auditoria_cambio', function (Blueprint $t) {
@@ -974,6 +982,12 @@ trait EsquemaNexus
             $t->unsignedSmallInteger('maxIntentosSesion')->nullable();
             $t->unsignedSmallInteger('bloqueoMinutos')->default(15);
             $t->unsignedSmallInteger('sesionExpiraMin')->nullable();
+            $t->unsignedTinyInteger('passwordMinimo')->default(12);
+            $t->boolean('passwordMayusculas')->default(true);
+            $t->boolean('passwordNumeros')->default(true);
+            $t->boolean('passwordSimbolos')->default(true);
+            $t->unsignedSmallInteger('passwordVenceDias')->default(0);
+            $t->unsignedTinyInteger('passwordHistorial')->default(0);
             $t->unsignedInteger('actualizadoPor')->nullable();
             $t->dateTime('fechaActualizacion')->nullable();
             $t->boolean('estado')->default(true);

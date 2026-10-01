@@ -6,6 +6,7 @@ use App\Models\Core\AuditoriaAcceso;
 use App\Models\Core\Rol;
 use App\Models\Core\Usuario;
 use App\Support\Bitacora;
+use App\Support\Contrasenas;
 use App\Support\ExportarCsv;
 use App\Support\Seguridad;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,6 +36,7 @@ class SeguridadController extends Controller
 
         return view('seguridad.index', [
             'config' => Seguridad::config(),
+            'politica' => Contrasenas::politica(),
             'roles' => Rol::query()->where('id_empresa', $idEmpresa)->withCount('usuarios')->orderBy('nombre')->get(),
             'accesos' => $this->filtrados($request)->with('usuario:id_usuario,nombre_completo')->orderByDesc('id_auditoria')->paginate(25)->withQueryString(),
             'eventos' => AuditoriaAcceso::EVENTOS,
@@ -99,6 +101,34 @@ class SeguridadController extends Controller
         Seguridad::olvidar();
 
         return back()->with('status', 'Reglas de inicio de sesión guardadas.');
+    }
+
+    public function contrasenas(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'minimo' => ['required', 'integer', 'min:8', 'max:64'],
+            'mayusculas' => ['nullable', 'boolean'],
+            'numeros' => ['nullable', 'boolean'],
+            'simbolos' => ['nullable', 'boolean'],
+            'vence_dias' => ['required', 'integer', 'min:0', 'max:730'],
+            'historial' => ['required', 'integer', 'min:0', 'max:'.Contrasenas::HISTORIAL_MAXIMO],
+        ]);
+        $cambios = [
+            'passwordMinimo' => $datos['minimo'],
+            'passwordMayusculas' => $request->boolean('mayusculas'),
+            'passwordNumeros' => $request->boolean('numeros'),
+            'passwordSimbolos' => $request->boolean('simbolos'),
+            'passwordVenceDias' => $datos['vence_dias'],
+            'passwordHistorial' => $datos['historial'],
+        ];
+        Bitacora::configuracion($cambios);
+        DB::table('ConfiguracionSistema')->update($cambios + [
+            'actualizadoPor' => $request->user()->id_usuario,
+            'fechaActualizacion' => now(),
+        ]);
+        Contrasenas::olvidar();
+
+        return back()->with('status', 'Política de contraseñas guardada. Se aplica a las contraseñas que se pongan desde ahora.');
     }
 
     public function roles(Request $request): RedirectResponse

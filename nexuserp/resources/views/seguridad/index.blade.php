@@ -151,6 +151,42 @@
         </div>
     </div>
 
+    <div class="card mb-4" id="contrasenas">
+        <div class="card-body">
+            <h4 class="mb-2">Política de contraseñas</h4>
+            <p class="text-700 fs--1">Se aplica al cambiar o recuperar la contraseña y cuando un administrador la pone. Las contraseñas actuales siguen valiendo hasta que se cambien o venzan.</p>
+            <form method="POST" action="{{ route('seguridad.contrasenas') }}">
+                @csrf
+                @method('PUT')
+                <div class="row g-3 align-items-end">
+                    <div class="col-sm-4 col-xl-2">
+                        <label class="form-label" for="minimo">Largo mínimo</label>
+                        <input class="form-control" id="minimo" name="minimo" type="number" min="8" max="64" value="{{ old('minimo', $politica['minimo']) }}" required />
+                    </div>
+                    <div class="col-sm-4 col-xl-2">
+                        <label class="form-label" for="vence_dias">Vence cada (días)</label>
+                        <input class="form-control" id="vence_dias" name="vence_dias" type="number" min="0" max="730" value="{{ old('vence_dias', $politica['vence']) }}" required />
+                    </div>
+                    <div class="col-sm-4 col-xl-2">
+                        <label class="form-label" for="historial">No repetir las últimas</label>
+                        <input class="form-control" id="historial" name="historial" type="number" min="0" max="{{ \App\Support\Contrasenas::HISTORIAL_MAXIMO }}" value="{{ old('historial', $politica['historial']) }}" required />
+                    </div>
+                    <div class="col-xl-4 d-flex flex-wrap gap-3 pb-2">
+                        @foreach (['mayusculas' => 'Mayúsculas y minúsculas', 'numeros' => 'Números', 'simbolos' => 'Símbolos'] as $campo => $texto)
+                            <div class="form-check mb-0">
+                                <input type="hidden" name="{{ $campo }}" value="0" />
+                                <input class="form-check-input" id="{{ $campo }}" name="{{ $campo }}" type="checkbox" value="1" @checked(old($campo, $politica[$campo])) />
+                                <label class="form-check-label" for="{{ $campo }}">{{ $texto }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="col-xl-2"><button class="btn btn-primary w-100" type="submit">Guardar</button></div>
+                </div>
+                <div class="form-text mt-2">0 días = no vence · 0 = se puede repetir. Regla actual: {{ \App\Support\Contrasenas::requisitos() }}</div>
+            </form>
+        </div>
+    </div>
+
     <div class="card" id="historial">
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

@@ -9,6 +9,12 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h4 class="mb-3">Cambiar contraseña</h4>
+                    @php $venceEl = \App\Support\Contrasenas::venceEl(auth()->user()); @endphp
+                    @if (\App\Support\Contrasenas::debeCambiar(auth()->user()))
+                        <div class="alert alert-soft-warning py-2 fs--1">Debes cambiar tu contraseña para seguir usando el sistema.</div>
+                    @elseif ($venceEl)
+                        <p class="text-700 fs--1">Tu contraseña vence el {{ $venceEl->format('d/m/Y') }}.</p>
+                    @endif
                     <form method="POST" action="{{ route('user-password.update') }}">
                         @csrf
                         @method('PUT')
@@ -19,7 +25,7 @@
                         <div class="mb-3">
                             <label class="form-label" for="password">Nueva contraseña</label>
                             <input class="form-control" id="password" name="password" type="password" required autocomplete="new-password" />
-                            <div class="form-text">Mínimo 12 caracteres, con mayúsculas, minúsculas, números y símbolos. Al cambiarla se cierran tus otras sesiones.</div>
+                            <div class="form-text">{{ \App\Support\Contrasenas::requisitos() }} Al cambiarla se cierran tus otras sesiones.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="password_confirmation">Confirmar nueva contraseña</label>

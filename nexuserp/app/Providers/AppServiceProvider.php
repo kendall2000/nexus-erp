@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\Bitacora;
+use App\Support\Contrasenas;
 use App\Support\Seguridad;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -37,13 +38,9 @@ class AppServiceProvider extends ServiceProvider
         // En producción no se permiten migrate:fresh, db:wipe ni similares.
         DB::prohibitDestructiveCommands(app()->isProduction());
 
-        // Contraseñas: 12+ caracteres con mayúsculas, minúsculas, números y símbolos.
-        // En producción además se rechazan las que aparecen en filtraciones conocidas.
-        Password::defaults(function (): Password {
-            $regla = Password::min(12)->mixedCase()->letters()->numbers()->symbols();
-
-            return app()->isProduction() ? $regla->uncompromised() : $regla;
-        });
+        // Contraseñas: la política de «Seguridad y accesos» (por defecto 12+ caracteres con
+        // mayúsculas, minúsculas, números y símbolos). En producción además se rechazan las filtradas.
+        Password::defaults(fn (): Password => Contrasenas::regla());
 
         $seguridad = Seguridad::config();
 
