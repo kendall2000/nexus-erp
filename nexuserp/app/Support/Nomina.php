@@ -2,12 +2,14 @@
 
 namespace App\Support;
 
+use App\Models\RRHH\Asistencia;
 use App\Models\RRHH\ConceptoNomina;
 use App\Models\RRHH\DetalleNomina;
 use App\Models\RRHH\DetalleNominaConcepto;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PeriodoNomina;
 use App\Models\RRHH\PrestamoEmpleado;
+use App\Models\RRHH\SolicitudAusencia;
 use Illuminate\Support\Carbon;
 
 /**
@@ -15,7 +17,8 @@ use Illuminate\Support\Carbon;
  * revisarlas en un solo lugar; conviene validarlas con el contador de la empresa.
  *
  * Por empleado y periodo:
- *  - Salario base proporcional a los días trabajados dentro del periodo (ingreso o baja a medio periodo).
+ *  - Salario base proporcional a los días trabajados dentro del periodo (ingreso o baja a medio periodo),
+ *    menos las ausencias injustificadas y los permisos sin goce registrados en Asistencia.
  *  - Bonificación incentivo (Decreto 37-2001): Q250 mensuales, prorrateada; no afecta IGSS.
  *  - IGSS laboral 4.83 % y cuota patronal 12.67 % (IGSS 10.67 + INTECAP 1 + IRTRA 1) sobre ingresos afectos.
  *  - ISR de asalariados: se proyecta a un año (ingresos afectos del periodo × periodos del año),
@@ -91,6 +94,18 @@ class Nomina
         return $contratado >= $calendario ? (float) $diasPeriodo : round(min($diasPeriodo, $contratado), 2);
     }
 
+    /** Ausencias injustificadas y días hábiles de permisos sin goce aprobados dentro del periodo. */
+    public static function diasNoPagados(PeriodoNomina $p, Empleado $e): float
+    {
+        $ausencias = Asistencia::query()->where('id_empleado', $e->id_empleado)->where('estado', 'AUSENTE')
+            ->whereBetween('fecha', [$p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString().' 23:59:59'])->count();
+        $sinGoce = SolicitudAusencia::query()->where('id_empleado', $e->id_empleado)->where('estado', 'APROBADO')->where('tipo', 'PERMISO_SIN_GOCE')
+            ->whereDate('fecha_inicio', '<=', $p->fecha_fin)->whereDate('fecha_fin', '>=', $p->fecha_inicio)->get()
+            ->sum(fn ($s) => \App\Http\Controllers\AsistenciaController::diasHabiles($s->fecha_inicio->max($p->fecha_inicio), $s->fecha_fin->min($p->fecha_fin)));
+
+        return (float) ($ausencias + $sinGoce);
+    }
+
     /** Crea o actualiza el detalle del empleado y lo recalcula. */
     public static function procesarEmpleado(PeriodoNomina $p, Empleado $e, float $salarioMensual): DetalleNomina
     {
@@ -99,7 +114,11 @@ class Nomina
             'id_empresa' => $p->id_empresa,
             'cargo_snapshot' => $e->cargo?->nombre,
             'salario_base' => $salarioMensual,
-            'dias_trabajados' => $detalle->exists ? $detalle->dias_trabajados : self::diasTrabajados($p, $e),
+            // La primera vez se descuentan las ausencias y se traen las horas extra de Asistencia;
+            // después se respetan los ajustes hechos a mano.
+            'dias_trabajados' => $detalle->exists ? $detalle->dias_trabajados : max(0, self::diasTrabajados($p, $e) - self::diasNoPagados($p, $e)),
+            'horas_extra' => $detalle->exists ? $detalle->horas_extra : (float) Asistencia::query()->where('id_empleado', $e->id_empleado)
+                ->whereBetween('fecha', [$p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString().' 23:59:59'])->sum('horas_extra'),
             'estado_pago' => 'CALCULADO',
         ])->save();
         self::recalcular($detalle, $p);

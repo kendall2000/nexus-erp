@@ -37,9 +37,10 @@ class SolicitudAusencia extends Model
         return $this->belongsTo(Empleado::class, 'id_empleado');
     }
 
+    /** Usuario del sistema que aprobó o rechazó (la columna no tiene llave a empleado). */
     public function aprobadoPor()
     {
-        return $this->belongsTo(Empleado::class, 'aprobado_por');
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'aprobado_por');
     }
 
     public function aprobar(int $idAprobador): void

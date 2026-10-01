@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroCostoController;
@@ -349,6 +350,15 @@ Route::middleware('auth')->group(function () {
         });
         Route::patch('{periodo}/cerrar', 'cerrar')->whereNumber('periodo')->middleware('permiso:nomina.cerrar')->name('cerrar');
         Route::patch('{periodo}/reabrir', 'reabrir')->whereNumber('periodo')->middleware('permiso:nomina.reabrir')->name('reabrir');
+    });
+
+    // Asistencia diaria y solicitudes de ausencia
+    Route::prefix('sistema/asistencia')->name('asistencia.')->controller(AsistenciaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:asistencia.ver')->name('index');
+        Route::post('/', 'guardar')->middleware('permiso:asistencia.editar')->name('guardar');
+        Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
+        Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
+            ->middleware('permiso:asistencia.aprobar')->name('solicitudes.resolver');
     });
 
     // ── Inicio ──────────────────────────────────────────────────────

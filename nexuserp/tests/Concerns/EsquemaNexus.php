@@ -446,6 +446,35 @@ trait EsquemaNexus
             $t->date('fecha_baja')->nullable();
             $t->timestamps();
         });
+        Schema::create('asistencia', function (Blueprint $t) {
+            $t->increments('id_asistencia');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->date('fecha');
+            $t->dateTime('hora_entrada')->nullable();
+            $t->dateTime('hora_salida')->nullable();
+            $t->string('tipo')->default('NORMAL');
+            $t->string('estado')->default('PRESENTE');
+            $t->unsignedSmallInteger('minutos_tarde')->default(0);
+            $t->decimal('horas_extra', 5, 2)->default(0);
+            $t->string('observaciones')->nullable();
+            $t->string('registrado_por')->default('SISTEMA');
+            $t->timestamps();
+        });
+        Schema::create('solicitud_ausencia', function (Blueprint $t) {
+            $t->increments('id_solicitud');
+            $t->unsignedInteger('id_empleado');
+            $t->string('tipo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->unsignedTinyInteger('dias_habiles');
+            $t->string('motivo')->nullable();
+            $t->string('estado')->default('PENDIENTE');
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->dateTime('fecha_aprobacion')->nullable();
+            $t->string('observaciones')->nullable();
+            $t->timestamps();
+        });
         Schema::create('periodo_nomina', function (Blueprint $t) {
             $t->increments('id_periodo');
             $t->unsignedInteger('id_empresa');
