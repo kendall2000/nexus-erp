@@ -6,10 +6,13 @@ use App\Models\Core\AuditoriaAcceso;
 use App\Models\Core\ConfiguracionSistema;
 use App\Models\Core\Usuario;
 use Illuminate\Auth\SessionGuard;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -95,6 +98,53 @@ class Seguridad
         } catch (Throwable $e) {
             report($e);
         }
+    }
+
+    /** Llave del límite de intentos de inicio de sesión: usuario/correo + IP (FortifyServiceProvider). */
+    public static function llaveIntentos(?string $login, ?string $ip): string
+    {
+        return Str::transliterate(Str::lower((string) $login).'|'.$ip);
+    }
+
+    /** Llave con la que ThrottleRequests guarda el contador del limitador «login». */
+    private static function llaveLimitador(?string $login, ?string $ip): string
+    {
+        return md5('login'.self::llaveIntentos($login, $ip));
+    }
+
+    /**
+     * Bloqueos vigentes: usuario/correo + IP que agotaron los intentos y siguen esperando.
+     * Los candidatos salen de los fallidos recientes del historial; el contador real está en la caché.
+     *
+     * @param  \Closure(Builder): mixed|null  $filtro  para limitar a los accesos de una empresa
+     * @return Collection<int, object{login: string, ip: string, id_usuario: ?int, fallidos: int, ultimo: string, segundos: int}>
+     */
+    public static function bloqueos(?\Closure $filtro = null): Collection
+    {
+        $c = self::config();
+
+        return AuditoriaAcceso::query()
+            ->whereIn('accion', ['LOGIN_FAIL', 'BLOQUEO'])
+            ->where('created_at', '>=', now()->subMinutes($c['bloqueo']))
+            ->when($filtro, $filtro)
+            ->groupBy('username_intento', 'ip_address')
+            ->selectRaw('username_intento AS login, ip_address AS ip, MAX(id_usuario) AS id_usuario, COUNT(*) AS fallidos, MAX(created_at) AS ultimo')
+            ->toBase()->get()
+            ->filter(fn ($b) => RateLimiter::tooManyAttempts(self::llaveLimitador($b->login, $b->ip), $c['intentos']))
+            ->map(function ($b) {
+                $b->id_usuario = $b->id_usuario === null ? null : (int) $b->id_usuario;
+                $b->fallidos = (int) $b->fallidos;
+                $b->segundos = RateLimiter::availableIn(self::llaveLimitador($b->login, $b->ip));
+
+                return $b;
+            })
+            ->sortByDesc('ultimo')->values();
+    }
+
+    /** Quita el bloqueo de un usuario/correo + IP antes de que venza. */
+    public static function desbloquear(string $login, string $ip): void
+    {
+        RateLimiter::clear(self::llaveLimitador($login, $ip));
     }
 
     /**

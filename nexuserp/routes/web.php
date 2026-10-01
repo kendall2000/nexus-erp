@@ -55,6 +55,8 @@ Route::middleware('auth')->group(function () {
         Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
         Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
         Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
+        Route::post('sistema/seguridad/desbloquear', [SeguridadController::class, 'desbloquear'])->name('seguridad.desbloquear');
+        Route::get('sistema/seguridad/exportar', [SeguridadController::class, 'exportar'])->name('seguridad.exportar');
 
         // Configuración del sistema
         Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');

@@ -6,21 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 
 class AuditoriaAcceso extends Model
 {
-    protected $table      = 'auditoria_acceso';
+    protected $table = 'auditoria_acceso';
+
     protected $primaryKey = 'id_auditoria';
-    public $timestamps    = false;
+
+    public $timestamps = false;
 
     /** Acciones del enum con su nombre para mostrar. */
     public const EVENTOS = [
-        'LOGIN_OK'        => 'Ingreso',
-        'LOGIN_FAIL'      => 'Fallido',
-        'LOGIN_FAIL_2FA'  => 'Fallido (2 pasos)',
-        'BLOQUEO'         => 'Bloqueo',
-        'DESACTIVADO'     => 'Desactivado',
-        'LOGOUT'          => 'Salida',
-        'SESION_CERRADA'  => 'Sesiones cerradas',
+        'LOGIN_OK' => 'Ingreso',
+        'LOGIN_FAIL' => 'Fallido',
+        'LOGIN_FAIL_2FA' => 'Fallido (2 pasos)',
+        'BLOQUEO' => 'Bloqueo',
+        'DESACTIVADO' => 'Desactivado',
+        'LOGOUT' => 'Salida',
+        'SESION_CERRADA' => 'Sesiones cerradas',
         'CAMBIO_PASSWORD' => 'Cambio de contraseña',
-        'RESET_PASSWORD'  => 'Recuperó contraseña',
+        'RESET_PASSWORD' => 'Recuperó contraseña',
+        'DESBLOQUEO' => 'Desbloqueo',
     ];
 
     // Solo INSERT — nunca se actualiza ni elimina
@@ -76,7 +79,7 @@ class AuditoriaAcceso extends Model
             'LOGIN_OK' => 'success',
             'LOGIN_FAIL', 'LOGIN_FAIL_2FA' => 'warning',
             'BLOQUEO', 'DESACTIVADO' => 'danger',
-            'CAMBIO_PASSWORD', 'RESET_PASSWORD', 'SESION_CERRADA' => 'info',
+            'CAMBIO_PASSWORD', 'RESET_PASSWORD', 'SESION_CERRADA', 'DESBLOQUEO' => 'info',
             default => 'secondary',
         };
     }
@@ -90,12 +93,12 @@ class AuditoriaAcceso extends Model
         ?string $detalle = null
     ): self {
         return self::create([
-            'id_usuario'      => $idUsuario,
-            'username_intento'=> $username,
-            'accion'          => $accion,
-            'ip_address'      => $ip,
-            'user_agent'      => $userAgent,
-            'detalle'         => $detalle,
+            'id_usuario' => $idUsuario,
+            'username_intento' => $username,
+            'accion' => $accion,
+            'ip_address' => $ip,
+            'user_agent' => $userAgent,
+            'detalle' => $detalle,
         ]);
     }
 }

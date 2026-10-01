@@ -303,6 +303,66 @@ class SeguridadAccesoTest extends TestCase
         $this->assertTrue($vendedor->fresh()->debeActivarDosPasos());
     }
 
+    public function test_el_administrador_ve_los_bloqueos_y_los_quita(): void
+    {
+        $admin = $this->crearUsuario();
+        $vendedor = $this->crearUsuario(['username' => 'ventas', 'email' => 'ventas@nexus.test'], 'Ventas');
+        for ($i = 0; $i < 5; $i++) {
+            $this->from('/login')->post('/login', ['login' => 'ventas', 'password' => 'mala']);
+        }
+        $this->from('/login')->post('/login', ['login' => 'ventas', 'password' => 'Clave-Segura-2026'])->assertSessionHasErrors('login');
+        $this->assertGuest();
+
+        $respuesta = $this->actingAs($admin)->get(route('seguridad.index'))->assertOk()->assertSee('Desbloquear');
+        $bloqueo = $respuesta->viewData('bloqueos')->sole();
+        $this->assertSame(['ventas', '127.0.0.1', $vendedor->id_usuario], [$bloqueo->login, $bloqueo->ip, $bloqueo->id_usuario]);
+        $this->assertSame(5, (int) $respuesta->viewData('resumen')->fallidos);
+
+        $this->actingAs($admin)->post(route('seguridad.desbloquear'), ['login' => 'ventas', 'ip' => '127.0.0.1'])->assertSessionHas('status');
+        $this->assertSame(1, $this->auditoria('DESBLOQUEO'));
+        $this->assertCount(0, $this->actingAs($admin)->get(route('seguridad.index'))->viewData('bloqueos'));
+
+        // Ya puede entrar sin esperar.
+        auth()->logout();
+        $this->post('/login', ['login' => 'ventas', 'password' => 'Clave-Segura-2026'])->assertRedirect();
+        $this->assertAuthenticatedAs($vendedor->fresh());
+    }
+
+    public function test_no_quita_bloqueos_que_no_existen_ni_de_otra_empresa(): void
+    {
+        $admin = $this->crearUsuario();
+        $this->crearUsuario(['id_empresa' => 2, 'username' => 'ajeno', 'email' => 'ajeno@nexus.test'], 'Ventas');
+        for ($i = 0; $i < 5; $i++) {
+            $this->from('/login')->post('/login', ['login' => 'ajeno', 'password' => 'mala']);
+        }
+
+        $this->actingAs($admin)->get(route('seguridad.index'))->assertOk()->assertDontSee('ajeno');
+        $this->actingAs($admin)->post(route('seguridad.desbloquear'), ['login' => 'ajeno', 'ip' => '127.0.0.1'])->assertSessionHas('aviso');
+        $this->actingAs($admin)->post(route('seguridad.desbloquear'), ['login' => 'nadie', 'ip' => '1.2.3.4'])->assertSessionHas('aviso');
+        $this->assertSame(0, $this->auditoria('DESBLOQUEO'));
+    }
+
+    public function test_el_historial_muestra_intentos_con_usuarios_que_no_existen_filtra_y_exporta(): void
+    {
+        $admin = $this->crearUsuario();
+        $this->from('/login')->post('/login', ['login' => 'hacker', 'password' => 'x']);
+        $this->from('/login')->post('/login', ['login' => 'admin', 'password' => 'x']);
+
+        $respuesta = $this->actingAs($admin)->get(route('seguridad.index'))->assertOk()->assertSee('hacker')->assertSee('No existe');
+        $ip = $respuesta->viewData('ipsSospechosas')->sole();
+        $this->assertSame(['127.0.0.1', 2, 2], [$ip->ip_address, (int) $ip->intentos, (int) $ip->cuentas]);
+        $this->actingAs($admin)->get(route('seguridad.index', ['usuario' => $admin->id_usuario]))->assertOk()->assertDontSee('hacker');
+        $this->actingAs($admin)->get(route('seguridad.index', ['desde' => now()->addDays(2)->toDateString()]))->assertOk()->assertSee('Sin registros');
+
+        $csv = $this->actingAs($admin)->get(route('seguridad.exportar', ['evento' => 'LOGIN_FAIL']))->assertOk()->streamedContent();
+        $this->assertStringContainsString(';Fallido;"(no existe)";hacker;127.0.0.1;', $csv);
+        $this->assertStringContainsString(';Fallido;"Administrador Nexus";admin;127.0.0.1;', $csv);
+
+        $vendedor = $this->crearUsuario(['username' => 'v', 'email' => 'v@nexus.test'], 'Ventas');
+        $this->actingAs($vendedor)->get(route('seguridad.exportar'))->assertForbidden();
+        $this->actingAs($vendedor)->post(route('seguridad.desbloquear'), ['login' => 'x', 'ip' => 'y'])->assertForbidden();
+    }
+
     private function crearUsuarioConDosPasos(): Usuario
     {
         $usuario = $this->crearUsuario();
