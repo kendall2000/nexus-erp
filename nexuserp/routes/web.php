@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\BodegaController;
+use App\Http\Controllers\CampanaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\ClienteController;
@@ -17,11 +18,13 @@ use App\Http\Controllers\LineaNegocioController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\NominaController;
+use App\Http\Controllers\OportunidadController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ProspectoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\RolController;
@@ -359,6 +362,47 @@ Route::middleware('auth')->group(function () {
         Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
         Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
             ->middleware('permiso:asistencia.aprobar')->name('solicitudes.resolver');
+    });
+
+    // CRM: prospectos, oportunidades (embudo y propuestas) y campañas
+    Route::prefix('sistema/prospectos')->name('prospectos.')->controller(ProspectoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:prospectos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:prospectos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:prospectos.crear')->name('store');
+        Route::get('{prospecto}', 'show')->whereNumber('prospecto')->middleware('permiso:prospectos.ver')->name('show');
+        Route::middleware('permiso:prospectos.editar')->group(function () {
+            Route::get('{prospecto}/editar', 'edit')->whereNumber('prospecto')->name('edit');
+            Route::put('{prospecto}', 'update')->whereNumber('prospecto')->name('update');
+            Route::post('{prospecto}/seguimientos', 'seguimiento')->whereNumber('prospecto')->name('seguimiento');
+            Route::patch('{prospecto}/descartar', 'descartar')->whereNumber('prospecto')->name('descartar');
+            Route::post('{prospecto}/convertir', 'convertir')->whereNumber('prospecto')->name('convertir');
+        });
+        Route::delete('{prospecto}', 'destroy')->whereNumber('prospecto')->middleware('permiso:prospectos.eliminar')->name('destroy');
+    });
+    Route::prefix('sistema/oportunidades')->name('oportunidades.')->controller(OportunidadController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:oportunidades.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:oportunidades.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:oportunidades.crear')->name('store');
+        Route::get('{oportunidad}', 'show')->whereNumber('oportunidad')->middleware('permiso:oportunidades.ver')->name('show');
+        Route::middleware('permiso:oportunidades.editar')->group(function () {
+            Route::get('{oportunidad}/editar', 'edit')->whereNumber('oportunidad')->name('edit');
+            Route::put('{oportunidad}', 'update')->whereNumber('oportunidad')->name('update');
+            Route::patch('{oportunidad}/etapa', 'mover')->whereNumber('oportunidad')->name('mover');
+            Route::post('{oportunidad}/propuestas', 'guardarPropuesta')->whereNumber('oportunidad')->name('propuestas.store');
+            Route::patch('{oportunidad}/propuestas/{propuesta}', 'estadoPropuesta')->whereNumber(['oportunidad', 'propuesta'])->name('propuestas.estado');
+        });
+    });
+    Route::prefix('sistema/campanas')->name('campanas.')->controller(CampanaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:campanas.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:campanas.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:campanas.crear')->name('store');
+        Route::get('{campana}', 'show')->whereNumber('campana')->middleware('permiso:campanas.ver')->name('show');
+        Route::middleware('permiso:campanas.editar')->group(function () {
+            Route::get('{campana}/editar', 'edit')->whereNumber('campana')->name('edit');
+            Route::put('{campana}', 'update')->whereNumber('campana')->name('update');
+            Route::post('{campana}/contactos', 'agregarContactos')->whereNumber('campana')->name('contactos.store');
+            Route::patch('{campana}/contactos/{contacto}', 'estadoContacto')->whereNumber(['campana', 'contacto'])->name('contactos.update');
+        });
     });
 
     // ── Inicio ──────────────────────────────────────────────────────

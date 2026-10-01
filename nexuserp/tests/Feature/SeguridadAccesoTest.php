@@ -380,7 +380,7 @@ class SeguridadAccesoTest extends TestCase
 
     public function test_una_pantalla_que_no_existe_vuelve_al_inicio_con_aviso(): void
     {
-        $this->actingAs($this->crearUsuario())->get('/sistema/prospectos')
+        $this->actingAs($this->crearUsuario())->get('/sistema/reportes-inexistentes')
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('aviso', 'Esa pantalla todavía no está disponible.');
     }
