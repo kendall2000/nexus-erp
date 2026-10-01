@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AsistenciaController;
+use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CampanaController;
 use App\Http\Controllers\CategoriaController;
@@ -121,6 +122,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', 'store')->middleware('permiso:roles.crear')->name('store');
         Route::put('{rol}', 'update')->whereNumber('rol')->middleware('permiso:roles.editar')->name('update');
         Route::delete('{rol}', 'destroy')->whereNumber('rol')->middleware('permiso:roles.eliminar')->name('destroy');
+    });
+
+    // Bitácora de cambios (solo consulta: no se edita ni se borra)
+    Route::prefix('sistema/bitacora')->name('bitacora.')->controller(BitacoraController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:bitacora.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:bitacora.exportar')->name('exportar');
+        Route::get('{cambio}', 'show')->whereNumber('cambio')->middleware('permiso:bitacora.ver')->name('show');
     });
 
     // Catálogos: url => [controlador, parámetro, ruta «nuevo», ¿exporta?]. El permiso es la url con «_» (centros-costo → centros_costo.ver).

@@ -28,11 +28,18 @@ class AuditoriaCambio extends Model
         'created_at'       => 'datetime',
     ];
 
+    /** La bitácora no se modifica ni se borra. */
+    protected static function booted(): void
+    {
+        static::updating(fn () => false);
+        static::deleting(fn () => false);
+    }
+
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     public function usuario()
     {
-        return $this->belongsTo(Usuario::class, 'id_usuario');
+        return $this->belongsTo(Usuario::class, 'id_usuario')->withTrashed();
     }
 
     public function empresa()

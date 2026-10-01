@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Core\AuditoriaAcceso;
 use App\Models\Core\Rol;
 use App\Models\Core\Usuario;
+use App\Support\Bitacora;
 use App\Support\Seguridad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,10 +49,13 @@ class SeguridadController extends Controller
             'sesion_expira_min' => ['required', 'integer', 'min:5', 'max:1440'],
         ]);
         // Igual que la pantalla Configuración: se guarda en todas las filas de ConfiguracionSistema.
-        DB::table('ConfiguracionSistema')->update([
+        $cambios = [
             'maxIntentosSesion' => $datos['max_intentos'],
             'bloqueoMinutos' => $datos['bloqueo_minutos'],
             'sesionExpiraMin' => $datos['sesion_expira_min'],
+        ];
+        Bitacora::configuracion($cambios);
+        DB::table('ConfiguracionSistema')->update($cambios + [
             'actualizadoPor' => $request->user()->id_usuario,
             'fechaActualizacion' => now(),
         ]);
@@ -64,8 +68,10 @@ class SeguridadController extends Controller
     {
         $idEmpresa = $request->user()->id_empresa;
         $ids = array_map('intval', (array) $request->input('requiere_2fa', []));
-        Rol::query()->where('id_empresa', $idEmpresa)->whereIn('id_rol', $ids)->update(['requiere_2fa' => true]);
-        Rol::query()->where('id_empresa', $idEmpresa)->whereNotIn('id_rol', $ids)->update(['requiere_2fa' => false]);
+        // Uno por uno para que cada cambio quede en la bitácora (solo se guardan los que cambian).
+        foreach (Rol::query()->where('id_empresa', $idEmpresa)->get() as $rol) {
+            $rol->update(['requiere_2fa' => in_array($rol->id_rol, $ids, true)]);
+        }
 
         return back()->with('status', 'Verificación en dos pasos por rol guardada.');
     }

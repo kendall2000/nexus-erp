@@ -112,6 +112,18 @@ trait EsquemaNexus
             $t->string('detalle')->nullable();
             $t->dateTime('created_at')->useCurrent();
         });
+        Schema::create('auditoria_cambio', function (Blueprint $t) {
+            $t->bigIncrements('id_cambio');
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->unsignedInteger('id_empresa')->nullable();
+            $t->string('tabla_afectada', 100);
+            $t->string('id_registro', 36);
+            $t->string('accion');
+            $t->json('datos_anteriores')->nullable();
+            $t->json('datos_nuevos')->nullable();
+            $t->string('ip_address', 45)->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::create('sessions', function (Blueprint $t) {
             $t->string('id')->primary();
             $t->unsignedInteger('user_id')->nullable()->index();

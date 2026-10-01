@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Bitacora;
 use App\Support\Seguridad;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -53,5 +54,8 @@ class AppServiceProvider extends ServiceProvider
         // CURRENT_TIMESTAMP también quedan en hora local). Sin esto todo corría en UTC y «hoy»
         // cambiaba de día a las 18:00 en Guatemala.
         $this->aplicarZonaHoraria($seguridad['zona']);
+
+        // Bitácora de cambios: altas, ediciones y bajas de todos los modelos (auditoria_cambio).
+        Bitacora::escuchar();
     }
 }

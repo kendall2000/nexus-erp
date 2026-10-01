@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Archivos;
+use App\Support\Bitacora;
 use App\Support\Seguridad;
 use App\Support\Sistema;
 use DateTimeZone;
@@ -132,6 +133,7 @@ class ConfiguracionController extends Controller
             }
         }
 
+        Bitacora::configuracion($cambios);
         DB::table('ConfiguracionSistema')->update($cambios + [
             'actualizadoPor' => $request->user()->id_usuario,
             'fechaActualizacion' => now(),

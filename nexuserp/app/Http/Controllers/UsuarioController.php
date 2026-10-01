@@ -6,6 +6,7 @@ use App\Models\Core\Rol;
 use App\Models\Core\Sucursal;
 use App\Models\Core\Usuario;
 use App\Support\Archivos;
+use App\Support\Bitacora;
 use App\Support\MatrizPermisos;
 use App\Support\Seguridad;
 use Illuminate\Http\RedirectResponse;
@@ -114,12 +115,14 @@ class UsuarioController extends Controller
         }
 
         DB::transaction(function () use ($request, $usuario, $ids) {
+            $antes = Bitacora::codigosPermiso(MatrizPermisos::idsExtras($usuario));
             DB::table('usuario_permiso')->where('id_usuario', $usuario->id_usuario)->whereNotIn('id_permiso', $ids)->delete();
             $existentes = MatrizPermisos::idsExtras($usuario)->all();
             DB::table('usuario_permiso')->insert(array_map(fn ($id) => [
                 'id_usuario' => $usuario->id_usuario, 'id_permiso' => $id,
                 'asignado_por' => $request->user()->id_usuario, 'asignado_at' => now(),
             ], array_values(array_diff($ids, $existentes))));
+            Bitacora::registrarLista('usuario_permiso', (string) $usuario->id_usuario, 'permisos', $antes, Bitacora::codigosPermiso($ids), $usuario->id_empresa);
         });
 
         $n = count($ids);
@@ -286,9 +289,12 @@ class UsuarioController extends Controller
     /** Un rol por usuario (como en la pantalla anterior); si no cambió, se conserva su fecha de asignación. */
     private function asignarRol(Request $request, Usuario $usuario, int $idRol): void
     {
-        if (array_map('intval', $usuario->roles()->pluck('rol.id_rol')->all()) === [$idRol]) {
+        $actuales = array_map('intval', $usuario->roles()->pluck('rol.id_rol')->all());
+        if ($actuales === [$idRol]) {
             return;
         }
+        $nombres = fn (array $ids) => Rol::query()->whereIn('id_rol', $ids)->pluck('nombre');
+        Bitacora::registrarLista('usuario_rol', (string) $usuario->id_usuario, 'roles', $nombres($actuales), $nombres([$idRol]), $usuario->id_empresa);
         $usuario->roles()->sync([$idRol => [
             'fecha_asignacion' => now()->toDateString(),
             'asignado_por' => $request->user()->id_usuario,
