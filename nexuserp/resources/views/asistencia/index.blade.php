@@ -13,6 +13,7 @@
             <p class="text-700 fw-semi-bold mb-0">Registro diario (entrada a las {{ $horaEntrada }}) y solicitudes de ausencia. Nómina descuenta las ausencias y trae las horas extra.</p>
         </div>
         <form method="GET" class="d-flex gap-2">
+            <a class="btn btn-phoenix-primary btn-sm text-nowrap" href="{{ route('rotativos.index') }}"><span class="fas fa-people-arrows me-1"></span>Personal rotativo</a>
             <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->subDay()->toDateString()]) }}" title="Día anterior"><span class="fas fa-chevron-left"></span></a>
             <input class="form-control form-control-sm" type="date" name="fecha" value="{{ $fecha->toDateString() }}" max="{{ today()->toDateString() }}" onchange="this.form.submit()" />
             @if ($fecha->lt(today()))<a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->addDay()->toDateString()]) }}" title="Día siguiente"><span class="fas fa-chevron-right"></span></a>@endif

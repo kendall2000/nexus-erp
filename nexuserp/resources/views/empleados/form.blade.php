@@ -147,6 +147,18 @@
                         </select>
                         @error('id_supervisor')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label d-block" for="es_rotativo">Personal rotativo</label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" id="es_rotativo" name="es_rotativo" type="checkbox" value="1" @checked($v('es_rotativo')) />
+                            <label class="form-check-label" for="es_rotativo">Cubre a otros y cobra por día</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="tarifa_dia">Tarifa por día</label>
+                        <input class="form-control {{ $invalido('tarifa_dia') }}" id="tarifa_dia" name="tarifa_dia" type="number" step="0.01" min="0.01" value="{{ $v('tarifa_dia') !== null ? (float) $v('tarifa_dia') : '' }}" placeholder="Solo rotativos" />
+                        @error('tarifa_dia')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                     @if ($e->exists)
                         <div class="col-md-3">
                             <label class="form-label" for="estado">Estado</label>

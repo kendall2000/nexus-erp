@@ -460,6 +460,8 @@ trait EsquemaNexus
             }
             $t->string('tipo_doc_id')->default('DPI');
             $t->string('tipo_contrato')->default('INDEFINIDO');
+            $t->boolean('es_rotativo')->default(false);
+            $t->decimal('tarifa_dia', 15, 4)->nullable();
             $t->string('modalidad_trabajo')->default('PRESENCIAL');
             $t->date('fecha_nacimiento')->nullable();
             $t->date('fecha_ingreso')->nullable();
@@ -613,6 +615,24 @@ trait EsquemaNexus
             $t->unsignedInteger('aprobado_por')->nullable();
             $t->dateTime('fecha_aprobacion')->nullable();
             $t->string('observaciones')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('cobertura_rotativo', function (Blueprint $t) {
+            $t->increments('id_cobertura');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_rotativo');
+            $t->unsignedInteger('id_titular')->nullable();
+            $t->string('motivo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->boolean('paga_fines_semana')->default(true);
+            $t->decimal('dias', 5, 2);
+            $t->decimal('tarifa_dia', 15, 4);
+            $t->decimal('total', 15, 4);
+            $t->string('estado')->default('VIGENTE');
+            $t->string('observaciones')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('anulada_por')->nullable();
             $t->timestamps();
         });
         Schema::create('periodo_nomina', function (Blueprint $t) {

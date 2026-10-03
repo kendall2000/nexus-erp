@@ -101,12 +101,17 @@ class NominaController extends Controller
                 // Contrato que cubre el periodo (el vigente, o el rescindido si la baja cae dentro).
                 $contrato = $e->contratos->filter(fn ($c) => $c->fecha_inicio->lte($p->fecha_fin) && (! $c->fecha_fin || $c->fecha_fin->gte($p->fecha_inicio)))
                     ->sortByDesc('fecha_inicio')->first();
-                if (! $contrato) {
+                // Un rotativo sin contrato entra solo si cubrió a alguien en el periodo: cobra por día.
+                if (! $contrato && $e->es_rotativo) {
+                    if (Nomina::coberturas($p, $e->id_empleado)->isEmpty()) {
+                        continue;
+                    }
+                } elseif (! $contrato) {
                     $sinContrato[] = $e->nombre_completo;
 
                     continue;
                 }
-                Nomina::procesarEmpleado($p, $e, (float) $contrato->salario_base);
+                Nomina::procesarEmpleado($p, $e, (float) ($contrato?->salario_base ?? 0));
                 $procesados++;
             }
             Nomina::totalesPeriodo($p);

@@ -164,7 +164,8 @@ class EmpleadoController extends Controller
     {
         $e = $this->deMiEmpresa($request)->findOrFail($empleado);
         $uso = Referencias::enUso('id_empleado', $e->id_empleado, [
-            'detalle_nomina' => 'nóminas', 'asistencia' => 'registros de asistencia', 'asignacion_contrato' => 'asignaciones a contratos',
+            'detalle_nomina' => 'nóminas', 'asistencia' => 'registros de asistencia', 'cobertura_rotativo.id_rotativo' => 'coberturas (como rotativo)',
+            'cobertura_rotativo.id_titular' => 'coberturas (como titular)', 'asignacion_contrato' => 'asignaciones a contratos',
             'bodega.responsable_id' => 'bodegas (como responsable)', 'empleado.id_supervisor' => 'empleados (como jefe)',
         ]);
         if ($uso) {
@@ -319,6 +320,7 @@ class EmpleadoController extends Controller
             'dpi_nit' => $documento,
             'codigo_empleado' => ($c = strtoupper(trim((string) $request->input('codigo_empleado')))) === '' ? null : $c,
             'nit_personal' => ($n = strtoupper(preg_replace('/[\s\-]+/', '', (string) $request->input('nit_personal')))) === '' ? null : $n,
+            'es_rotativo' => $request->boolean('es_rotativo'),
         ]);
         $mia = fn (string $tabla, string $llave) => Rule::exists($tabla, $llave)->where('id_empresa', $idEmpresa);
 
@@ -353,7 +355,11 @@ class EmpleadoController extends Controller
             'fecha_ingreso' => ['required', 'date'],
             'tipo_contrato' => ['required', Rule::in(array_keys(self::TIPOS_CONTRATO))],
             'modalidad_trabajo' => ['required', Rule::in(['PRESENCIAL', 'REMOTO', 'HIBRIDO'])],
+            // Personal rotativo: cubre a otros y cobra por día (Asistencia → Personal rotativo).
+            'es_rotativo' => ['boolean'],
+            'tarifa_dia' => ['nullable', 'numeric', 'min:0.01', 'max:999999', 'required_if:es_rotativo,true'],
         ], [
+            'tarifa_dia.required_if' => 'Un rotativo necesita su tarifa diaria.',
             'dpi_nit.digits' => 'El DPI debe tener 13 dígitos.',
             'dpi_nit.unique' => 'Ya hay un empleado con ese documento.',
             'codigo_empleado.unique' => 'Ya hay un empleado con ese código.',
@@ -373,6 +379,6 @@ class EmpleadoController extends Controller
 
         return $datos + array_fill_keys(['segundo_nombre', 'segundo_apellido', 'apellido_casada', 'igss_afiliacion', 'fecha_nacimiento', 'genero', 'estado_civil', 'nacionalidad',
             'email_personal', 'email_corporativo', 'telefono_personal', 'telefono_emergencia', 'contacto_emergencia', 'id_municipio', 'direccion', 'id_sucursal', 'id_depto_org',
-            'id_cargo', 'id_supervisor'], null);
+            'id_cargo', 'id_supervisor', 'tarifa_dia'], null);
     }
 }

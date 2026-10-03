@@ -51,12 +51,13 @@
                         <tr class="{{ $e->estado === 'BAJA' ? 'text-500' : '' }}">
                             <td>
                                 <a class="fw-semi-bold" href="{{ route('empleados.show', $e->id_empleado) }}">{{ $e->nombre_completo }}</a>
+                                @if ($e->es_rotativo)<span class="badge badge-phoenix badge-phoenix-info fs--2">Rotativo</span>@endif
                                 <span class="d-block fs--2 text-600">{{ $e->codigo_empleado }}</span>
                             </td>
                             <td>{{ $e->cargo?->nombre ?? '—' }}</td>
                             <td>{{ $e->departamento?->nombre ?? '—' }}</td>
                             <td class="text-nowrap">{{ $e->fecha_ingreso?->format('d/m/Y') }}</td>
-                            <td class="text-end text-nowrap">{{ $e->contratoVigente ? $e->contratoVigente->moneda.' '.number_format((float) $e->contratoVigente->salario_base, 2) : 'Sin contrato' }}</td>
+                            <td class="text-end text-nowrap">{{ $e->contratoVigente ? $e->contratoVigente->moneda.' '.number_format((float) $e->contratoVigente->salario_base, 2) : ($e->es_rotativo && $e->tarifa_dia ? number_format((float) $e->tarifa_dia, 2).' / día' : 'Sin contrato') }}</td>
                             <td><span class="badge badge-phoenix badge-phoenix-{{ $color }}">{{ $nombreEstado }}</span></td>
                         </tr>
                     @empty

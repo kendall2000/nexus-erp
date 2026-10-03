@@ -18,7 +18,8 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h2 class="mb-1 text-1100">{{ $e->nombre_completo }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span></h2>
+            <h2 class="mb-1 text-1100">{{ $e->nombre_completo }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+                @if ($e->es_rotativo)<span class="badge badge-phoenix badge-phoenix-info fs--1 align-middle">Rotativo · {{ $dinero($e->tarifa_dia) }} / día</span>@endif</h2>
             <p class="text-700 mb-0">{{ $e->codigo_empleado }} · {{ $e->cargo?->nombre ?? 'Sin cargo' }}{{ $e->departamento ? ' · '.$e->departamento->nombre : '' }}
                 · ingresó el {{ $e->fecha_ingreso?->format('d/m/Y') }} ({{ $e->antiguedad_anios }} años)</p>
         </div>

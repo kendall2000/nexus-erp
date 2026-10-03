@@ -44,6 +44,8 @@ class Empleado extends Model
         'fecha_ingreso',
         'fecha_baja',
         'tipo_contrato',
+        'es_rotativo',
+        'tarifa_dia',
         'modalidad_trabajo',
         'estado',
         'motivo_baja',
@@ -56,6 +58,8 @@ class Empleado extends Model
         'fecha_nacimiento' => 'date',
         'fecha_ingreso'    => 'date',
         'fecha_baja'       => 'date',
+        'es_rotativo'      => 'boolean',
+        'tarifa_dia'       => 'decimal:4',
         'created_at'       => 'datetime',
         'updated_at'       => 'datetime',
         'deleted_at'       => 'datetime',
@@ -147,6 +151,12 @@ class Empleado extends Model
     {
         return $this->hasMany(PrestamoEmpleado::class, 'id_empleado')
                     ->where('estado', 'ACTIVO');
+    }
+
+    /** Coberturas que hizo como rotativo. */
+    public function coberturas()
+    {
+        return $this->hasMany(CoberturaRotativo::class, 'id_rotativo');
     }
 
     public function prestaciones()

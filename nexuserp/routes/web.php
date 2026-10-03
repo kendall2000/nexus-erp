@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AsistenciaController;
+use App\Http\Controllers\RotativoController;
 use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CampanaController;
@@ -373,6 +374,13 @@ Route::middleware('auth')->group(function () {
         Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
         Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
             ->middleware('permiso:asistencia.aprobar')->name('solicitudes.resolver');
+    });
+
+    // Personal rotativo: coberturas pagadas por día (usa los permisos de Asistencia)
+    Route::prefix('sistema/asistencia/rotativos')->name('rotativos.')->controller(RotativoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:asistencia.ver')->name('index');
+        Route::post('/', 'store')->middleware('permiso:asistencia.editar')->name('store');
+        Route::patch('{cobertura}/anular', 'anular')->whereNumber('cobertura')->middleware('permiso:asistencia.editar')->name('anular');
     });
 
     // CRM: prospectos, oportunidades (embudo y propuestas) y campañas

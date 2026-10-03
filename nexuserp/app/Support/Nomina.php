@@ -2,7 +2,10 @@
 
 namespace App\Support;
 
+use App\Http\Controllers\AsistenciaController;
+use App\Models\Finanzas\PresupuestoAnual;
 use App\Models\RRHH\Asistencia;
+use App\Models\RRHH\CoberturaRotativo;
 use App\Models\RRHH\ConceptoNomina;
 use App\Models\RRHH\DetalleNomina;
 use App\Models\RRHH\DetalleNominaConcepto;
@@ -25,6 +28,8 @@ use Illuminate\Support\Carbon;
  *    se restan la deducción única de Q48,000 y el IGSS laboral anual, 5 % hasta Q300,000 y
  *    Q15,000 + 7 % del excedente; se retiene la parte del periodo.
  *  - Horas extra: (salario / 30 / 8) × 1.5 por hora, afectas a IGSS e ISR.
+ *  - Personal rotativo: días cubiertos dentro del periodo × la tarifa diaria de cada cobertura. Un rotativo sin
+ *    contrato solo cobra eso (sin salario base ni bonificación); el concepto ROTATIVO nace sin afectar IGSS ni ISR.
  *  - Cuota de préstamos activos (la cuota registrada es quincenal y se convierte al periodo).
  * Los conceptos automáticos se recalculan; los manuales (bonos, descuentos) se conservan.
  */
@@ -44,7 +49,7 @@ class Nomina
     public const PERIODOS = ['MENSUAL' => [30, 12], 'QUINCENAL' => [15, 24], 'CATORCENAL' => [14, 26], 'SEMANAL' => [7, 52]];
 
     /** Conceptos automáticos (se recalculan). */
-    public const AUTOMATICOS = ['SALBASE', 'BONINC', 'HEXTRA', 'IGSS', 'ISR', 'PRESTAMO'];
+    public const AUTOMATICOS = ['SALBASE', 'BONINC', 'HEXTRA', 'ROTATIVO', 'IGSS', 'ISR', 'PRESTAMO'];
 
     /** Horas extra: hora ordinaria = salario mensual / 30 / 8 (jornada diurna), pagada al 150 %. */
     public const RECARGO_HORA_EXTRA = 1.5;
@@ -54,6 +59,7 @@ class Nomina
         'SALBASE' => ['Salario base', 'INGRESO', true, true, true],
         'BONINC' => ['Bonificación incentivo (Decreto 37-2001)', 'INGRESO', false, false, true],
         'HEXTRA' => ['Horas extra', 'INGRESO', true, true, false],
+        'ROTATIVO' => ['Días cubiertos como rotativo', 'INGRESO', false, false, false],
         'BONPROD' => ['Bono de productividad', 'INGRESO', false, true, false],
         'IGSS' => ['Cuota laboral IGSS (4.83 %)', 'DEDUCCION', false, false, true],
         'ISR' => ['Retención ISR', 'DEDUCCION', false, false, true],
@@ -101,12 +107,19 @@ class Nomina
             ->whereBetween('fecha', [$p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString().' 23:59:59'])->count();
         $sinGoce = SolicitudAusencia::query()->where('id_empleado', $e->id_empleado)->where('estado', 'APROBADO')->where('tipo', 'PERMISO_SIN_GOCE')
             ->whereDate('fecha_inicio', '<=', $p->fecha_fin)->whereDate('fecha_fin', '>=', $p->fecha_inicio)->get()
-            ->sum(fn ($s) => \App\Http\Controllers\AsistenciaController::diasHabiles($s->fecha_inicio->max($p->fecha_inicio), $s->fecha_fin->min($p->fecha_fin)));
+            ->sum(fn ($s) => AsistenciaController::diasHabiles($s->fecha_inicio->max($p->fecha_inicio), $s->fecha_fin->min($p->fecha_fin)));
 
         return (float) ($ausencias + $sinGoce);
     }
 
-    /** Crea o actualiza el detalle del empleado y lo recalcula. */
+    /** Coberturas vigentes del rotativo que tocan el periodo. */
+    public static function coberturas(PeriodoNomina $p, int $idEmpleado)
+    {
+        return CoberturaRotativo::query()->where('id_rotativo', $idEmpleado)->vigentes()
+            ->entre($p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString())->with('titular')->orderBy('fecha_inicio')->get();
+    }
+
+    /** Crea o actualiza el detalle del empleado y lo recalcula. Con salario 0 (rotativo sin contrato) solo cobra sus coberturas. */
     public static function procesarEmpleado(PeriodoNomina $p, Empleado $e, float $salarioMensual): DetalleNomina
     {
         $detalle = DetalleNomina::query()->firstOrNew(['id_periodo' => $p->id_periodo, 'id_empleado' => $e->id_empleado]);
@@ -116,7 +129,7 @@ class Nomina
             'salario_base' => $salarioMensual,
             // La primera vez se descuentan las ausencias y se traen las horas extra de Asistencia;
             // después se respetan los ajustes hechos a mano.
-            'dias_trabajados' => $detalle->exists ? $detalle->dias_trabajados : max(0, self::diasTrabajados($p, $e) - self::diasNoPagados($p, $e)),
+            'dias_trabajados' => $detalle->exists ? $detalle->dias_trabajados : ($salarioMensual > 0 ? max(0, self::diasTrabajados($p, $e) - self::diasNoPagados($p, $e)) : 0),
             'horas_extra' => $detalle->exists ? $detalle->horas_extra : (float) Asistencia::query()->where('id_empleado', $e->id_empleado)
                 ->whereBetween('fecha', [$p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString().' 23:59:59'])->sum('horas_extra'),
             'estado_pago' => 'CALCULADO',
@@ -146,6 +159,12 @@ class Nomina
         $linea('BONINC', self::BONIFICACION_INCENTIVO_MENSUAL * $fraccion);
         $horas = (float) $d->horas_extra;
         $linea('HEXTRA', $horas * (float) $d->salario_base / 30 / 8 * self::RECARGO_HORA_EXTRA, rtrim(rtrim(number_format($horas, 2), '0'), '.').' h al 150 %');
+
+        foreach (self::coberturas($p, $d->id_empleado) as $c) {
+            $dias = $c->diasEn($p->fecha_inicio, $p->fecha_fin);
+            $linea('ROTATIVO', $dias * (float) $c->tarifa_dia, $dias.' días × '.number_format((float) $c->tarifa_dia, 2)
+                .' · '.($c->titular ? 'cubre a '.$c->titular->nombre_completo : 'puesto vacante'));
+        }
 
         $lineas = DetalleNominaConcepto::query()->where('id_detalle', $d->id_detalle)->get();
         $ingresos = $lineas->where('tipo', 'INGRESO');
@@ -220,7 +239,7 @@ class Nomina
     /** Nombre sugerido del periodo («Quincena 2 de octubre 2026»). */
     public static function nombreSugerido(string $tipo, Carbon $inicio): string
     {
-        $mes = \App\Models\Finanzas\PresupuestoAnual::MESES[$inicio->month].' '.$inicio->year;
+        $mes = PresupuestoAnual::MESES[$inicio->month].' '.$inicio->year;
 
         return match ($tipo) {
             'MENSUAL' => 'Nómina de '.$mes,
