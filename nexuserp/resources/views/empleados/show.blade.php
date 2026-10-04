@@ -172,4 +172,50 @@
             </div>
         </div>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-body fs--1">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Documentos del expediente</h5>
+                @if ($puedeEditar && $contaboListo)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#documento">Subir documento</button>@endif
+            </div>
+            @if ($puedeEditar && ! $contaboListo)<p class="text-warning">La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).</p>@endif
+            @if ($puedeEditar && $contaboListo)
+                <div class="collapse {{ $errors->documento->any() ? 'show' : '' }}" id="documento">
+                    <form method="POST" action="{{ route('empleados.documentos.store', $e->id_empleado) }}" enctype="multipart/form-data" class="row g-2 border rounded p-2 mb-3">
+                        @csrf
+                        @if ($errors->documento->any())<div class="col-12 text-danger">{{ $errors->documento->first() }}</div>@endif
+                        <div class="col-md-3"><label class="fs--2 text-600">Tipo</label><select class="form-select form-select-sm" name="tipo_documento">@foreach ($tiposDocumento as $c => $n)<option value="{{ $c }}" @selected(old('tipo_documento') === $c)>{{ $n }}</option>@endforeach</select></div>
+                        <div class="col-md-4"><label class="fs--2 text-600">Nombre (vacío = el del archivo)</label><input class="form-control form-control-sm" name="nombre" value="{{ old('nombre') }}" maxlength="200" /></div>
+                        <div class="col-md-5"><label class="fs--2 text-600">Archivo (PDF, imagen o Word, hasta 10 MB)</label><input class="form-control form-control-sm" name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" required /></div>
+                        <div class="col-md-3"><label class="fs--2 text-600">Emisión</label><input class="form-control form-control-sm" name="fecha_emision" type="date" value="{{ old('fecha_emision') }}" /></div>
+                        <div class="col-md-3"><label class="fs--2 text-600">Vencimiento (si aplica)</label><input class="form-control form-control-sm" name="fecha_vencimiento" type="date" value="{{ old('fecha_vencimiento') }}" /></div>
+                        <div class="col-md-4"><label class="fs--2 text-600">Observaciones</label><input class="form-control form-control-sm" name="observaciones" value="{{ old('observaciones') }}" maxlength="1000" /></div>
+                        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary btn-sm w-100" type="submit">Subir</button></div>
+                    </form>
+                </div>
+            @endif
+            @forelse ($documentos as $d)
+                @php $vence = $d->fecha_vencimiento ? (int) round(today()->diffInDays($d->fecha_vencimiento, false)) : null; @endphp
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom border-200 py-2">
+                    <div>
+                        <span class="badge badge-phoenix badge-phoenix-secondary me-1">{{ $tiposDocumento[$d->tipo_documento] ?? $d->tipo_documento }}</span>
+                        <a class="fw-semi-bold" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
+                        @if ($vence !== null && $vence < 0)<span class="badge badge-phoenix badge-phoenix-danger ms-1">Vencido</span>
+                        @elseif ($vence !== null && $vence <= 30)<span class="badge badge-phoenix badge-phoenix-warning ms-1">Vence en {{ $vence }} días</span>@endif
+                        <span class="d-block text-600">{{ collect([$d->fecha_emision ? 'Emitido el '.$d->fecha_emision->format('d/m/Y') : null, $d->fecha_vencimiento ? 'vence el '.$d->fecha_vencimiento->format('d/m/Y') : null, $d->observaciones, 'subido el '.$d->created_at?->format('d/m/Y')])->filter()->implode(' · ') }}</span>
+                    </div>
+                    @if ($puedeEditar)
+                        <form method="POST" action="{{ route('empleados.documentos.destroy', [$e->id_empleado, $d->id_doc]) }}" onsubmit="return confirm(@js('¿Eliminar el documento «'.$d->nombre.'»?'))">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-link btn-sm text-danger p-0" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="text-700 mb-0">Sin documentos.</p>
+            @endforelse
+        </div>
+    </div>
 @endsection

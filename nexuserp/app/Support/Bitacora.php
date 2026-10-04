@@ -55,7 +55,8 @@ class Bitacora
         'presupuesto_anual' => 'Presupuesto', 'centro_costo' => 'Centros de costo', 'cuenta_contable' => 'Cuentas contables',
         'serie_facturacion' => 'Series de facturación', 'empleado' => 'Empleados', 'contrato_laboral' => 'Contratos laborales',
         'historial_salarial' => 'Historial salarial', 'periodo_nomina' => 'Nómina', 'prestamo_empleado' => 'Préstamos',
-        'asistencia' => 'Asistencia', 'solicitud_ausencia' => 'Ausencias', 'cobertura_rotativo' => 'Coberturas de rotativos', 'departamento_org' => 'Departamentos', 'cargo' => 'Cargos',
+        'asistencia' => 'Asistencia', 'solicitud_ausencia' => 'Ausencias', 'cobertura_rotativo' => 'Coberturas de rotativos',
+        'prestacion_laboral' => 'Prestaciones', 'empleado_documento' => 'Documentos de empleado', 'departamento_org' => 'Departamentos', 'cargo' => 'Cargos',
     ];
 
     /** Registra los eventos created / updated / deleted de todos los modelos (AppServiceProvider). */

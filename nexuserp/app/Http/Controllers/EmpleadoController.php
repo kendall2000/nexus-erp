@@ -9,7 +9,9 @@ use App\Models\RRHH\Cargo;
 use App\Models\RRHH\ContratoLaboral;
 use App\Models\RRHH\DepartamentoOrg;
 use App\Models\RRHH\Empleado;
+use App\Models\RRHH\EmpleadoDocumento;
 use App\Models\RRHH\HistorialSalarial;
+use App\Support\Archivos;
 use App\Support\ExportarCsv;
 use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,8 +24,8 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Empleados, su contrato laboral vigente y el historial salarial.
- * Permisos: empleados.ver / crear / editar / eliminar / exportar.
+ * Empleados, su contrato laboral vigente, el historial salarial y los documentos del expediente.
+ * Permisos: empleados.ver / crear / editar (incluye contrato, salario y documentos) / eliminar / exportar.
  * El salario vigente es el del contrato VIGENTE (lo usa Nómina); cada cambio queda en historial_salarial.
  */
 class EmpleadoController extends Controller
@@ -41,6 +43,11 @@ class EmpleadoController extends Controller
     public const JORNADAS = ['COMPLETA' => 'Diurna completa', 'PARCIAL' => 'Parcial', 'NOCTURNA' => 'Nocturna', 'MIXTA' => 'Mixta'];
 
     public const CAMBIOS_SALARIO = ['AUMENTO' => 'Aumento', 'PROMOCION' => 'Promoción', 'AJUSTE' => 'Ajuste', 'CORRECCION' => 'Corrección'];
+
+    public const TIPOS_DOCUMENTO = [
+        'CONTRATO' => 'Contrato', 'DPI' => 'DPI', 'TITULO' => 'Título', 'CURRICULUM' => 'Currículum',
+        'CERTIFICADO' => 'Certificado', 'ANTECEDENTES' => 'Antecedentes', 'OTRO' => 'Otro',
+    ];
 
     public function index(Request $request): View
     {
@@ -77,6 +84,9 @@ class EmpleadoController extends Controller
             'e' => $e,
             'contratos' => $e->contratos()->orderByDesc('fecha_inicio')->get(),
             'historial' => $e->historialSalarial()->with('cargo')->orderByDesc('id_historial')->get(),
+            'documentos' => $e->documentos()->orderBy('tipo_documento')->orderByDesc('id_doc')->get(),
+            'tiposDocumento' => self::TIPOS_DOCUMENTO,
+            'contaboListo' => Archivos::disponible(),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS_CONTRATO,
             'jornadas' => self::JORNADAS,
@@ -164,7 +174,7 @@ class EmpleadoController extends Controller
     {
         $e = $this->deMiEmpresa($request)->findOrFail($empleado);
         $uso = Referencias::enUso('id_empleado', $e->id_empleado, [
-            'detalle_nomina' => 'nóminas', 'asistencia' => 'registros de asistencia', 'cobertura_rotativo.id_rotativo' => 'coberturas (como rotativo)',
+            'detalle_nomina' => 'nóminas', 'asistencia' => 'registros de asistencia', 'prestacion_laboral' => 'prestaciones', 'cobertura_rotativo.id_rotativo' => 'coberturas (como rotativo)',
             'cobertura_rotativo.id_titular' => 'coberturas (como titular)', 'asignacion_contrato' => 'asignaciones a contratos',
             'bodega.responsable_id' => 'bodegas (como responsable)', 'empleado.id_supervisor' => 'empleados (como jefe)',
         ]);
@@ -252,6 +262,47 @@ class EmpleadoController extends Controller
 
             return back()->with('status', 'Salario actualizado a '.$contrato->moneda.' '.number_format((float) $datos['salario_nuevo'], 2).'.');
         });
+    }
+
+    // ── Documentos del expediente ────────────────────────────────────────
+
+    /** Sube un documento (DPI, contrato firmado, antecedentes…) a Contabo y lo deja en la ficha. */
+    public function guardarDocumento(Request $request, int $empleado): RedirectResponse
+    {
+        $e = $this->deMiEmpresa($request)->findOrFail($empleado);
+        $datos = $request->validateWithBag('documento', [
+            'tipo_documento' => ['required', Rule::in(array_keys(self::TIPOS_DOCUMENTO))],
+            'nombre' => ['nullable', 'string', 'max:200'],
+            'archivo' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx', 'max:10240'],
+            'fecha_emision' => ['nullable', 'date', 'before_or_equal:today'],
+            'fecha_vencimiento' => ['nullable', 'date', 'after_or_equal:fecha_emision'],
+            'observaciones' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'archivo.mimes' => 'El archivo debe ser PDF, imagen (JPG, PNG, WEBP) o Word.',
+            'archivo.max' => 'El archivo no puede pasar de 10 MB.',
+            'fecha_vencimiento.after_or_equal' => 'El vencimiento no puede ser antes de la emisión.',
+        ]);
+        $archivo = $request->file('archivo');
+        $datos['nombre'] ??= mb_substr(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME), 0, 200) ?: self::TIPOS_DOCUMENTO[$datos['tipo_documento']];
+        try {
+            $url = Archivos::subir($archivo, 'empleados/'.$e->id_empleado, 'archivo');
+        } catch (ValidationException $ex) {
+            throw $ex->errorBag('documento');
+        }
+        unset($datos['archivo']);
+        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $request->user()->id_usuario]);
+
+        return back()->with('status', "Documento «{$datos['nombre']}» guardado.");
+    }
+
+    public function eliminarDocumento(Request $request, int $empleado, int $documento): RedirectResponse
+    {
+        $e = $this->deMiEmpresa($request)->findOrFail($empleado);
+        $d = $e->documentos()->findOrFail($documento);
+        $d->delete();
+        Archivos::borrar($d->url_archivo);
+
+        return back()->with('status', "Documento «{$d->nombre}» eliminado.");
     }
 
     // ── Privados ─────────────────────────────────────────────────────────

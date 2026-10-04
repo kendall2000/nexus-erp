@@ -617,6 +617,32 @@ trait EsquemaNexus
             $t->string('observaciones')->nullable();
             $t->timestamps();
         });
+        Schema::create('prestacion_laboral', function (Blueprint $t) {
+            $t->increments('id_prestacion');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_periodo')->nullable();
+            $t->string('tipo');
+            $t->string('periodo_calculo', 20);
+            $t->decimal('monto_base', 15, 4);
+            $t->decimal('monto_calculado', 15, 4);
+            $t->decimal('dias_calculados', 8, 2)->nullable();
+            $t->string('estado')->default('CALCULADO');
+            $t->date('fecha_pago')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('empleado_documento', function (Blueprint $t) {
+            $t->increments('id_doc');
+            $t->unsignedInteger('id_empleado');
+            $t->string('tipo_documento');
+            $t->string('nombre', 200);
+            $t->string('url_archivo', 500);
+            $t->date('fecha_emision')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->text('observaciones')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::create('cobertura_rotativo', function (Blueprint $t) {
             $t->increments('id_cobertura');
             $t->unsignedInteger('id_empresa');

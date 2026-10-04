@@ -24,6 +24,7 @@ use App\Http\Controllers\OportunidadController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\PagoController;
+use App\Http\Controllers\PrestacionController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProspectoController;
@@ -296,6 +297,8 @@ Route::middleware('auth')->group(function () {
             Route::patch('{empleado}/reactivar', 'reactivar')->whereNumber('empleado')->name('reactivar');
             Route::post('{empleado}/contrato', 'guardarContrato')->whereNumber('empleado')->name('contrato');
             Route::post('{empleado}/salario', 'cambiarSalario')->whereNumber('empleado')->name('salario');
+            Route::post('{empleado}/documentos', 'guardarDocumento')->whereNumber('empleado')->name('documentos.store');
+            Route::delete('{empleado}/documentos/{documento}', 'eliminarDocumento')->whereNumber(['empleado', 'documento'])->name('documentos.destroy');
         });
         Route::delete('{empleado}', 'destroy')->whereNumber('empleado')->middleware('permiso:empleados.eliminar')->name('destroy');
     });
@@ -374,6 +377,23 @@ Route::middleware('auth')->group(function () {
         Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
         Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
             ->middleware('permiso:asistencia.aprobar')->name('solicitudes.resolver');
+    });
+
+    // Prestaciones laborales: aguinaldo, bono 14 y liquidaciones
+    Route::prefix('sistema/prestaciones')->name('prestaciones.')->controller(PrestacionController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:prestaciones.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:prestaciones.exportar')->name('exportar');
+        Route::middleware('permiso:prestaciones.procesar')->group(function () {
+            Route::post('calcular', 'calcular')->name('calcular');
+            Route::post('liquidar', 'liquidar')->name('liquidar');
+            Route::patch('lote/pagar', 'pagarLote')->name('lote.pagar');
+            Route::patch('{prestacion}/pagar', 'pagar')->whereNumber('prestacion')->name('pagar');
+            Route::delete('{prestacion}', 'destroy')->whereNumber('prestacion')->name('destroy');
+        });
+        Route::middleware('permiso:prestaciones.aprobar')->group(function () {
+            Route::patch('lote/aprobar', 'aprobarLote')->name('lote.aprobar');
+            Route::patch('{prestacion}/aprobar', 'aprobar')->whereNumber('prestacion')->name('aprobar');
+        });
     });
 
     // Personal rotativo: coberturas pagadas por día (usa los permisos de Asistencia)
