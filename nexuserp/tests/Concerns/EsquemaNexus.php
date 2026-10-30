@@ -29,6 +29,8 @@ trait EsquemaNexus
             $t->string('username', 60);
             $t->string('email', 150)->nullable();
             $t->string('password_hash');
+            $t->dateTime('password_cambiado_at')->nullable();
+            $t->boolean('debe_cambiar_password')->default(false);
             $t->string('remember_token', 100)->nullable();
             $t->text('two_factor_secret')->nullable();
             $t->text('two_factor_recovery_codes')->nullable();
@@ -110,6 +112,24 @@ trait EsquemaNexus
             $t->string('ip_address', 45)->nullable();
             $t->string('user_agent', 500)->nullable();
             $t->string('detalle')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('historial_password', function (Blueprint $t) {
+            $t->bigIncrements('id_historial');
+            $t->unsignedInteger('id_usuario');
+            $t->string('password_hash');
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('auditoria_cambio', function (Blueprint $t) {
+            $t->bigIncrements('id_cambio');
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->unsignedInteger('id_empresa')->nullable();
+            $t->string('tabla_afectada', 100);
+            $t->string('id_registro', 36);
+            $t->string('accion');
+            $t->json('datos_anteriores')->nullable();
+            $t->json('datos_nuevos')->nullable();
+            $t->string('ip_address', 45)->nullable();
             $t->dateTime('created_at')->useCurrent();
         });
         Schema::create('sessions', function (Blueprint $t) {
@@ -294,12 +314,14 @@ trait EsquemaNexus
             $t->increments('id_linea');
             $t->unsignedInteger('id_empresa');
             $t->string('nombre');
+            $t->text('descripcion')->nullable();
             $t->boolean('activo')->default(true);
         });
         Schema::create('tipo_servicio', function (Blueprint $t) {
             $t->increments('id_tipo_servicio');
             $t->unsignedInteger('id_linea');
             $t->string('nombre');
+            $t->text('descripcion')->nullable();
             $t->string('unidad_medida')->default('MES');
             $t->decimal('precio_base', 15, 4)->nullable();
             $t->string('moneda', 3)->default('GTQ');
@@ -307,11 +329,463 @@ trait EsquemaNexus
             $t->unsignedInteger('id_cuenta_ingreso')->nullable();
             $t->unsignedInteger('id_centro_default')->nullable();
         });
+        Schema::table('ticket', function (Blueprint $t) {
+            foreach (['id_cliente', 'id_contrato', 'id_categoria', 'id_asignado_a', 'id_sla', 'sla_primera_respuesta_hrs', 'sla_resolucion_hrs', 'calificacion_cliente', 'created_by', 'updated_by'] as $c) {
+                $t->unsignedInteger($c)->nullable();
+            }
+            foreach (['numero_ticket', 'asunto', 'canal_origen', 'prioridad', 'tipo', 'comentario_calificacion'] as $c) {
+                $t->string($c)->nullable();
+            }
+            $t->text('descripcion')->nullable();
+            foreach (['fecha_apertura', 'fecha_limite_respuesta', 'fecha_limite_resolucion', 'fecha_primera_respuesta', 'fecha_resolucion', 'fecha_cierre'] as $c) {
+                $t->dateTime($c)->nullable();
+            }
+            $t->timestamps();
+        });
+        Schema::create('ticket_comentario', function (Blueprint $t) {
+            $t->increments('id_comentario');
+            $t->unsignedInteger('id_ticket');
+            $t->unsignedInteger('id_autor')->nullable();
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->boolean('es_nota_interna')->default(false);
+            $t->text('contenido');
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('escalacion_ticket', function (Blueprint $t) {
+            $t->increments('id_escalacion');
+            $t->unsignedInteger('id_ticket');
+            $t->unsignedInteger('escalado_por')->nullable();
+            $t->unsignedInteger('escalado_a');
+            $t->unsignedInteger('id_usuario')->nullable();
+            $t->string('motivo', 500);
+            $t->unsignedTinyInteger('nivel')->default(1);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('categoria_ticket', function (Blueprint $t) {
+            $t->increments('id_categoria');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->string('prioridad_default')->default('MEDIA');
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('sla_config', function (Blueprint $t) {
+            $t->increments('id_sla');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('prioridad');
+            $t->unsignedTinyInteger('tiempo_primera_respuesta_hrs');
+            $t->unsignedSmallInteger('tiempo_resolucion_hrs');
+            $t->boolean('aplica_fines_semana')->default(false);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('evaluacion_satisfaccion', function (Blueprint $t) {
+            $t->increments('id_evaluacion');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_cliente');
+            $t->unsignedInteger('id_contrato')->nullable();
+            $t->unsignedInteger('id_ticket')->nullable();
+            $t->string('tipo')->default('CSAT');
+            $t->unsignedTinyInteger('puntuacion');
+            $t->text('comentarios')->nullable();
+            $t->string('canal')->default('EMAIL');
+            $t->dateTime('fecha_respuesta')->nullable();
+        });
+        Schema::table('contrato_servicio', function (Blueprint $t) {
+            $t->unsignedInteger('id_cliente')->nullable();
+            $t->unsignedInteger('id_vendedor')->nullable();
+            $t->string('numero_contrato', 60)->nullable();
+            $t->string('nombre_proyecto')->nullable();
+            $t->date('fecha_inicio')->nullable();
+            $t->date('fecha_fin')->nullable();
+            $t->date('fecha_firma')->nullable();
+            $t->decimal('valor_mensual', 15, 4)->default(0);
+            $t->decimal('valor_total_estimado', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('periodicidad_factura')->default('MENSUAL');
+            $t->unsignedTinyInteger('dia_facturacion')->nullable();
+            $t->string('url_contrato')->nullable();
+            $t->text('notas')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('updated_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('contrato_servicio_detalle', function (Blueprint $t) {
+            $t->increments('id_detalle');
+            $t->unsignedInteger('id_contrato');
+            $t->unsignedInteger('id_tipo_servicio');
+            $t->unsignedInteger('id_sitio')->nullable();
+            $t->string('descripcion', 300)->nullable();
+            $t->decimal('cantidad', 10, 2)->default(1);
+            $t->decimal('precio_unitario', 15, 4);
+            $t->decimal('descuento_pct', 5, 2)->default(0);
+            $t->decimal('subtotal', 15, 4);
+        });
+        Schema::create('sitio_trabajo', function (Blueprint $t) {
+            $t->increments('id_sitio');
+            $t->unsignedInteger('id_cliente');
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('nombre');
+            $t->string('direccion');
+            $t->decimal('latitud', 10, 7)->nullable();
+            $t->decimal('longitud', 10, 7)->nullable();
+            $t->string('responsable_cliente')->nullable();
+            $t->string('tel_responsable')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('asignacion_contrato', function (Blueprint $t) {
+            $t->increments('id_asignacion');
+            $t->unsignedInteger('id_contrato');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_sitio')->nullable();
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin')->nullable();
+            $t->string('rol_en_sitio')->nullable();
+            $t->string('turno')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->useCurrent();
+        });
         Schema::table('empleado', function (Blueprint $t) {
             $t->unsignedInteger('id_sucursal')->nullable();
             foreach (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada'] as $columna) {
                 $t->string($columna)->nullable();
             }
+            foreach (['id_cargo', 'id_depto_org', 'id_supervisor', 'id_municipio', 'created_by', 'updated_by'] as $columna) {
+                $t->unsignedInteger($columna)->nullable();
+            }
+            foreach (['dpi_nit', 'nit_personal', 'igss_afiliacion', 'genero', 'estado_civil', 'nacionalidad', 'email_personal', 'email_corporativo',
+                'telefono_personal', 'telefono_emergencia', 'contacto_emergencia', 'direccion', 'codigo_empleado', 'motivo_baja', 'foto_url'] as $columna) {
+                $t->string($columna)->nullable();
+            }
+            $t->string('tipo_doc_id')->default('DPI');
+            $t->string('tipo_contrato')->default('INDEFINIDO');
+            $t->boolean('es_rotativo')->default(false);
+            $t->decimal('tarifa_dia', 15, 4)->nullable();
+            $t->string('modalidad_trabajo')->default('PRESENCIAL');
+            $t->date('fecha_nacimiento')->nullable();
+            $t->date('fecha_ingreso')->nullable();
+            $t->date('fecha_baja')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('fuente_lead', function (Blueprint $t) {
+            $t->increments('id_fuente');
+            $t->string('nombre');
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('prospecto', function (Blueprint $t) {
+            $t->increments('id_prospecto');
+            $t->unsignedInteger('id_empresa');
+            foreach (['id_fuente', 'id_asignado_a', 'id_pais', 'id_industria', 'id_cliente_generado', 'created_by', 'updated_by'] as $c) {
+                $t->unsignedInteger($c)->nullable();
+            }
+            $t->string('nombre_empresa');
+            foreach (['sitio_web', 'empleados_estimados', 'cargo_contacto', 'telefono_contacto', 'whatsapp_contacto', 'motivo_descarte'] as $c) {
+                $t->string($c)->nullable();
+            }
+            $t->string('nombre_contacto');
+            $t->string('email_contacto');
+            $t->string('temperatura')->default('FRIO');
+            $t->unsignedTinyInteger('puntuacion_lead')->default(0);
+            $t->text('interes_servicio')->nullable();
+            $t->decimal('presupuesto_estimado', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('estado')->default('NUEVO');
+            $t->dateTime('fecha_conversion')->nullable();
+            $t->text('notas')->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
+        Schema::create('seguimiento_prospecto', function (Blueprint $t) {
+            $t->increments('id_seguimiento');
+            $t->unsignedInteger('id_prospecto');
+            $t->unsignedInteger('id_realizado_por');
+            $t->string('tipo');
+            $t->dateTime('fecha_hora');
+            $t->unsignedSmallInteger('duracion_min')->nullable();
+            $t->string('resultado');
+            $t->text('resumen');
+            $t->string('proxima_accion')->nullable();
+            $t->date('fecha_proxima_accion')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('etapa_funnel', function (Blueprint $t) {
+            $t->increments('id_etapa');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('descripcion')->nullable();
+            $t->unsignedTinyInteger('orden')->default(1);
+            $t->string('color_hex', 7)->nullable();
+            $t->unsignedTinyInteger('probabilidad_cierre')->nullable();
+            $t->boolean('es_ganada')->default(false);
+            $t->boolean('es_perdida')->default(false);
+            $t->boolean('activo')->default(true);
+        });
+        Schema::create('oportunidad', function (Blueprint $t) {
+            $t->increments('id_oportunidad');
+            $t->unsignedInteger('id_empresa');
+            foreach (['id_cliente', 'id_prospecto', 'id_linea', 'created_by'] as $c) {
+                $t->unsignedInteger($c)->nullable();
+            }
+            $t->unsignedInteger('id_etapa');
+            $t->unsignedInteger('id_responsable');
+            $t->string('nombre');
+            $t->text('descripcion')->nullable();
+            $t->decimal('valor_estimado', 15, 4)->default(0);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->unsignedTinyInteger('probabilidad')->default(50);
+            $t->decimal('valor_ponderado', 15, 4)->nullable();
+            $t->date('fecha_cierre_estimada')->nullable();
+            $t->date('fecha_cierre_real')->nullable();
+            $t->string('razon_cierre')->nullable();
+            $t->string('competidores')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('propuesta', function (Blueprint $t) {
+            $t->increments('id_propuesta');
+            $t->unsignedInteger('id_oportunidad');
+            $t->unsignedInteger('id_elaborado_por');
+            $t->string('numero_propuesta', 30);
+            $t->unsignedTinyInteger('version')->default(1);
+            $t->string('titulo');
+            $t->decimal('valor_propuesto', 15, 4);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->date('fecha_emision');
+            $t->date('fecha_vencimiento');
+            $t->string('url_documento')->nullable();
+            $t->text('notas_internas')->nullable();
+            $t->string('estado')->default('BORRADOR');
+            $t->string('motivo_rechazo')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('campana', function (Blueprint $t) {
+            $t->increments('id_campana');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_linea')->nullable();
+            $t->string('nombre');
+            $t->text('descripcion')->nullable();
+            $t->string('tipo');
+            $t->string('objetivo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin')->nullable();
+            $t->decimal('presupuesto', 15, 4)->nullable();
+            $t->decimal('gasto_real', 15, 4)->default(0);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->unsignedSmallInteger('meta_leads')->nullable();
+            $t->unsignedSmallInteger('leads_generados')->default(0);
+            $t->string('estado')->default('PLANIFICADA');
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('campana_contacto', function (Blueprint $t) {
+            $t->increments('id_contacto_campana');
+            $t->unsignedInteger('id_campana');
+            $t->string('tipo_contacto');
+            $t->unsignedInteger('id_prospecto')->nullable();
+            $t->unsignedInteger('id_cliente')->nullable();
+            $t->string('estado_envio')->default('PENDIENTE');
+            $t->dateTime('fecha_envio')->nullable();
+            $t->dateTime('fecha_apertura')->nullable();
+            $t->string('resultado')->nullable();
+        });
+        Schema::create('asistencia', function (Blueprint $t) {
+            $t->increments('id_asistencia');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->date('fecha');
+            $t->dateTime('hora_entrada')->nullable();
+            $t->dateTime('hora_salida')->nullable();
+            $t->string('tipo')->default('NORMAL');
+            $t->string('estado')->default('PRESENTE');
+            $t->unsignedSmallInteger('minutos_tarde')->default(0);
+            $t->decimal('horas_extra', 5, 2)->default(0);
+            $t->string('observaciones')->nullable();
+            $t->string('registrado_por')->default('SISTEMA');
+            $t->timestamps();
+        });
+        Schema::create('solicitud_ausencia', function (Blueprint $t) {
+            $t->increments('id_solicitud');
+            $t->unsignedInteger('id_empleado');
+            $t->string('tipo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->unsignedTinyInteger('dias_habiles');
+            $t->string('motivo')->nullable();
+            $t->string('estado')->default('PENDIENTE');
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->dateTime('fecha_aprobacion')->nullable();
+            $t->string('observaciones')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('prestacion_laboral', function (Blueprint $t) {
+            $t->increments('id_prestacion');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_periodo')->nullable();
+            $t->string('tipo');
+            $t->string('periodo_calculo', 20);
+            $t->decimal('monto_base', 15, 4);
+            $t->decimal('monto_calculado', 15, 4);
+            $t->decimal('dias_calculados', 8, 2)->nullable();
+            $t->string('estado')->default('CALCULADO');
+            $t->date('fecha_pago')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('empleado_documento', function (Blueprint $t) {
+            $t->increments('id_doc');
+            $t->unsignedInteger('id_empleado');
+            $t->string('tipo_documento');
+            $t->string('nombre', 200);
+            $t->string('url_archivo', 500);
+            $t->date('fecha_emision')->nullable();
+            $t->date('fecha_vencimiento')->nullable();
+            $t->text('observaciones')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->dateTime('created_at')->useCurrent();
+        });
+        Schema::create('cobertura_rotativo', function (Blueprint $t) {
+            $t->increments('id_cobertura');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_rotativo');
+            $t->unsignedInteger('id_titular')->nullable();
+            $t->string('motivo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->boolean('paga_fines_semana')->default(true);
+            $t->decimal('dias', 5, 2);
+            $t->decimal('tarifa_dia', 15, 4);
+            $t->decimal('total', 15, 4);
+            $t->string('estado')->default('VIGENTE');
+            $t->string('observaciones')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->unsignedInteger('anulada_por')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('periodo_nomina', function (Blueprint $t) {
+            $t->increments('id_periodo');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('tipo')->default('QUINCENAL');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin');
+            $t->date('fecha_pago');
+            $t->string('estado')->default('ABIERTO');
+            $t->string('moneda', 3)->default('GTQ');
+            $t->decimal('total_bruto', 15, 4)->default(0);
+            $t->decimal('total_deducciones', 15, 4)->default(0);
+            $t->decimal('total_neto', 15, 4)->default(0);
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('concepto_nomina', function (Blueprint $t) {
+            $t->increments('id_concepto');
+            $t->unsignedInteger('id_empresa');
+            $t->string('codigo', 20);
+            $t->string('nombre');
+            $t->string('tipo');
+            $t->boolean('afecta_igss')->default(false);
+            $t->boolean('afecta_isr')->default(false);
+            $t->boolean('es_fijo')->default(true);
+            $t->string('formula')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->unique(['id_empresa', 'codigo']);
+        });
+        Schema::create('detalle_nomina', function (Blueprint $t) {
+            $t->increments('id_detalle');
+            $t->unsignedInteger('id_periodo');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->string('cargo_snapshot')->nullable();
+            $t->decimal('salario_base', 15, 4);
+            $t->decimal('dias_trabajados', 5, 2)->default(0);
+            $t->decimal('horas_extra', 8, 2)->default(0);
+            foreach (['total_ingresos', 'total_deducciones', 'liquido_pagar', 'cuota_igss_emp', 'cuota_igss_pat', 'isr_retenido'] as $c) {
+                $t->decimal($c, 15, 4)->default(0);
+            }
+            $t->string('estado_pago')->default('CALCULADO');
+            $t->string('numero_cheque')->nullable();
+            $t->string('banco_destino')->nullable();
+            $t->string('cuenta_destino')->nullable();
+            $t->date('fecha_pago')->nullable();
+            $t->timestamps();
+            $t->unique(['id_periodo', 'id_empleado']);
+        });
+        Schema::create('detalle_nomina_concepto', function (Blueprint $t) {
+            $t->increments('id_linea');
+            $t->unsignedInteger('id_detalle');
+            $t->unsignedInteger('id_concepto');
+            $t->string('tipo');
+            $t->decimal('monto', 15, 4);
+            $t->string('descripcion')->nullable();
+        });
+        Schema::create('prestamo_empleado', function (Blueprint $t) {
+            $t->increments('id_prestamo');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->decimal('monto_total', 15, 4);
+            $t->decimal('monto_pendiente', 15, 4);
+            $t->decimal('cuota_quincenal', 15, 4);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->date('fecha_otorgamiento');
+            $t->string('motivo')->nullable();
+            $t->string('estado')->default('ACTIVO');
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('departamento_org', function (Blueprint $t) {
+            $t->increments('id_depto_org');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_padre')->nullable();
+            $t->string('nombre');
+            $t->string('codigo')->nullable();
+            $t->string('centro_costo')->nullable();
+            $t->boolean('activo')->default(true);
+            $t->timestamps();
+        });
+        Schema::create('cargo', function (Blueprint $t) {
+            $t->increments('id_cargo');
+            $t->unsignedInteger('id_empresa');
+            $t->unsignedInteger('id_depto_org')->nullable();
+            $t->string('nombre');
+            $t->text('descripcion')->nullable();
+            $t->unsignedTinyInteger('nivel_jerarquico')->default(1);
+            $t->decimal('salario_min', 15, 4)->nullable();
+            $t->decimal('salario_max', 15, 4)->nullable();
+            $t->string('moneda', 3)->default('GTQ');
+            $t->boolean('requiere_vehiculo')->default(false);
+            $t->boolean('activo')->default(true);
+            $t->timestamps();
+        });
+        Schema::create('contrato_laboral', function (Blueprint $t) {
+            $t->increments('id_contrato');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_empresa');
+            $t->string('numero_contrato', 50);
+            $t->string('tipo');
+            $t->date('fecha_inicio');
+            $t->date('fecha_fin')->nullable();
+            $t->decimal('salario_base', 15, 4);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('jornada')->default('COMPLETA');
+            $t->unsignedTinyInteger('horas_semana')->default(44);
+            $t->string('url_contrato')->nullable();
+            $t->string('estado')->default('VIGENTE');
+            $t->unsignedInteger('created_by')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('historial_salarial', function (Blueprint $t) {
+            $t->increments('id_historial');
+            $t->unsignedInteger('id_empleado');
+            $t->unsignedInteger('id_cargo')->nullable();
+            $t->decimal('salario_anterior', 15, 4)->nullable();
+            $t->decimal('salario_nuevo', 15, 4);
+            $t->string('moneda', 3)->default('GTQ');
+            $t->string('tipo_cambio');
+            $t->date('fecha_efectiva');
+            $t->string('motivo')->nullable();
+            $t->unsignedInteger('aprobado_por')->nullable();
+            $t->unsignedInteger('created_by')->nullable();
+            $t->dateTime('created_at')->useCurrent();
         });
         // Inventario
         Schema::create('bodega', function (Blueprint $t) {
@@ -554,6 +1028,12 @@ trait EsquemaNexus
             $t->unsignedSmallInteger('maxIntentosSesion')->nullable();
             $t->unsignedSmallInteger('bloqueoMinutos')->default(15);
             $t->unsignedSmallInteger('sesionExpiraMin')->nullable();
+            $t->unsignedTinyInteger('passwordMinimo')->default(12);
+            $t->boolean('passwordMayusculas')->default(true);
+            $t->boolean('passwordNumeros')->default(true);
+            $t->boolean('passwordSimbolos')->default(true);
+            $t->unsignedSmallInteger('passwordVenceDias')->default(0);
+            $t->unsignedTinyInteger('passwordHistorial')->default(0);
             $t->unsignedInteger('actualizadoPor')->nullable();
             $t->dateTime('fechaActualizacion')->nullable();
             $t->boolean('estado')->default(true);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Clientes\Cliente;
+use App\Models\Clientes\ContratoServicio;
 use App\Models\Clientes\TipoServicio;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
@@ -102,18 +103,39 @@ class FacturaController extends Controller
         return view('facturas.imprimir', ['f' => $f, 'empresa' => Empresa::find($request->user()->id_empresa), 'tipos' => self::TIPOS, 'estados' => self::ESTADOS]);
     }
 
+    /** Con ?contrato= se prellena con el cliente, la moneda, los servicios y el periodo del mes. */
     public function create(Request $request): View
     {
-        $cliente = $request->filled('cliente') ? $this->clientes($request)->find($request->integer('cliente')) : null;
+        $contrato = $request->filled('contrato')
+            ? ContratoServicio::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', 'VIGENTE')->with('detalles.tipoServicio', 'detalles.sitio')->find($request->integer('contrato'))
+            : null;
+        $idCliente = $contrato?->id_cliente ?? ($request->filled('cliente') ? $request->integer('cliente') : null);
+        $cliente = $idCliente ? $this->clientes($request)->find($idCliente) : null;
 
-        return $this->formulario($request, new Factura([
+        $f = new Factura([
             'id_cliente' => $cliente?->id_cliente,
+            'id_contrato' => $contrato?->id_contrato,
             'fecha_emision' => now(),
             'fecha_vencimiento' => now()->addDays($cliente->dias_credito ?? 30),
-            'moneda' => $cliente->moneda_facturacion ?? 'GTQ',
+            'moneda' => $contrato->moneda ?? $cliente->moneda_facturacion ?? 'GTQ',
+            'periodo_servicio_inicio' => $contrato ? now()->startOfMonth() : null,
+            'periodo_servicio_fin' => $contrato ? now()->endOfMonth() : null,
             'descuento' => 0,
             'estado' => 'BORRADOR',
-        ]));
+        ]);
+        if ($contrato) {
+            $periodo = ucfirst(\App\Models\Finanzas\PresupuestoAnual::MESES[now()->month]).' '.now()->year;
+            $f->setRelation('detalles', $contrato->detalles->map(fn ($d) => new DetalleFactura([
+                'id_tipo_servicio' => $d->id_tipo_servicio,
+                'descripcion' => mb_substr(trim(($d->tipoServicio?->nombre ?? 'Servicio').($d->sitio ? ' — '.$d->sitio->nombre : '').' · '.$periodo), 0, 300),
+                'cantidad' => $d->cantidad,
+                'precio_unitario' => $d->precio_unitario,
+                'descuento' => round((float) $d->cantidad * (float) $d->precio_unitario * (float) $d->descuento_pct / 100, 2),
+                'es_afecto_iva' => true,
+            ])));
+        }
+
+        return $this->formulario($request, $f);
     }
 
     public function store(Request $request): RedirectResponse
@@ -397,6 +419,7 @@ class FacturaController extends Controller
             'id_serie' => [$f ? 'nullable' : 'required', 'integer', Rule::exists('serie_facturacion', 'id_serie')->where('id_empresa', $idEmpresa)->where('activo', true)
                 ->whereIn('tipo', array_keys(self::TIPOS))],
             'id_cliente' => ['required', 'integer', Rule::exists('cliente', 'id_cliente')->where('id_empresa', $idEmpresa)->where('activo', true)->whereNull('deleted_at')],
+            'id_contrato' => ['nullable', 'integer', Rule::exists('contrato_servicio', 'id_contrato')->where('id_empresa', $idEmpresa)->where('id_cliente', $request->integer('id_cliente'))],
             'fecha_emision' => ['required', 'date'],
             'fecha_vencimiento' => ['required', 'date', 'after_or_equal:fecha_emision'],
             'periodo_servicio_inicio' => ['nullable', 'date'],
@@ -415,6 +438,7 @@ class FacturaController extends Controller
         ], [
             'id_serie.required' => 'Elige la serie (define el tipo de documento).',
             'id_cliente.exists' => 'El cliente no es válido o está inactivo.',
+            'id_contrato.exists' => 'El contrato no es de este cliente.',
             'fecha_vencimiento.after_or_equal' => 'El vencimiento no puede ser antes de la emisión.',
             'lineas.required' => 'Agrega al menos una línea.',
             'lineas.*.id_tipo_servicio.in' => 'Uno de los servicios no es válido.',
@@ -450,8 +474,8 @@ class FacturaController extends Controller
         }
 
         return [
-            'encabezado' => collect($datos)->only(['id_serie', 'id_cliente', 'fecha_emision', 'fecha_vencimiento', 'periodo_servicio_inicio', 'periodo_servicio_fin', 'moneda', 'notas'])->all()
-                + ['descuento' => round((float) ($datos['descuento'] ?? 0), 4), 'periodo_servicio_inicio' => null, 'periodo_servicio_fin' => null, 'notas' => null],
+            'encabezado' => collect($datos)->only(['id_serie', 'id_cliente', 'id_contrato', 'fecha_emision', 'fecha_vencimiento', 'periodo_servicio_inicio', 'periodo_servicio_fin', 'moneda', 'notas'])->all()
+                + ['descuento' => round((float) ($datos['descuento'] ?? 0), 4), 'id_contrato' => null, 'periodo_servicio_inicio' => null, 'periodo_servicio_fin' => null, 'notas' => null],
             'lineas' => $lineas,
         ];
     }

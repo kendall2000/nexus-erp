@@ -14,6 +14,7 @@ class EscalacionTicket extends Model
         'id_ticket',
         'escalado_por',
         'escalado_a',
+        'id_usuario',
         'motivo',
         'nivel',
     ];
@@ -36,5 +37,11 @@ class EscalacionTicket extends Model
     public function escaladoA()
     {
         return $this->belongsTo(\App\Models\RRHH\Empleado::class, 'escalado_a');
+    }
+
+    /** Usuario del sistema que escribió o escaló (puede no ser empleado). */
+    public function usuario()
+    {
+        return $this->belongsTo(\App\Models\Core\Usuario::class, 'id_usuario');
     }
 }

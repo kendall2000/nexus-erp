@@ -68,16 +68,27 @@
                     <label class="form-label" for="password">{{ $usuario->exists ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña' }}</label>
                     <input class="form-control" id="password" name="password" type="password" autocomplete="new-password" @required(! $usuario->exists) />
                     <div class="form-text">
-                        Mínimo 12 caracteres, con mayúsculas, minúsculas, números y símbolos.
+                        {{ \App\Support\Contrasenas::requisitos() }}
                         @if ($usuario->exists && $usuario->id_usuario !== auth()->id())
                             Si la cambias, se cierran sus sesiones abiertas.
                         @endif
                     </div>
                 </div>
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label" for="password_confirmation">Confirmar contraseña</label>
                     <input class="form-control" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" />
                 </div>
+                @if ($usuario->id_usuario !== auth()->id())
+                    <div class="form-check mb-4">
+                        <input type="hidden" name="debe_cambiar_password" value="0" />
+                        <input class="form-check-input" id="debe_cambiar_password" name="debe_cambiar_password" type="checkbox" value="1"
+                            @checked(old('debe_cambiar_password', $usuario->exists ? $usuario->debe_cambiar_password : true)) />
+                        <label class="form-check-label" for="debe_cambiar_password">Pedir que cambie la contraseña al entrar</label>
+                        <div class="form-text mt-0">Así solo el usuario conoce su contraseña definitiva.</div>
+                    </div>
+                @else
+                    <div class="mb-4"></div>
+                @endif
                 <div class="d-flex gap-2">
                     <button class="btn btn-primary" type="submit">Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('usuarios.index') }}">Cancelar</a>

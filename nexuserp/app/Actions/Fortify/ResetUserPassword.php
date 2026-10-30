@@ -3,8 +3,8 @@
 namespace App\Actions\Fortify;
 
 use App\Models\Core\Usuario;
+use App\Support\Contrasenas;
 use App\Support\Seguridad;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
@@ -23,12 +23,10 @@ class ResetUserPassword implements ResetsUserPasswords
     public function reset(Usuario $user, array $input): void
     {
         Validator::make($input, [
-            'password' => $this->passwordRules(),
+            'password' => [...$this->passwordRules(), $this->noRepetida($user)],
         ])->validate();
 
-        $user->forceFill([
-            'password_hash' => Hash::make($input['password']),
-        ])->save();
+        Contrasenas::cambiar($user, $input['password']);
 
         // La contraseña pudo estar comprometida: se cierran todas sus sesiones.
         Seguridad::cerrarSesiones($user->id_usuario);

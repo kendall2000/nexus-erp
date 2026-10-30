@@ -22,6 +22,7 @@ class Oportunidad extends Model
         'valor_estimado',
         'moneda',
         'probabilidad',
+        'valor_ponderado',
         'fecha_cierre_estimada',
         'fecha_cierre_real',
         'razon_cierre',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ContrasenaVencida;
 use App\Http\Middleware\EncabezadosSeguridad;
 use App\Http\Middleware\PreventBackHistory;
 use App\Http\Middleware\RequiereDosFactores;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EncabezadosSeguridad::class,
             PreventBackHistory::class,
             UsuarioActivo::class,
+            ContrasenaVencida::class,
             RequiereDosFactores::class,
         ]);
 

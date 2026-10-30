@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Support\Archivos;
+use App\Support\Bitacora;
+use App\Support\Seguridad;
 use App\Support\Sistema;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
@@ -131,10 +133,12 @@ class ConfiguracionController extends Controller
             }
         }
 
+        Bitacora::configuracion($cambios);
         DB::table('ConfiguracionSistema')->update($cambios + [
             'actualizadoPor' => $request->user()->id_usuario,
             'fechaActualizacion' => now(),
         ]);
+        Seguridad::olvidar(); // la zona horaria se aplica en la siguiente petición
 
         $respuesta = redirect()->route('configuracion.edit', ['pestana' => $request->input('pestana')])
             ->with('status', 'Configuración guardada.');

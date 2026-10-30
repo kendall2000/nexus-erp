@@ -64,6 +64,8 @@ class Usuario extends Authenticatable
         'deleted_at'        => 'datetime',
         'intentos_fallidos' => 'integer',
         'two_factor_confirmed_at' => 'datetime',
+        'password_cambiado_at' => 'datetime',
+        'debe_cambiar_password' => 'boolean',
     ];
 
     // Laravel espera 'password' — mapeamos a password_hash (lectura y rehash)

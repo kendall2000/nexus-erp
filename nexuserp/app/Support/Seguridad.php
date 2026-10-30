@@ -6,10 +6,13 @@ use App\Models\Core\AuditoriaAcceso;
 use App\Models\Core\ConfiguracionSistema;
 use App\Models\Core\Usuario;
 use Illuminate\Auth\SessionGuard;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -20,6 +23,7 @@ use Throwable;
  *  - intentos: intentos fallidos permitidos antes del bloqueo (maxIntentosSesion).
  *  - bloqueo: minutos que dura el bloqueo, por usuario/correo + IP (bloqueoMinutos).
  *  - expira: minutos sin actividad tras los que la sesión se cierra (sesionExpiraMin).
+ *  - zona: zona horaria del sistema (zonaHoraria), que AppServiceProvider aplica a PHP y a MySQL.
  */
 class Seguridad
 {
@@ -28,7 +32,7 @@ class Seguridad
     /** Minutos de la cookie de «Recordar sesión» (los mismos que usa Laravel por defecto). */
     private const DURACION_RECORDAR = 576000;
 
-    /** @return array{intentos: int, bloqueo: int, expira: int} */
+    /** @return array{intentos: int, bloqueo: int, expira: int, zona: string} */
     public static function config(): array
     {
         try {
@@ -38,12 +42,14 @@ class Seguridad
             $c = ConfiguracionSistema::obtenerLogin();
         } catch (Throwable) {
             // Sin conexión o sin tabla: valores por defecto, sin guardarlos en caché.
-            return ['intentos' => 5, 'bloqueo' => 15, 'expira' => 120];
+            return ['intentos' => 5, 'bloqueo' => 15, 'expira' => 120, 'zona' => config('app.timezone')];
         }
         $config = [
             'intentos' => max(1, (int) ($c?->maxIntentosSesion ?: 5)),
             'bloqueo' => max(1, (int) ($c?->bloqueoMinutos ?: 15)),
             'expira' => max(5, (int) ($c?->sesionExpiraMin ?: 120)),
+            // Zona horaria elegida en Configuración (si no es válida, la de config/app.php).
+            'zona' => in_array($c?->zonaHoraria, \DateTimeZone::listIdentifiers(), true) ? $c->zonaHoraria : config('app.timezone'),
         ];
         Cache::put(self::CACHE, $config, 600);
 
@@ -92,6 +98,53 @@ class Seguridad
         } catch (Throwable $e) {
             report($e);
         }
+    }
+
+    /** Llave del límite de intentos de inicio de sesión: usuario/correo + IP (FortifyServiceProvider). */
+    public static function llaveIntentos(?string $login, ?string $ip): string
+    {
+        return Str::transliterate(Str::lower((string) $login).'|'.$ip);
+    }
+
+    /** Llave con la que ThrottleRequests guarda el contador del limitador «login». */
+    private static function llaveLimitador(?string $login, ?string $ip): string
+    {
+        return md5('login'.self::llaveIntentos($login, $ip));
+    }
+
+    /**
+     * Bloqueos vigentes: usuario/correo + IP que agotaron los intentos y siguen esperando.
+     * Los candidatos salen de los fallidos recientes del historial; el contador real está en la caché.
+     *
+     * @param  \Closure(Builder): mixed|null  $filtro  para limitar a los accesos de una empresa
+     * @return Collection<int, object{login: string, ip: string, id_usuario: ?int, fallidos: int, ultimo: string, segundos: int}>
+     */
+    public static function bloqueos(?\Closure $filtro = null): Collection
+    {
+        $c = self::config();
+
+        return AuditoriaAcceso::query()
+            ->whereIn('accion', ['LOGIN_FAIL', 'BLOQUEO'])
+            ->where('created_at', '>=', now()->subMinutes($c['bloqueo']))
+            ->when($filtro, $filtro)
+            ->groupBy('username_intento', 'ip_address')
+            ->selectRaw('username_intento AS login, ip_address AS ip, MAX(id_usuario) AS id_usuario, COUNT(*) AS fallidos, MAX(created_at) AS ultimo')
+            ->toBase()->get()
+            ->filter(fn ($b) => RateLimiter::tooManyAttempts(self::llaveLimitador($b->login, $b->ip), $c['intentos']))
+            ->map(function ($b) {
+                $b->id_usuario = $b->id_usuario === null ? null : (int) $b->id_usuario;
+                $b->fallidos = (int) $b->fallidos;
+                $b->segundos = RateLimiter::availableIn(self::llaveLimitador($b->login, $b->ip));
+
+                return $b;
+            })
+            ->sortByDesc('ultimo')->values();
+    }
+
+    /** Quita el bloqueo de un usuario/correo + IP antes de que venza. */
+    public static function desbloquear(string $login, string $ip): void
+    {
+        RateLimiter::clear(self::llaveLimitador($login, $ip));
     }
 
     /**

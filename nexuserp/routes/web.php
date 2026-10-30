@@ -1,25 +1,42 @@
 <?php
 
+use App\Http\Controllers\AsistenciaController;
+use App\Http\Controllers\RotativoController;
+use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\BodegaController;
+use App\Http\Controllers\CampanaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\CuentaContableController;
 use App\Http\Controllers\CuentaSeguridadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GeografiaController;
+use App\Http\Controllers\LineaNegocioController;
 use App\Http\Controllers\ModuloController;
+use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\NominaController;
+use App\Http\Controllers\OportunidadController;
 use App\Http\Controllers\OrdenCompraController;
+use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\PagoController;
+use App\Http\Controllers\PrestacionController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ProspectoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\SerieFacturacionController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\SucursalController;
+use App\Http\Controllers\TicketConfiguracionController;
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TipoServicioController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +57,9 @@ Route::middleware('auth')->group(function () {
         Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
         Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
         Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
+        Route::put('sistema/seguridad/contrasenas', [SeguridadController::class, 'contrasenas'])->name('seguridad.contrasenas');
+        Route::post('sistema/seguridad/desbloquear', [SeguridadController::class, 'desbloquear'])->name('seguridad.desbloquear');
+        Route::get('sistema/seguridad/exportar', [SeguridadController::class, 'exportar'])->name('seguridad.exportar');
 
         // Configuración del sistema
         Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
@@ -109,6 +129,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('{rol}', 'destroy')->whereNumber('rol')->middleware('permiso:roles.eliminar')->name('destroy');
     });
 
+    // Bitácora de cambios (solo consulta: no se edita ni se borra)
+    Route::prefix('sistema/bitacora')->name('bitacora.')->controller(BitacoraController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:bitacora.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:bitacora.exportar')->name('exportar');
+        Route::get('{cambio}', 'show')->whereNumber('cambio')->middleware('permiso:bitacora.ver')->name('show');
+    });
+
     // Catálogos: url => [controlador, parámetro, ruta «nuevo», ¿exporta?]. El permiso es la url con «_» (centros-costo → centros_costo.ver).
     $catalogos = [
         'bodegas' => [BodegaController::class, 'bodega', 'nueva', false],
@@ -117,6 +144,9 @@ Route::middleware('auth')->group(function () {
         'proveedores' => [ProveedorController::class, 'proveedor', 'nuevo', true],
         'centros-costo' => [CentroCostoController::class, 'centro', 'nuevo', true],
         'cuentas-contables' => [CuentaContableController::class, 'cuenta', 'nueva', true],
+        'lineas-negocio' => [LineaNegocioController::class, 'linea', 'nueva', false],
+        'tipos-servicio' => [TipoServicioController::class, 'servicio', 'nuevo', true],
+        'series-facturacion' => [SerieFacturacionController::class, 'serie', 'nueva', false],
     ];
 
     // Importar el plan de cuentas (va antes del bucle para que «importar» no choque con {cuenta}).
@@ -162,6 +192,13 @@ Route::middleware('auth')->group(function () {
         });
         Route::patch('{orden}/aprobar', 'aprobar')->whereNumber('orden')->middleware('permiso:ordenes_compra.aprobar')->name('aprobar');
         Route::patch('{orden}/cancelar', 'cancelar')->whereNumber('orden')->middleware('permiso:ordenes_compra.cancelar')->name('cancelar');
+    });
+
+    // Kardex: movimientos de inventario (no se editan ni se borran)
+    Route::prefix('sistema/movimientos')->name('movimientos.')->controller(MovimientoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:movimientos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:movimientos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:movimientos.crear')->name('store');
     });
 
     // Recepciones de mercadería (entrada al stock y al kardex; no se editan ni se anulan)
@@ -244,6 +281,167 @@ Route::middleware('auth')->group(function () {
         Route::get('{pago}/imprimir', 'imprimir')->whereNumber('pago')->middleware('permiso:pagos.imprimir')->name('imprimir');
         Route::patch('{pago}/revertir', 'revertir')->whereNumber('pago')->middleware('permiso:pagos.eliminar')->name('revertir');
         Route::patch('{pago}/devolver', 'devolver')->whereNumber('pago')->middleware('permiso:pagos.devolver')->name('devolver');
+    });
+
+    // Empleados (contrato laboral e historial salarial en la ficha)
+    Route::prefix('sistema/empleados')->name('empleados.')->controller(EmpleadoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:empleados.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:empleados.exportar')->name('exportar');
+        Route::get('nuevo', 'create')->middleware('permiso:empleados.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:empleados.crear')->name('store');
+        Route::get('{empleado}', 'show')->whereNumber('empleado')->middleware('permiso:empleados.ver')->name('show');
+        Route::middleware('permiso:empleados.editar')->group(function () {
+            Route::get('{empleado}/editar', 'edit')->whereNumber('empleado')->name('edit');
+            Route::put('{empleado}', 'update')->whereNumber('empleado')->name('update');
+            Route::patch('{empleado}/baja', 'baja')->whereNumber('empleado')->name('baja');
+            Route::patch('{empleado}/reactivar', 'reactivar')->whereNumber('empleado')->name('reactivar');
+            Route::post('{empleado}/contrato', 'guardarContrato')->whereNumber('empleado')->name('contrato');
+            Route::post('{empleado}/salario', 'cambiarSalario')->whereNumber('empleado')->name('salario');
+            Route::post('{empleado}/documentos', 'guardarDocumento')->whereNumber('empleado')->name('documentos.store');
+            Route::delete('{empleado}/documentos/{documento}', 'eliminarDocumento')->whereNumber(['empleado', 'documento'])->name('documentos.destroy');
+        });
+        Route::delete('{empleado}', 'destroy')->whereNumber('empleado')->middleware('permiso:empleados.eliminar')->name('destroy');
+    });
+
+    // Departamentos y cargos
+    Route::prefix('sistema/empleados/organizacion')->name('organizacion.')->controller(OrganizacionController::class)
+        ->middleware('permiso:empleados.configurar')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('departamentos', 'guardarDepartamento')->name('departamentos.store');
+            Route::put('departamentos/{departamento}', 'guardarDepartamento')->whereNumber('departamento')->name('departamentos.update');
+            Route::delete('departamentos/{departamento}', 'eliminarDepartamento')->whereNumber('departamento')->name('departamentos.destroy');
+            Route::post('cargos', 'guardarCargo')->name('cargos.store');
+            Route::put('cargos/{cargo}', 'guardarCargo')->whereNumber('cargo')->name('cargos.update');
+            Route::delete('cargos/{cargo}', 'eliminarCargo')->whereNumber('cargo')->name('cargos.destroy');
+        });
+
+    // Contratos de servicio (sitios del cliente y personal asignado en la ficha)
+    Route::prefix('sistema/contratos')->name('contratos.')->controller(ContratoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:contratos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:contratos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:contratos.crear')->name('store');
+        Route::get('{contrato}', 'show')->whereNumber('contrato')->middleware('permiso:contratos.ver')->name('show');
+        Route::get('{contrato}/imprimir', 'imprimir')->whereNumber('contrato')->middleware('permiso:contratos.imprimir')->name('imprimir');
+        // El permiso de cada cambio de estado se revisa en el controlador (editar, cerrar o reabrir).
+        Route::patch('{contrato}/estado/{accion}', 'estado')->whereNumber('contrato')->whereAlpha('accion')->middleware('permiso:contratos.editar|contratos.cerrar|contratos.reabrir')->name('estado');
+        Route::middleware('permiso:contratos.editar')->group(function () {
+            Route::get('{contrato}/editar', 'edit')->whereNumber('contrato')->name('edit');
+            Route::put('{contrato}', 'update')->whereNumber('contrato')->name('update');
+            Route::post('{contrato}/sitios', 'guardarSitio')->whereNumber('contrato')->name('sitios.store');
+            Route::post('{contrato}/asignaciones', 'asignar')->whereNumber('contrato')->name('asignaciones.store');
+            Route::patch('{contrato}/asignaciones/{asignacion}/finalizar', 'finalizarAsignacion')->whereNumber(['contrato', 'asignacion'])->name('asignaciones.finalizar');
+        });
+    });
+
+    // Tickets de servicio con SLA
+    Route::prefix('sistema/tickets/configuracion')->name('tickets.')->controller(TicketConfiguracionController::class)
+        ->middleware('permiso:tickets.configurar')->group(function () {
+            Route::get('/', 'index')->name('configuracion');
+            Route::post('categorias', 'guardarCategoria')->name('categorias.store');
+            Route::put('categorias/{categoria}', 'guardarCategoria')->whereNumber('categoria')->name('categorias.update');
+            Route::post('slas', 'guardarSla')->name('slas.store');
+            Route::put('slas/{sla}', 'guardarSla')->whereNumber('sla')->name('slas.update');
+        });
+    Route::prefix('sistema/tickets')->name('tickets.')->controller(TicketController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:tickets.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:tickets.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:tickets.crear')->name('store');
+        Route::get('{ticket}', 'show')->whereNumber('ticket')->middleware('permiso:tickets.ver')->name('show');
+        Route::post('{ticket}/responder', 'responder')->whereNumber('ticket')->middleware('permiso:tickets.editar')->name('responder');
+        Route::patch('{ticket}/asignar', 'asignar')->whereNumber('ticket')->middleware('permiso:tickets.asignar')->name('asignar');
+        Route::patch('{ticket}/cerrar', 'cerrar')->whereNumber('ticket')->middleware('permiso:tickets.cerrar')->name('cerrar');
+        Route::patch('{ticket}/reabrir', 'reabrir')->whereNumber('ticket')->middleware('permiso:tickets.reabrir')->name('reabrir');
+    });
+
+    // Nómina (periodos, cálculo, préstamos y boletas)
+    Route::prefix('sistema/nomina')->name('nomina.')->controller(NominaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:nomina.ver')->name('index');
+        Route::get('{periodo}', 'show')->whereNumber('periodo')->middleware('permiso:nomina.ver')->name('show');
+        Route::get('{periodo}/boletas', 'imprimir')->whereNumber('periodo')->middleware('permiso:nomina.imprimir')->name('imprimir');
+        Route::middleware('permiso:nomina.procesar')->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::patch('{periodo}/procesar', 'procesar')->whereNumber('periodo')->name('procesar');
+            Route::patch('{periodo}/detalles/{detalle}', 'ajustar')->whereNumber(['periodo', 'detalle'])->name('ajustar');
+            Route::delete('{periodo}/conceptos/{linea}', 'quitarConcepto')->whereNumber(['periodo', 'linea'])->name('conceptos.destroy');
+            Route::patch('{periodo}/pagar', 'pagar')->whereNumber('periodo')->name('pagar');
+            Route::post('prestamos', 'guardarPrestamo')->name('prestamos.store');
+        });
+        Route::patch('{periodo}/cerrar', 'cerrar')->whereNumber('periodo')->middleware('permiso:nomina.cerrar')->name('cerrar');
+        Route::patch('{periodo}/reabrir', 'reabrir')->whereNumber('periodo')->middleware('permiso:nomina.reabrir')->name('reabrir');
+    });
+
+    // Asistencia diaria y solicitudes de ausencia
+    Route::prefix('sistema/asistencia')->name('asistencia.')->controller(AsistenciaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:asistencia.ver')->name('index');
+        Route::post('/', 'guardar')->middleware('permiso:asistencia.editar')->name('guardar');
+        Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
+        Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
+            ->middleware('permiso:asistencia.aprobar')->name('solicitudes.resolver');
+    });
+
+    // Prestaciones laborales: aguinaldo, bono 14 y liquidaciones
+    Route::prefix('sistema/prestaciones')->name('prestaciones.')->controller(PrestacionController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:prestaciones.ver')->name('index');
+        Route::get('exportar', 'exportar')->middleware('permiso:prestaciones.exportar')->name('exportar');
+        Route::middleware('permiso:prestaciones.procesar')->group(function () {
+            Route::post('calcular', 'calcular')->name('calcular');
+            Route::post('liquidar', 'liquidar')->name('liquidar');
+            Route::patch('lote/pagar', 'pagarLote')->name('lote.pagar');
+            Route::patch('{prestacion}/pagar', 'pagar')->whereNumber('prestacion')->name('pagar');
+            Route::delete('{prestacion}', 'destroy')->whereNumber('prestacion')->name('destroy');
+        });
+        Route::middleware('permiso:prestaciones.aprobar')->group(function () {
+            Route::patch('lote/aprobar', 'aprobarLote')->name('lote.aprobar');
+            Route::patch('{prestacion}/aprobar', 'aprobar')->whereNumber('prestacion')->name('aprobar');
+        });
+    });
+
+    // Personal rotativo: coberturas pagadas por día (usa los permisos de Asistencia)
+    Route::prefix('sistema/asistencia/rotativos')->name('rotativos.')->controller(RotativoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:asistencia.ver')->name('index');
+        Route::post('/', 'store')->middleware('permiso:asistencia.editar')->name('store');
+        Route::patch('{cobertura}/anular', 'anular')->whereNumber('cobertura')->middleware('permiso:asistencia.editar')->name('anular');
+    });
+
+    // CRM: prospectos, oportunidades (embudo y propuestas) y campañas
+    Route::prefix('sistema/prospectos')->name('prospectos.')->controller(ProspectoController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:prospectos.ver')->name('index');
+        Route::get('nuevo', 'create')->middleware('permiso:prospectos.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:prospectos.crear')->name('store');
+        Route::get('{prospecto}', 'show')->whereNumber('prospecto')->middleware('permiso:prospectos.ver')->name('show');
+        Route::middleware('permiso:prospectos.editar')->group(function () {
+            Route::get('{prospecto}/editar', 'edit')->whereNumber('prospecto')->name('edit');
+            Route::put('{prospecto}', 'update')->whereNumber('prospecto')->name('update');
+            Route::post('{prospecto}/seguimientos', 'seguimiento')->whereNumber('prospecto')->name('seguimiento');
+            Route::patch('{prospecto}/descartar', 'descartar')->whereNumber('prospecto')->name('descartar');
+            Route::post('{prospecto}/convertir', 'convertir')->whereNumber('prospecto')->name('convertir');
+        });
+        Route::delete('{prospecto}', 'destroy')->whereNumber('prospecto')->middleware('permiso:prospectos.eliminar')->name('destroy');
+    });
+    Route::prefix('sistema/oportunidades')->name('oportunidades.')->controller(OportunidadController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:oportunidades.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:oportunidades.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:oportunidades.crear')->name('store');
+        Route::get('{oportunidad}', 'show')->whereNumber('oportunidad')->middleware('permiso:oportunidades.ver')->name('show');
+        Route::middleware('permiso:oportunidades.editar')->group(function () {
+            Route::get('{oportunidad}/editar', 'edit')->whereNumber('oportunidad')->name('edit');
+            Route::put('{oportunidad}', 'update')->whereNumber('oportunidad')->name('update');
+            Route::patch('{oportunidad}/etapa', 'mover')->whereNumber('oportunidad')->name('mover');
+            Route::post('{oportunidad}/propuestas', 'guardarPropuesta')->whereNumber('oportunidad')->name('propuestas.store');
+            Route::patch('{oportunidad}/propuestas/{propuesta}', 'estadoPropuesta')->whereNumber(['oportunidad', 'propuesta'])->name('propuestas.estado');
+        });
+    });
+    Route::prefix('sistema/campanas')->name('campanas.')->controller(CampanaController::class)->group(function () {
+        Route::get('/', 'index')->middleware('permiso:campanas.ver')->name('index');
+        Route::get('nueva', 'create')->middleware('permiso:campanas.crear')->name('create');
+        Route::post('/', 'store')->middleware('permiso:campanas.crear')->name('store');
+        Route::get('{campana}', 'show')->whereNumber('campana')->middleware('permiso:campanas.ver')->name('show');
+        Route::middleware('permiso:campanas.editar')->group(function () {
+            Route::get('{campana}/editar', 'edit')->whereNumber('campana')->name('edit');
+            Route::put('{campana}', 'update')->whereNumber('campana')->name('update');
+            Route::post('{campana}/contactos', 'agregarContactos')->whereNumber('campana')->name('contactos.store');
+            Route::patch('{campana}/contactos/{contacto}', 'estadoContacto')->whereNumber(['campana', 'contacto'])->name('contactos.update');
+        });
     });
 
     // ── Inicio ──────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Core\Permiso;
 use App\Models\Core\Rol;
+use App\Support\Bitacora;
 use App\Support\MatrizPermisos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class RolController extends Controller
         $rol = DB::transaction(function () use ($request, $datos, $permisos) {
             $rol = Rol::create($datos + ['id_empresa' => $request->user()->id_empresa, 'es_rol_sistema' => false]);
             $rol->permisos()->sync($permisos);
+            Bitacora::registrarLista('rol_permiso', (string) $rol->id_rol, 'permisos', [], Bitacora::codigosPermiso($permisos), $rol->id_empresa);
 
             return $rol;
         });
@@ -74,7 +76,9 @@ class RolController extends Controller
                 $rol->update(['descripcion' => $datos['descripcion'], 'requiere_2fa' => $datos['requiere_2fa']]);
             } else {
                 $rol->update($datos);
+                $antes = Bitacora::codigosPermiso($rol->permisos()->pluck('permiso.id_permiso'));
                 $rol->permisos()->sync($permisos);
+                Bitacora::registrarLista('rol_permiso', (string) $rol->id_rol, 'permisos', $antes, Bitacora::codigosPermiso($permisos), $rol->id_empresa);
             }
         });
 
@@ -95,6 +99,7 @@ class RolController extends Controller
         }
 
         DB::transaction(function () use ($rol) {
+            Bitacora::registrarLista('rol_permiso', (string) $rol->id_rol, 'permisos', Bitacora::codigosPermiso($rol->permisos()->pluck('permiso.id_permiso')), [], $rol->id_empresa);
             $rol->permisos()->detach();
             $rol->delete();
         });

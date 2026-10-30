@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
@@ -78,7 +77,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         // Intentos y minutos de bloqueo por usuario/correo + IP (Seguridad y accesos).
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower((string) $request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Seguridad::llaveIntentos($request->input(Fortify::username()), $request->ip());
             $c = Seguridad::config();
 
             return Limit::perMinutes($c['bloqueo'], $c['intentos'])->by($throttleKey)

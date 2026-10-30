@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\Core\Rol;
 use App\Models\Core\Sucursal;
 use App\Models\Core\Usuario;
 use App\Support\Archivos;
+use App\Support\Bitacora;
+use App\Support\Contrasenas;
 use App\Support\MatrizPermisos;
 use App\Support\Seguridad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -24,6 +26,8 @@ use Illuminate\View\View;
  */
 class UsuarioController extends Controller
 {
+    use PasswordValidationRules;
+
     public function index(Request $request): View
     {
         $buscar = trim((string) $request->query('buscar'));
@@ -54,16 +58,17 @@ class UsuarioController extends Controller
     {
         $datos = $this->validar($request);
 
-        $usuario = Usuario::create([
+        $usuario = new Usuario([
             'id_empresa' => $request->user()->id_empresa,
             'id_sucursal' => $datos['id_sucursal'] ?? null,
             'nombre_completo' => $datos['nombre_completo'],
             'username' => $datos['username'],
             'email' => $datos['email'],
-            'password_hash' => Hash::make($datos['password']),
             'activo' => true,
             'intentos_fallidos' => 0,
         ]);
+        // La contraseña la pone el administrador: por defecto el usuario debe cambiarla al entrar.
+        Contrasenas::cambiar($usuario, $datos['password'], $request->boolean('debe_cambiar_password'));
         $this->asignarRol($request, $usuario, (int) $datos['id_rol']);
         if ($error = $this->guardarFoto($request, $usuario)) {
             return redirect()->route('usuarios.edit', $usuario->id_usuario)
@@ -114,12 +119,14 @@ class UsuarioController extends Controller
         }
 
         DB::transaction(function () use ($request, $usuario, $ids) {
+            $antes = Bitacora::codigosPermiso(MatrizPermisos::idsExtras($usuario));
             DB::table('usuario_permiso')->where('id_usuario', $usuario->id_usuario)->whereNotIn('id_permiso', $ids)->delete();
             $existentes = MatrizPermisos::idsExtras($usuario)->all();
             DB::table('usuario_permiso')->insert(array_map(fn ($id) => [
                 'id_usuario' => $usuario->id_usuario, 'id_permiso' => $id,
                 'asignado_por' => $request->user()->id_usuario, 'asignado_at' => now(),
             ], array_values(array_diff($ids, $existentes))));
+            Bitacora::registrarLista('usuario_permiso', (string) $usuario->id_usuario, 'permisos', $antes, Bitacora::codigosPermiso($ids), $usuario->id_empresa);
         });
 
         $n = count($ids);
@@ -148,16 +155,16 @@ class UsuarioController extends Controller
         $errorFoto = $this->guardarFoto($request, $usuario);
 
         if (! empty($datos['password'])) {
-            $usuario->forceFill([
-                'password_hash' => Hash::make($datos['password']),
-                'intentos_fallidos' => 0,
-                'bloqueado_hasta' => null,
-            ])->save();
+            $usuario->forceFill(['intentos_fallidos' => 0, 'bloqueado_hasta' => null]);
+            Contrasenas::cambiar($usuario, $datos['password'], ! $esYo && $request->boolean('debe_cambiar_password'));
             if (! $esYo) {
                 // Contraseña restablecida por otra persona: se cierran sus sesiones.
                 Seguridad::cerrarSesiones($usuario->id_usuario);
                 Seguridad::registrar('RESET_PASSWORD', $usuario->username, $usuario->id_usuario, 'Restablecida por '.$request->user()->username);
             }
+        } elseif (! $esYo) {
+            // Sin contraseña nueva también se puede pedir (o quitar) el cambio al entrar.
+            $usuario->forceFill(['debe_cambiar_password' => $request->boolean('debe_cambiar_password')])->save();
         }
 
         if ($errorFoto) {
@@ -250,7 +257,8 @@ class UsuarioController extends Controller
                     }
                 }],
             'id_sucursal' => ['nullable', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'password' => [$usuario ? 'nullable' : 'required', 'string', Password::default(), 'confirmed'],
+            'password' => array_filter([$usuario ? 'nullable' : 'required', 'string', Password::default(), 'confirmed', $usuario ? $this->noRepetida($usuario) : null]),
+            'debe_cambiar_password' => ['nullable', 'boolean'],
             'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'username.regex' => 'El usuario solo puede tener letras minúsculas, números, punto, guion y guion bajo (sin espacios).',
@@ -286,9 +294,12 @@ class UsuarioController extends Controller
     /** Un rol por usuario (como en la pantalla anterior); si no cambió, se conserva su fecha de asignación. */
     private function asignarRol(Request $request, Usuario $usuario, int $idRol): void
     {
-        if (array_map('intval', $usuario->roles()->pluck('rol.id_rol')->all()) === [$idRol]) {
+        $actuales = array_map('intval', $usuario->roles()->pluck('rol.id_rol')->all());
+        if ($actuales === [$idRol]) {
             return;
         }
+        $nombres = fn (array $ids) => Rol::query()->whereIn('id_rol', $ids)->pluck('nombre');
+        Bitacora::registrarLista('usuario_rol', (string) $usuario->id_usuario, 'roles', $nombres($actuales), $nombres([$idRol]), $usuario->id_empresa);
         $usuario->roles()->sync([$idRol => [
             'fecha_asignacion' => now()->toDateString(),
             'asignado_por' => $request->user()->id_usuario,
