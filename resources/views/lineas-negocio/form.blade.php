@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => $linea->exists ? 'Editar línea de negocio' : 'Nueva línea de negocio'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('lineas-negocio.index') }}">Líneas de negocio</a></li>
-            <li class="breadcrumb-item active">{{ $linea->exists ? $linea->nombre : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $linea->exists ? 'Editar línea de negocio' : 'Nueva línea de negocio' }}</h2>
+    <x-page-header
+        :titulo="$linea->exists ? 'Editar línea de negocio' : 'Nueva línea de negocio'"
+        icono="fas fa-layer-group"
+        subtitulo="Clasifica los servicios comerciales y oportunidades por unidad de negocio."
+        :migas="[
+            ['label' => 'Líneas de negocio', 'url' => route('lineas-negocio.index')],
+            ['label' => $linea->exists ? $linea->nombre : 'Nueva'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 40rem">
+    <div class="card border border-200 shadow-none" style="max-width: 40rem">
         <div class="card-body">
             <form method="POST" action="{{ $linea->exists ? route('lineas-negocio.update', $linea->id_linea) : route('lineas-negocio.store') }}">
                 @csrf
@@ -31,7 +33,7 @@
                     <div class="form-text mt-0">En una línea inactiva no se crean servicios nuevos.</div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('lineas-negocio.index') }}">Cancelar</a>
                 </div>
             </form>

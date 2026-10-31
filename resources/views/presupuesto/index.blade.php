@@ -6,12 +6,17 @@
         $moneda = $monedas->count() === 1 ? $monedas->first() : '';
         $dinero = fn ($n) => number_format((float) $n, 2);
     @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Presupuesto {{ $anio }}</h2>
-            <p class="text-700 fw-semi-bold mb-0">Por centro de costo y cuenta. Las órdenes de compra aprobadas ejecutan los presupuestos aprobados.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+
+    <x-page-header
+        :titulo="'Presupuesto '.$anio"
+        icono="fas fa-chart-pie"
+        subtitulo="Por centro de costo y cuenta. Las órdenes de compra aprobadas ejecutan los presupuestos aprobados."
+        :migas="[
+            ['label' => 'Finanzas'],
+            ['label' => 'Presupuesto '.$anio],
+        ]"
+    >
+        <x-slot:acciones>
             @if ($yo->puede('presupuesto.exportar'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('presupuesto.exportar', request()->query() + ['anio' => $anio]) }}"><span class="fas fa-file-excel me-2"></span>Exportar</a>
             @endif
@@ -19,12 +24,12 @@
                 <button class="btn btn-phoenix-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#copiar-anio" aria-expanded="{{ $errors->has('anio_origen') || $errors->has('anio_destino') ? 'true' : 'false' }}"><span class="fas fa-copy me-2"></span>Copiar de otro año</button>
                 <a class="btn btn-primary" href="{{ route('presupuesto.create', ['anio' => $anio]) }}"><span class="fas fa-plus me-2"></span>Nueva partida</a>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($yo->puede('presupuesto.crear'))
         <div class="collapse {{ $errors->has('anio_origen') || $errors->has('anio_destino') ? 'show' : '' }} mb-4" id="copiar-anio">
-            <div class="card"><div class="card-body">
+            <div class="card border border-200 shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('presupuesto.clonar') }}" class="row g-2 align-items-end">
                     @csrf
                     <div class="col-sm-3">
@@ -73,29 +78,28 @@
     </form>
 
     @if ($monedas->count() > 1)
-        <div class="alert alert-soft-warning fs--1 py-2"><span class="fas fa-exclamation-triangle me-2"></span>Hay partidas en varias monedas ({{ $monedas->implode(', ') }}): el resumen y el gráfico suman montos sin convertir. Filtra por centro para verlos por separado.</div>
+        <div class="alert alert-soft-warning border-0 fs--1 py-2"><span class="fas fa-exclamation-triangle me-2"></span>Hay partidas en varias monedas ({{ $monedas->implode(', ') }}): el resumen y el gráfico suman montos sin convertir. Filtra por centro para verlos por separado.</div>
     @endif
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-            <p class="fs--1 text-700 mb-1">Presupuestado</p><h3 class="mb-0">{{ $moneda }} {{ $dinero($resumen['presupuestado']) }}</h3>
-            @if ($resumen['borradores'])<p class="fs--2 text-600 mb-0">Sin contar {{ $resumen['borradores'] }} en borrador</p>@endif
-        </div></div></div>
-        <div class="col-sm-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-            <p class="fs--1 text-700 mb-1">Ejecutado</p><h3 class="mb-0">{{ $moneda }} {{ $dinero($resumen['ejecutado']) }}</h3>
-        </div></div></div>
-        <div class="col-sm-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-            <p class="fs--1 text-700 mb-1">Disponible</p><h3 class="mb-0 {{ $resumen['saldo'] < 0 ? 'text-danger' : '' }}">{{ $moneda }} {{ $dinero($resumen['saldo']) }}</h3>
-        </div></div></div>
-        <div class="col-sm-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
+        <div class="col-sm-6 col-lg-3">
+            <x-stat-card etiqueta="Presupuestado" :valor="$moneda.' '.$dinero($resumen['presupuestado'])" icono="fas fa-bullseye" color="primary" :subtexto="$resumen['borradores'] ? 'Sin contar '.$resumen['borradores'].' en borrador' : null" />
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <x-stat-card etiqueta="Ejecutado" :valor="$moneda.' '.$dinero($resumen['ejecutado'])" icono="fas fa-chart-line" color="info" subtexto="Acumulado anual" />
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <x-stat-card etiqueta="Disponible" :valor="$moneda.' '.$dinero($resumen['saldo'])" icono="fas fa-wallet" :color="$resumen['saldo'] < 0 ? 'danger' : 'success'" subtexto="Saldo remanente" />
+        </div>
+        <div class="col-sm-6 col-lg-3"><div class="card border border-200 shadow-none h-100"><div class="card-body py-3">
             <p class="fs--1 text-700 mb-1">Ejecución</p><h3 class="mb-1">{{ $resumen['porcentaje'] }} %</h3>
             <div class="progress" style="height: 6px"><div class="progress-bar {{ $resumen['porcentaje'] > 100 ? 'bg-danger' : ($resumen['porcentaje'] >= 90 ? 'bg-warning' : 'bg-success') }}" style="width: {{ min(100, $resumen['porcentaje']) }}%"></div></div>
         </div></div></div>
     </div>
 
-    <div class="card mb-4">
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body">
-            <h5 class="mb-1">Presupuestado y ejecutado por mes</h5>
+            <h5 class="mb-1 text-1100">Presupuestado y ejecutado por mes</h5>
             <p class="fs--1 text-700 mb-2">Presupuestos aprobados y cerrados{{ $moneda ? ', en '.$moneda : '' }}.</p>
             <div id="grafico-presupuesto" style="height: 300px" role="img" aria-label="Gráfico de barras por mes: presupuestado y ejecutado"></div>
             <details class="mt-2 fs--1">
@@ -113,37 +117,39 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm fs--1 mb-0 align-middle">
-                    <thead><tr><th>Centro de costo</th><th>Cuenta</th><th class="text-end">Presupuestado</th><th class="text-end">Ejecutado</th><th class="text-end">Disponible</th><th style="min-width: 9rem">Ejecución</th><th>Estado</th></tr></thead>
-                    <tbody>
-                    @forelse ($partidas as $p)
-                        @php
-                            [$nombreEstado, $colorEstado] = $estados[$p->estado] ?? [$p->estado, 'secondary'];
-                            [$nombreEje, $colorEje] = $ejecucion[$p->estado_ejecucion];
-                        @endphp
-                        <tr>
-                            <td>{{ $p->centroCosto?->etiqueta ?? '—' }}</td>
-                            <td><a class="fw-semi-bold" href="{{ route('presupuesto.show', $p->id_presupuesto) }}">{{ $p->cuentaContable?->etiqueta ?? '—' }}</a></td>
-                            <td class="text-end text-nowrap">{{ $p->moneda }} {{ $dinero($p->total_presupuestado) }}</td>
-                            <td class="text-end text-nowrap">{{ $dinero($p->total_ejecutado) }}</td>
-                            <td class="text-end text-nowrap fw-semi-bold {{ $p->saldo_disponible < 0 ? 'text-danger' : '' }}">{{ $dinero($p->saldo_disponible) }}</td>
-                            <td>
-                                <div class="progress" style="height: 6px" title="{{ $nombreEje }}"><div class="progress-bar bg-{{ $colorEje }}" style="width: {{ min(100, $p->porcentaje_ejecucion) }}%"></div></div>
-                                <span class="fs--2 text-700">{{ $p->porcentaje_ejecucion }} % · {{ $nombreEje }}</span>
-                            </td>
-                            <td><span class="badge badge-phoenix badge-phoenix-{{ $colorEstado }}">{{ $nombreEstado }}</span></td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="text-center text-700 py-4">{{ array_filter($filtros) ? 'Ninguna partida coincide con los filtros.' : "No hay presupuesto para {$anio}." }}</td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <x-phoenix-table>
+        <x-slot:head>
+            <tr>
+                <th>Centro de costo</th>
+                <th>Cuenta</th>
+                <th class="text-end">Presupuestado</th>
+                <th class="text-end">Ejecutado</th>
+                <th class="text-end">Disponible</th>
+                <th style="min-width: 9rem">Ejecución</th>
+                <th>Estado</th>
+            </tr>
+        </x-slot:head>
+        @forelse ($partidas as $p)
+            @php
+                [$nombreEstado, $colorEstado] = $estados[$p->estado] ?? [$p->estado, 'secondary'];
+                [$nombreEje, $colorEje] = $ejecucion[$p->estado_ejecucion];
+            @endphp
+            <tr>
+                <td>{{ $p->centroCosto?->etiqueta ?? '—' }}</td>
+                <td><a class="fw-semi-bold text-decoration-none" href="{{ route('presupuesto.show', $p->id_presupuesto) }}">{{ $p->cuentaContable?->etiqueta ?? '—' }}</a></td>
+                <td class="text-end text-nowrap">{{ $p->moneda }} {{ $dinero($p->total_presupuestado) }}</td>
+                <td class="text-end text-nowrap">{{ $dinero($p->total_ejecutado) }}</td>
+                <td class="text-end text-nowrap fw-semi-bold {{ $p->saldo_disponible < 0 ? 'text-danger' : '' }}">{{ $dinero($p->saldo_disponible) }}</td>
+                <td>
+                    <div class="progress" style="height: 6px" title="{{ $nombreEje }}"><div class="progress-bar bg-{{ $colorEje }}" style="width: {{ min(100, $p->porcentaje_ejecucion) }}%"></div></div>
+                    <span class="fs--2 text-700">{{ $p->porcentaje_ejecucion }} % · {{ $nombreEje }}</span>
+                </td>
+                <td><span class="badge badge-phoenix badge-phoenix-{{ $colorEstado }}">{{ $nombreEstado }}</span></td>
+            </tr>
+        @empty
+            <tr><td colspan="7" class="text-center text-700 py-4">{{ array_filter($filtros) ? 'Ninguna partida coincide con los filtros.' : "No hay presupuesto para {$anio}." }}</td></tr>
+        @endforelse
+    </x-phoenix-table>
 @endsection
 
 @push('scripts')

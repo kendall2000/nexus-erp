@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarBodegaRequest;
 use App\Models\Core\Sucursal;
 use App\Models\Inventario\Bodega;
 use App\Models\RRHH\Empleado;
@@ -31,9 +32,9 @@ class BodegaController extends Controller
         return $this->formulario($request, new Bodega(['activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarBodegaRequest $request): RedirectResponse
     {
-        $bodega = Bodega::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $bodega = Bodega::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('bodegas.index')->with('status', "Bodega «{$bodega->nombre}» creada.");
     }
@@ -43,10 +44,10 @@ class BodegaController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($bodega));
     }
 
-    public function update(Request $request, int $bodega): RedirectResponse
+    public function update(GuardarBodegaRequest $request, int $bodega): RedirectResponse
     {
         $bodega = $this->deMiEmpresa($request)->findOrFail($bodega);
-        $bodega->update($this->validar($request));
+        $bodega->update($request->datosLimpios());
 
         return redirect()->route('bodegas.index')->with('status', "Bodega «{$bodega->nombre}» actualizada.");
     }
@@ -83,7 +84,7 @@ class BodegaController extends Controller
 
     private function formulario(Request $request, Bodega $bodega): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('bodegas.form', [
             'bodega' => $bodega,
@@ -95,24 +96,6 @@ class BodegaController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Bodega::query()->where('id_empresa', $request->user()->id_empresa);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:150'],
-            'ubicacion' => ['nullable', 'string', 'max:300'],
-            'id_sucursal' => ['nullable', 'integer', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'responsable_id' => ['nullable', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')],
-        ], [
-            'id_sucursal.exists' => 'La sucursal elegida no es válida.',
-            'responsable_id.exists' => 'El responsable elegido no es válido.',
-        ]);
-
-        return $datos + ['id_sucursal' => null, 'responsable_id' => null, 'activo' => $request->boolean('activo')];
+        return $this->consultaEmpresa(Bodega::class, $request);
     }
 }

@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class PrestamoEmpleado extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'prestamo_empleado';
     protected $primaryKey = 'id_prestamo';
     public $timestamps    = true;

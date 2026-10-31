@@ -1,9 +1,17 @@
 @extends('layouts.app', ['titulo' => $usuario->exists ? 'Editar usuario' : 'Nuevo usuario'])
 
 @section('contenido')
-    <h2 class="mb-4 text-1100">{{ $usuario->exists ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+    <x-page-header
+        :titulo="$usuario->exists ? 'Editar usuario' : 'Nuevo usuario'"
+        icono="fas fa-user-cog"
+        subtitulo="Gestiona las credenciales de acceso, rol asignado y permisos adicionales del usuario."
+        :migas="[
+            ['label' => 'Usuarios', 'url' => route('usuarios.index')],
+            ['label' => $usuario->exists ? $usuario->nombre_completo : 'Nuevo'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 44rem">
+    <div class="card border border-200 shadow-none" style="max-width: 44rem">
         <div class="card-body">
             <form method="POST" action="{{ $usuario->exists ? route('usuarios.update', $usuario->id_usuario) : route('usuarios.store') }}" enctype="multipart/form-data">
                 @csrf
@@ -90,7 +98,7 @@
                     <div class="mb-4"></div>
                 @endif
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('usuarios.index') }}">Cancelar</a>
                 </div>
             </form>
@@ -98,9 +106,9 @@
     </div>
     @if ($usuario->exists)
         {{-- Permisos extra: además de los de su rol (como en sistema-inventario). --}}
-        <div class="card mt-4">
+        <div class="card border border-200 shadow-none mt-4">
             <div class="card-body">
-                <h4 class="mb-1">Permisos extra</h4>
+                <h4 class="mb-1 text-1100"><span class="fas fa-key text-primary me-2"></span>Permisos extra</h4>
                 @if ($usuario->esAdministrador())
                     <p class="text-700 fs--1 mb-0">Tiene acceso total: ya tiene todos los permisos.</p>
                 @else
@@ -112,7 +120,7 @@
                         @csrf
                         @method('PUT')
                         @include('permisos.matriz', ['matriz' => $matriz, 'marcados' => $extras, 'propios' => $propios, 'heredados' => $heredados])
-                        <button class="btn btn-primary" type="submit">Guardar permisos extra</button>
+                        <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar permisos extra</button>
                     </form>
                 @endif
             </div>

@@ -7,26 +7,24 @@
         $meses = \App\Models\Finanzas\PresupuestoAnual::MESES;
         $invalido = fn (string $campo) => $errors->has($campo) ? 'is-invalid' : '';
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('asistencia.index') }}">Asistencia</a></li>
-            <li class="breadcrumb-item active">Personal rotativo</li>
-        </ol>
-    </nav>
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Personal rotativo</h2>
-            <p class="text-700 fw-semi-bold mb-0">Quién cubre a quién cuando alguien falta (vacaciones, suspensiones, incapacidades…). Se paga por día cubierto en la nómina.</p>
-        </div>
+
+    <x-page-header
+        title="Personal rotativo"
+        subtitle="Quién cubre a quién cuando alguien falta (vacaciones, suspensiones, incapacidades…). Se paga por día cubierto en la nómina."
+        :breadcrumbs="[
+            ['label' => 'Asistencia', 'url' => route('asistencia.index')],
+            ['label' => 'Personal rotativo']
+        ]"
+    >
         <form method="GET" class="d-flex gap-2">
             <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('rotativos.index', ['mes' => $mes->copy()->subMonth()->format('Y-m')]) }}" title="Mes anterior"><span class="fas fa-chevron-left"></span></a>
             <input class="form-control form-control-sm" type="month" name="mes" value="{{ $mes->format('Y-m') }}" onchange="this.form.submit()" />
             <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('rotativos.index', ['mes' => $mes->copy()->addMonth()->format('Y-m')]) }}" title="Mes siguiente"><span class="fas fa-chevron-right"></span></a>
         </form>
-    </div>
+    </x-page-header>
 
     @if ($puedeEditar)
-        <div class="card mb-4">
+        <div class="card border border-300 shadow-none mb-4">
             <div class="card-body">
                 <h5 class="mb-3">Nueva cobertura</h5>
                 @if ($rotativos->isEmpty())
@@ -90,7 +88,7 @@
     @endif
 
     @if ($resumen->isNotEmpty())
-        <div class="card mb-4">
+        <div class="card border border-300 shadow-none mb-4">
             <div class="card-body fs--1">
                 <h5 class="mb-3">A pagar por {{ $meses[$mes->month] }} {{ $mes->year }}</h5>
                 <div class="table-responsive">
@@ -108,7 +106,7 @@
         </div>
     @endif
 
-    <div class="card">
+    <div class="card border border-300 shadow-none">
         <div class="card-body fs--1">
             <h5 class="mb-3">Coberturas de {{ $meses[$mes->month] }} {{ $mes->year }}</h5>
             @error('cobertura')<div class="alert alert-soft-danger">{{ $message }}</div>@enderror

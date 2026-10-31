@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarProductoRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Inventario\CategoriaProducto;
@@ -55,9 +56,9 @@ class ProductoController extends Controller
         return $this->formulario($request, new Producto(['activo' => true, 'unidad_medida' => 'UND', 'moneda' => 'GTQ', 'stock_minimo' => 0]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarProductoRequest $request): RedirectResponse
     {
-        $producto = Producto::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $producto = Producto::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('productos.index')->with('status', "Producto «{$producto->nombre}» creado.");
     }
@@ -69,10 +70,10 @@ class ProductoController extends Controller
         return $this->formulario($request, $producto);
     }
 
-    public function update(Request $request, int $producto): RedirectResponse
+    public function update(GuardarProductoRequest $request, int $producto): RedirectResponse
     {
         $producto = $this->deMiEmpresa($request)->findOrFail($producto);
-        $producto->update($this->validar($request, $producto));
+        $producto->update($request->datosLimpios());
 
         return redirect()->route('productos.index')->with('status', "Producto «{$producto->nombre}» actualizado.");
     }
@@ -120,7 +121,7 @@ class ProductoController extends Controller
 
     private function formulario(Request $request, Producto $producto): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('productos.form', [
             'producto' => $producto,
@@ -135,45 +136,12 @@ class ProductoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Producto::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Producto::class, $request);
     }
 
     private function categorias(Request $request, bool $soloActivas = false)
     {
-        return CategoriaProducto::query()->where('id_empresa', $request->user()->id_empresa)
+        return CategoriaProducto::query()->where('id_empresa', $this->idEmpresa($request))
             ->when($soloActivas, fn ($q) => $q->where('activo', true))->orderBy('nombre')->get();
-    }
-
-    /** @return array<string, mixed> Solo los campos del formulario (nunca id_empresa). */
-    private function validar(Request $request, ?Producto $producto = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $request->merge(['codigo' => strtoupper(trim((string) $request->input('codigo'))), 'nombre' => trim((string) $request->input('nombre'))]);
-
-        $datos = $request->validate([
-            'codigo' => ['required', 'string', 'max:50', Rule::unique('producto', 'codigo')->where('id_empresa', $idEmpresa)->ignore($producto?->id_producto, 'id_producto')],
-            'nombre' => ['required', 'string', 'max:200'],
-            'descripcion' => ['nullable', 'string', 'max:2000'],
-            'id_categoria' => ['nullable', 'integer', Rule::exists('categoria_producto', 'id_categoria')->where('id_empresa', $idEmpresa)],
-            'unidad_medida' => ['required', Rule::in(array_keys(self::UNIDADES))],
-            'precio_compra' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'precio_venta' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'stock_minimo' => ['required', 'numeric', 'min:0'],
-            'stock_maximo' => ['nullable', 'numeric', 'min:0', 'gte:stock_minimo'],
-            'id_cuenta_gasto' => ['nullable', 'integer', Rule::exists('cuenta_contable', 'id_cuenta')->where('id_empresa', $idEmpresa)->where('permite_movimiento', true)],
-            'id_centro_default' => ['nullable', 'integer', Rule::exists('centro_costo', 'id_centro')->where('id_empresa', $idEmpresa)],
-        ], [
-            'codigo.unique' => 'Ya existe un producto con ese código.',
-            'stock_maximo.gte' => 'El stock máximo no puede ser menor que el mínimo.',
-            'id_categoria.exists' => 'La categoría elegida no es válida.',
-        ]);
-
-        return $datos + [
-            'id_categoria' => null, 'id_cuenta_gasto' => null, 'id_centro_default' => null,
-            'requiere_lote' => $request->boolean('requiere_lote'),
-            'es_perecedero' => $request->boolean('es_perecedero'),
-            'activo' => $request->boolean('activo'),
-        ];
     }
 }

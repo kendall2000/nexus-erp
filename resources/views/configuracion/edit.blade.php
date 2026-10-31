@@ -7,20 +7,26 @@
         $v = fn (string $campo) => old($campo, $config->{$campo});
     @endphp
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Configuración del sistema</h2>
-            <p class="text-700 fw-semi-bold mb-0">Nombre, apariencia, textos del login e imágenes. Las reglas de inicio de sesión están en <a href="{{ route('seguridad.index') }}">Seguridad y accesos</a>.</p>
-        </div>
-    </div>
+    <x-page-header
+        titulo="Configuración del sistema"
+        icono="fas fa-sliders-h"
+        :migas="[
+            ['label' => 'Administración'],
+            ['label' => 'Configuración del sistema'],
+        ]"
+    >
+        <x-slot:subtituloSlot>
+            <p class="text-700 mb-0">Nombre, apariencia, textos del login e imágenes. Las reglas de inicio de sesión están en <a class="fw-semi-bold text-decoration-none" href="{{ route('seguridad.index') }}">Seguridad y accesos</a>.</p>
+        </x-slot:subtituloSlot>
+    </x-page-header>
 
     <form method="POST" action="{{ route('configuracion.update') }}" enctype="multipart/form-data" class="mb-9">
         @csrf
         @method('PUT')
         <input type="hidden" name="pestana" id="pestana" value="{{ $activa }}" />
 
-        <div class="card">
-            <div class="card-header p-0 border-bottom">
+        <div class="card border border-200 shadow-none">
+            <div class="card-header p-0 border-bottom border-200 bg-100">
                 <ul class="nav nav-underline fs--1 px-3" role="tablist">
                     @foreach ($pestanas as $clave => $texto)
                         <li class="nav-item" role="presentation">
@@ -33,7 +39,7 @@
                 <div class="tab-content">
                     {{-- Sistema y parámetros --}}
                     <div class="tab-pane fade {{ $activa === 'sistema' ? 'show active' : '' }}" id="tab-sistema" role="tabpanel">
-                        <h5 class="mb-3 text-800">Información general</h5>
+                        <h5 class="mb-3 text-1100"><span class="fas fa-building text-primary me-2"></span>Información general</h5>
                         <div class="row g-3 mb-4">
                             <div class="col-md-6"><label class="form-label" for="nombreSistema">Nombre del sistema</label><input class="form-control" id="nombreSistema" name="nombreSistema" value="{{ $v('nombreSistema') }}" maxlength="100" required /></div>
                             <div class="col-md-6"><label class="form-label" for="nombreEmpresa">Nombre de la empresa</label><input class="form-control" id="nombreEmpresa" name="nombreEmpresa" value="{{ $v('nombreEmpresa') }}" maxlength="100" /></div>
@@ -45,7 +51,7 @@
                             <div class="col-md-4"><label class="form-label" for="sitioWeb">Sitio web</label><input class="form-control" id="sitioWeb" name="sitioWeb" type="url" value="{{ $v('sitioWeb') }}" maxlength="100" placeholder="https://" /></div>
                         </div>
 
-                        <h5 class="mb-3 text-800 border-top border-200 pt-4">Parámetros regionales</h5>
+                        <h5 class="mb-3 text-1100 border-top border-200 pt-4"><span class="fas fa-globe-americas text-primary me-2"></span>Parámetros regionales</h5>
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label" for="moneda">Moneda (símbolo)</label><input class="form-control" id="moneda" name="moneda" value="{{ $v('moneda') }}" maxlength="10" required /></div>
                             <div class="col-md-3"><label class="form-label" for="monedaCodigo">Moneda (código)</label><input class="form-control text-uppercase" id="monedaCodigo" name="monedaCodigo" value="{{ $v('monedaCodigo') }}" maxlength="3" required /></div>
@@ -68,7 +74,7 @@
 
                     {{-- Apariencia y login --}}
                     <div class="tab-pane fade {{ $activa === 'apariencia' ? 'show active' : '' }}" id="tab-apariencia" role="tabpanel">
-                        <h5 class="mb-3 text-800">Colores</h5>
+                        <h5 class="mb-3 text-1100"><span class="fas fa-palette text-primary me-2"></span>Colores</h5>
                         <div class="row g-3 mb-4">
                             @foreach (['colorPrimario' => 'Primario (botones y enlaces)', 'colorSecundario' => 'Secundario', 'colorAccent' => 'Acento'] as $campo => $texto)
                                 <div class="col-md-4">
@@ -78,7 +84,7 @@
                             @endforeach
                         </div>
 
-                        <h5 class="mb-3 text-800 border-top border-200 pt-4">Textos del inicio de sesión</h5>
+                        <h5 class="mb-3 text-1100 border-top border-200 pt-4"><span class="fas fa-sign-in-alt text-primary me-2"></span>Textos del inicio de sesión</h5>
                         <div class="row g-3 mb-4">
                             <div class="col-md-6"><label class="form-label" for="loginTitulo">Título</label><input class="form-control" id="loginTitulo" name="loginTitulo" value="{{ $v('loginTitulo') }}" maxlength="100" placeholder="Iniciar sesión" /></div>
                             <div class="col-md-6"><label class="form-label" for="loginMensajeBienve">Mensaje bajo el título</label><input class="form-control" id="loginMensajeBienve" name="loginMensajeBienve" value="{{ $v('loginMensajeBienve') }}" maxlength="255" placeholder="Ingresa tus credenciales para continuar" /></div>
@@ -91,7 +97,7 @@
                             <input type="hidden" name="loginSubtitulo" value="{{ $v('loginSubtitulo') }}" />
                         </div>
 
-                        <h5 class="mb-3 text-800 border-top border-200 pt-4">Pie de página</h5>
+                        <h5 class="mb-3 text-1100 border-top border-200 pt-4"><span class="fas fa-shoe-prints text-primary me-2"></span>Pie de página</h5>
                         <div class="row g-3">
                             <div class="col-md-8"><label class="form-label" for="footerTexto">Texto</label><input class="form-control" id="footerTexto" name="footerTexto" value="{{ $v('footerTexto') }}" maxlength="255" placeholder="Todos los derechos reservados" /><div class="form-text">Se muestra después del nombre del sistema; el año se pone solo.</div></div>
                             <div class="col-md-4"><label class="form-label" for="footerVersion">Versión</label><input class="form-control" id="footerVersion" name="footerVersion" value="{{ $v('footerVersion') }}" maxlength="20" placeholder="v1.0.0" /></div>
@@ -134,7 +140,7 @@
 
                     {{-- Correos --}}
                     <div class="tab-pane fade {{ $activa === 'correos' ? 'show active' : '' }}" id="tab-correos" role="tabpanel">
-                        <h5 class="mb-3 text-800">Asuntos y firma de los correos</h5>
+                        <h5 class="mb-3 text-1100"><span class="fas fa-envelope text-primary me-2"></span>Asuntos y firma de los correos</h5>
                         <div class="row g-3">
                             <div class="col-md-6"><label class="form-label" for="emailAsuntoReset">Asunto: recuperar contraseña</label><input class="form-control" id="emailAsuntoReset" name="emailAsuntoReset" value="{{ $v('emailAsuntoReset') }}" maxlength="150" /></div>
                             <div class="col-md-6"><label class="form-label" for="emailAsuntoBienve">Asunto: bienvenida</label><input class="form-control" id="emailAsuntoBienve" name="emailAsuntoBienve" value="{{ $v('emailAsuntoBienve') }}" maxlength="150" /></div>
@@ -144,8 +150,8 @@
                     </div>
                 </div>
             </div>
-            <div class="card-footer d-flex justify-content-end">
-                <button class="btn btn-primary" type="submit">Guardar configuración</button>
+            <div class="card-footer d-flex justify-content-end bg-100 border-top border-200">
+                <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar configuración</button>
             </div>
         </div>
     </form>

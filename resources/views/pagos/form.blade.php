@@ -2,22 +2,28 @@
 
 @section('contenido')
     @php $elegida = old('id_factura', $factura?->id_factura); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('pagos.index') }}">Pagos</a></li>
-            <li class="breadcrumb-item active">Registrar cobro</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Registrar cobro</h2>
+
+    <x-page-header
+        titulo="Registrar cobro"
+        icono="fas fa-hand-holding-usd"
+        subtitulo="Aplica pagos recibidos por transferencia, cheque, efectivo o tarjeta a facturas emitidas."
+        :migas="[
+            ['label' => 'Pagos y Cobros', 'url' => route('pagos.index')],
+            ['label' => 'Registrar cobro'],
+        ]"
+    />
 
     @if ($facturas->isEmpty())
-        <div class="card" style="max-width: 48rem"><div class="card-body">
+        <div class="card border border-200 shadow-none" style="max-width: 48rem"><div class="card-body">
             <p class="mb-0 text-700"><span class="fas fa-info-circle me-2"></span>No hay facturas emitidas con saldo por cobrar.</p>
         </div></div>
     @else
         <form method="POST" action="{{ route('pagos.store') }}" class="mb-9" style="max-width: 48rem">
             @csrf
-            <div class="card mb-4">
+            <div class="card border border-200 shadow-none mb-4">
+                <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                    <h5 class="mb-0 text-1100"><span class="fas fa-receipt text-primary me-2"></span>Datos del cobro</h5>
+                </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-12">

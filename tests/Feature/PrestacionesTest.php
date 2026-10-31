@@ -165,4 +165,13 @@ class PrestacionesTest extends TestCase
         $this->darPermisos($lector, ['empleados.ver']);
         $this->actingAs($lector)->post(route('empleados.documentos.store', $this->ana), ['tipo_documento' => 'DPI', 'archivo' => UploadedFile::fake()->image('dpi.jpg')])->assertForbidden();
     }
+
+    public function test_pasivo_laboral_y_finiquito_imprimible(): void
+    {
+        $this->actingAs($this->crearUsuario());
+        $this->get(route('prestaciones.index'))->assertOk()->assertSee('Pasivo laboral acumulado');
+
+        $this->post(route('prestaciones.liquidar'), ['id_empleado' => $this->ana, 'fecha_salida' => '2026-10-03', 'dias_vacaciones' => 5, 'indemnizacion' => 1]);
+        $this->get(route('prestaciones.finiquito', [$this->ana, 'LIQ-20261003']))->assertOk()->assertSee('FINIQUITO LABORAL')->assertSee('Ana López');
+    }
 }

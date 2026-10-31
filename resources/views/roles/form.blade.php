@@ -7,12 +7,6 @@
         $bloqueado = ! auth()->user()->puede($rol->exists ? 'roles.editar' : 'roles.crear') || $soloLectura;
         $marcados = array_map('intval', old('permisos', $marcados));
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('roles.index') }}">Roles y permisos</a></li>
-            <li class="breadcrumb-item active">{{ $rol->exists ? $rol->nombre : 'Nuevo rol' }}</li>
-        </ol>
-    </nav>
 
     @if ($soloLectura)
         <div class="alert alert-soft-warning fs--1" role="alert">{{ $soloLectura }}</div>
@@ -24,41 +18,46 @@
             @method('PUT')
         @endif
         <fieldset @disabled($bloqueado)>
-            <div class="row g-3 flex-between-end mb-5">
-                <div class="col-auto">
-                    <h2 class="mb-2">{{ $rol->exists ? ($bloqueado ? $rol->nombre : 'Editar rol') : 'Nuevo rol' }}</h2>
-                    <h5 class="text-700 fw-semi-bold">Marca lo que este rol puede hacer en cada módulo.</h5>
-                </div>
-                <div class="col-auto">
-                    <a class="btn btn-phoenix-secondary me-2 mb-2 mb-sm-0" href="{{ route('roles.index') }}">{{ $bloqueado ? 'Volver' : 'Cancelar' }}</a>
-                    @unless ($bloqueado)
-                        <button class="btn btn-primary mb-2 mb-sm-0" type="submit">Guardar rol</button>
-                    @endunless
-                </div>
-            </div>
+            <x-page-header
+                :title="$rol->exists ? ($bloqueado ? $rol->nombre : 'Editar rol') : 'Nuevo rol'"
+                subtitle="Marca lo que este rol puede hacer en cada módulo."
+                :breadcrumbs="[
+                    ['label' => 'Roles y permisos', 'url' => route('roles.index')],
+                    ['label' => $rol->exists ? $rol->nombre : 'Nuevo rol']
+                ]"
+            >
+                <a class="btn btn-phoenix-secondary me-2" href="{{ route('roles.index') }}">{{ $bloqueado ? 'Volver' : 'Cancelar' }}</a>
+                @unless ($bloqueado)
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-check me-2"></span>Guardar rol</button>
+                @endunless
+            </x-page-header>
 
             <div class="row g-5">
                 <div class="col-12 col-xl-8">
-                    <h4 class="mb-3">Nombre del rol</h4>
-                    <input class="form-control mb-5" id="nombre" name="nombre" type="text" maxlength="100" required
-                           value="{{ old('nombre', $rol->nombre) }}" placeholder="Ej.: Contabilidad, Bodega, Ventas" @readonly($esAdmin) />
+                    <div class="card border border-300 shadow-none mb-4">
+                        <div class="card-body">
+                            <h4 class="mb-3">Nombre del rol</h4>
+                            <input class="form-control mb-4" id="nombre" name="nombre" type="text" maxlength="100" required
+                                   value="{{ old('nombre', $rol->nombre) }}" placeholder="Ej.: Contabilidad, Bodega, Ventas" @readonly($esAdmin) />
 
-                    <h4 class="mb-2">Permisos</h4>
-                    @if ($esAdmin)
-                        <div class="alert alert-soft-primary fs--1" role="alert">
-                            Este rol tiene acceso total: todos los permisos y todo el menú. No se puede limitar.
+                            <h4 class="mb-2">Permisos</h4>
+                            @if ($esAdmin)
+                                <div class="alert alert-soft-primary fs--1" role="alert">
+                                    Este rol tiene acceso total: todos los permisos y todo el menú. No se puede limitar.
+                                </div>
+                            @else
+                                <p class="text-700 fs--1 mb-3">
+                                    «Ver» también muestra el módulo en el menú lateral.
+                                    @if ($propios !== null) Solo puedes dar los permisos que tú tienes; los demás aparecen deshabilitados y se conservan como están. @endif
+                                </p>
+                                @include('permisos.matriz', ['matriz' => $matriz, 'marcados' => $marcados, 'propios' => $propios, 'bloqueado' => $bloqueado])
+                            @endif
                         </div>
-                    @else
-                        <p class="text-700 fs--1 mb-3">
-                            «Ver» también muestra el módulo en el menú lateral.
-                            @if ($propios !== null) Solo puedes dar los permisos que tú tienes; los demás aparecen deshabilitados y se conservan como están. @endif
-                        </p>
-                        @include('permisos.matriz', ['matriz' => $matriz, 'marcados' => $marcados, 'propios' => $propios, 'bloqueado' => $bloqueado])
-                    @endif
+                    </div>
                 </div>
 
                 <div class="col-12 col-xl-4">
-                    <div class="card mb-3">
+                    <div class="card border border-300 shadow-none mb-3">
                         <div class="card-body">
                             <h4 class="card-title mb-4">Detalles</h4>
                             <div class="mb-4">

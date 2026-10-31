@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PrestacionLaboral;
+use App\Models\RRHH\SolicitudAusencia;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -148,5 +149,121 @@ class Prestaciones
         $p->fill(['id_empresa' => $e->id_empresa, 'monto_base' => $base, 'monto_calculado' => $monto, 'dias_calculados' => $dias, 'estado' => 'CALCULADO'])->save();
 
         return $p;
+    }
+
+    /**
+     * Saldo de vacaciones del empleado a una fecha de corte (Guatemala: 15 días hábiles por año laborado).
+     *
+     * @return array{dias_servicio: int, devengado: float, gozados: float, pendientes: float, disponible: float, salario_diario: float, valor_estimado: float}
+     */
+    public static function saldoVacaciones(Empleado $e, ?Carbon $fechaCorte = null): array
+    {
+        $corte = ($fechaCorte ?? today())->copy()->startOfDay();
+        $hasta = $e->fecha_baja && $e->fecha_baja->lt($corte) ? $e->fecha_baja : $corte;
+        $diasServicio = $e->fecha_ingreso ? self::dias($e->fecha_ingreso, $hasta) : 0;
+        $devengado = round($diasServicio * 15 / 365, 2);
+
+        $solicitudes = $e->relationLoaded('solicitudesAusencia')
+            ? $e->solicitudesAusencia
+            : SolicitudAusencia::query()->where('id_empleado', $e->id_empleado)->where('tipo', 'VACACIONES')->get();
+
+        $gozados = (float) $solicitudes->where('tipo', 'VACACIONES')->where('estado', 'APROBADO')->sum('dias_habiles');
+        $pendientes = (float) $solicitudes->where('tipo', 'VACACIONES')->where('estado', 'PENDIENTE')->sum('dias_habiles');
+        $disponible = round(max(0.0, $devengado - $gozados), 2);
+
+        $e->loadMissing('contratos');
+        $salario = self::salario($e, $hasta) ?? 0.0;
+        $salarioDiario = round($salario / 30, 2);
+
+        return [
+            'dias_servicio' => $diasServicio,
+            'devengado' => $devengado,
+            'gozados' => round($gozados, 2),
+            'pendientes' => round($pendientes, 2),
+            'disponible' => $disponible,
+            'salario_diario' => $salarioDiario,
+            'valor_estimado' => round($disponible * $salarioDiario, 2),
+        ];
+    }
+
+    /**
+     * Pasivo laboral acumulado al día de corte para todos los empleados activos con contrato.
+     *
+     * @return array{filas: list<array<string, mixed>>, totales: array<string, float>}
+     */
+    public static function pasivoAcumulado(int $idEmpresa, ?Carbon $fechaCorte = null): array
+    {
+        $corte = ($fechaCorte ?? today())->copy()->startOfDay();
+        $empleados = Empleado::query()
+            ->where('id_empresa', $idEmpresa)
+            ->where('estado', '!=', 'BAJA')
+            ->with(['cargo', 'departamento', 'contratos', 'solicitudesAusencia'])
+            ->whereDate('fecha_ingreso', '<=', $corte)
+            ->orderBy('primer_apellido')
+            ->orderBy('primer_nombre')
+            ->get();
+
+        $filas = [];
+        $totales = [
+            'aguinaldo' => 0.0,
+            'bono14' => 0.0,
+            'vacaciones' => 0.0,
+            'indemnizacion' => 0.0,
+            'total' => 0.0,
+        ];
+
+        $inicioAguinaldo = self::inicioPeriodo('AGUINALDO', $corte);
+        $inicioBono14 = self::inicioPeriodo('BONO14', $corte);
+
+        foreach ($empleados as $e) {
+            $salario = self::salario($e, $corte);
+            if ($salario === null) {
+                continue;
+            }
+
+            $diasAguinaldo = self::dias($e->fecha_ingreso->max($inicioAguinaldo), $corte);
+            $aguinaldo = self::proporcional($salario, $diasAguinaldo);
+
+            $diasBono14 = self::dias($e->fecha_ingreso->max($inicioBono14), $corte);
+            $bono14 = self::proporcional($salario, $diasBono14);
+
+            $vac = self::saldoVacaciones($e, $corte);
+            $vacacionesMonto = $vac['valor_estimado'];
+
+            $diasServicio = self::dias($e->fecha_ingreso, $corte);
+            $baseIndemnizacion = round($salario * 14 / 12, 4);
+            $indemnizacion = round($baseIndemnizacion * $diasServicio / 365, 2);
+
+            $totalEmpleado = round($aguinaldo + $bono14 + $vacacionesMonto + $indemnizacion, 2);
+
+            $filas[] = [
+                'empleado' => $e,
+                'salario' => $salario,
+                'dias_servicio' => $diasServicio,
+                'aguinaldo' => $aguinaldo,
+                'dias_aguinaldo' => $diasAguinaldo,
+                'bono14' => $bono14,
+                'dias_bono14' => $diasBono14,
+                'vacaciones_dias' => $vac['disponible'],
+                'vacaciones_monto' => $vacacionesMonto,
+                'indemnizacion' => $indemnizacion,
+                'total' => $totalEmpleado,
+            ];
+
+            $totales['aguinaldo'] += $aguinaldo;
+            $totales['bono14'] += $bono14;
+            $totales['vacaciones'] += $vacacionesMonto;
+            $totales['indemnizacion'] += $indemnizacion;
+            $totales['total'] += $totalEmpleado;
+        }
+
+        foreach ($totales as $k => $v) {
+            $totales[$k] = round($v, 2);
+        }
+
+        return [
+            'filas' => $filas,
+            'totales' => $totales,
+        ];
     }
 }

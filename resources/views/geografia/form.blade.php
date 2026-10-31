@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => 'Editar '.$nombreTipo])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('geografia.index', ['pestana' => $tipo]) }}">Geografía</a></li>
-            <li class="breadcrumb-item active">{{ $registro->nombre }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Editar {{ $nombreTipo }}</h2>
+    <x-page-header
+        :title="'Editar '.$nombreTipo"
+        :breadcrumbs="[
+            ['label' => 'Geografía', 'url' => route('geografia.index', ['pestana' => $tipo])],
+            ['label' => $registro->nombre]
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary" href="{{ route('geografia.index', ['pestana' => $tipo]) }}">Cancelar</a>
+    </x-page-header>
 
-    <div class="card" style="max-width: 36rem">
+    <div class="card border border-300 shadow-none" style="max-width: 36rem">
         <div class="card-body">
             <form method="POST" action="{{ route('geografia.update', [$tipo, $registro->getKey()]) }}">
                 @csrf

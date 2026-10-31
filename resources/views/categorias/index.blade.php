@@ -5,17 +5,18 @@
         $usuario = auth()->user();
         [$puedeCrear, $puedeEditar, $puedeEliminar] = [$usuario->puede('categorias.crear'), $usuario->puede('categorias.editar'), $usuario->puede('categorias.eliminar')];
     @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Categorías de productos</h2>
-            <p class="text-700 fw-semi-bold mb-0">{{ $total }} {{ $total === 1 ? 'categoría' : 'categorías' }} organizadas en árbol.</p>
-        </div>
+
+    <x-page-header
+        title="Categorías de productos"
+        subtitle="{{ $total }} {{ $total === 1 ? 'categoría' : 'categorías' }} organizadas en árbol."
+        :breadcrumbs="[['label' => 'Inventario'], ['label' => 'Categorías']]"
+    >
         @if ($puedeCrear)
             <a class="btn btn-primary" href="{{ route('categorias.create') }}"><span class="fas fa-plus me-2"></span>Nueva categoría</a>
         @endif
-    </div>
+    </x-page-header>
 
-    <div class="card mb-9">
+    <div class="card border border-300 shadow-none mb-9">
         <div class="card-body">
             <div class="search-box mb-3" style="max-width: 22rem">
                 <form class="position-relative" onsubmit="return false">

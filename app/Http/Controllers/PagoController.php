@@ -34,7 +34,7 @@ class PagoController extends Controller
             // Total cobrado (solo aplicados) de lo filtrado, por moneda.
             'cobrado' => $this->filtrados($request)->where('estado', 'APLICADO')->groupBy('moneda')->selectRaw('moneda, SUM(monto) as total, COUNT(*) as cantidad')->get(),
             'porAcreditar' => $this->deMiEmpresa($request)->where('estado', 'APLICADO')->whereNull('fecha_acreditado')->whereNot('forma_pago', 'EFECTIVO')->count(),
-            'clientes' => Cliente::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('razon_social')->get(['id_cliente', 'razon_social']),
+            'clientes' => Cliente::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('razon_social')->get(['id_cliente', 'razon_social']),
             'formas' => Pago::FORMAS,
             'estados' => Pago::ESTADOS,
             'filtros' => $request->only(['buscar', 'cliente', 'forma', 'estado', 'desde', 'hasta', 'sin_acreditar']),
@@ -61,7 +61,7 @@ class PagoController extends Controller
 
     public function imprimir(Request $request, int $pago): View
     {
-        return view('pagos.imprimir', ['p' => $this->cargar($request, $pago), 'empresa' => Empresa::find($request->user()->id_empresa), 'formas' => Pago::FORMAS]);
+        return view('pagos.imprimir', ['p' => $this->cargar($request, $pago), 'empresa' => Empresa::find($this->idEmpresa($request)), 'formas' => Pago::FORMAS]);
     }
 
     /** Formulario de cobro; con ?factura= la deja elegida. */
@@ -111,7 +111,7 @@ class PagoController extends Controller
                 'moneda' => $factura->moneda, // se cobra en la moneda de la factura
                 'referencia' => $datos['referencia'] ?? '',
                 'estado' => 'APLICADO',
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]));
             $factura->recalcularCobro();
 
@@ -160,7 +160,7 @@ class PagoController extends Controller
                 return back()->withErrors(['pago' => 'Este cobro ya fue '.strtolower(Pago::ESTADOS[$p->estado][0]).'.']);
             }
             $factura = $p->id_factura ? Factura::query()->lockForUpdate()->find($p->id_factura) : null;
-            $p->update(['estado' => $estado, 'revertido_por' => $request->user()->id_usuario, 'fecha_reversion' => now(), 'motivo_reversion' => $datos['motivo']]);
+            $p->update(['estado' => $estado, 'revertido_por' => $this->idUsuario($request), 'fecha_reversion' => now(), 'motivo_reversion' => $datos['motivo']]);
             $factura?->recalcularCobro();
 
             return back()->with('status', $mensaje.' '.($factura ? $this->resumenFactura($factura) : ''));
@@ -174,7 +174,7 @@ class PagoController extends Controller
 
     private function cobrables(Request $request): Builder
     {
-        return Factura::query()->where('id_empresa', $request->user()->id_empresa)
+        return Factura::query()->where('id_empresa', $this->idEmpresa($request))
             ->whereIn('estado', Cliente::ESTADOS_CON_SALDO)->where('saldo_pendiente', '>', 0);
     }
 
@@ -185,7 +185,7 @@ class PagoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Pago::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Pago::class, $request);
     }
 
     private function filtrados(Request $request): Builder

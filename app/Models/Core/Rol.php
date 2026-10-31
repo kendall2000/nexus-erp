@@ -2,10 +2,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Rol extends Model
 {
+    use PerteneceAEmpresa;
+
     /** Nombre reservado: tiene todos los permisos (Usuario::esAdministrador). */
     public const ADMINISTRADOR = 'Administrador';
 

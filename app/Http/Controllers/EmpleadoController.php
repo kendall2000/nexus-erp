@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RRHH\GuardarEmpleadoRequest;
 use App\Models\Core\DivisionGeografica;
 use App\Models\Core\Municipio;
 use App\Models\Core\Sucursal;
@@ -13,10 +14,12 @@ use App\Models\RRHH\EmpleadoDocumento;
 use App\Models\RRHH\HistorialSalarial;
 use App\Support\Archivos;
 use App\Support\ExportarCsv;
+use App\Support\Prestaciones;
 use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -51,10 +54,22 @@ class EmpleadoController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
+        $vigentes = $this->deMiEmpresa($request)->where('estado', '!=', 'BAJA')->with(['cargo:id_cargo,nombre', 'departamento:id_depto_org,nombre'])
+            ->orderBy('primer_nombre')->get(['id_empleado', 'id_supervisor', 'id_cargo', 'id_depto_org', 'primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada', 'codigo_empleado', 'fecha_ingreso', 'estado']);
+        $ids = $vigentes->pluck('id_empleado')->all();
 
         return view('empleados.index', [
             'empleados' => $this->filtrados($request)->with(['cargo', 'departamento', 'contratoVigente'])->orderBy('primer_apellido')->orderBy('primer_nombre')->paginate(25)->withQueryString(),
+            'kpis' => [
+                'activos' => $vigentes->where('estado', 'ACTIVO')->count(),
+                'vigentes' => $vigentes->count(),
+                'ingresos_mes' => $vigentes->filter(fn ($e) => $e->fecha_ingreso?->isSameMonth(today()))->count(),
+                'por_vencer' => ContratoLaboral::query()->whereIn('id_empleado', $ids)->where('estado', 'VIGENTE')->whereNotNull('fecha_fin')
+                    ->whereBetween('fecha_fin', [today()->toDateString(), today()->addDays(30)->toDateString()])->count(),
+                'cabezas' => $vigentes->filter(fn ($e) => ! $e->id_supervisor || ! in_array($e->id_supervisor, $ids, true))->count(),
+            ],
+            'organigrama' => $this->arbol($vigentes),
             'departamentos' => DepartamentoOrg::query()->where('id_empresa', $idEmpresa)->orderBy('nombre')->get(),
             'estados' => self::ESTADOS,
             'filtros' => $request->only(['buscar', 'departamento', 'estado']),
@@ -80,8 +95,30 @@ class EmpleadoController extends Controller
         $e = $this->deMiEmpresa($request)->with(['cargo', 'departamento', 'sucursal', 'supervisor', 'municipio.division', 'contratoVigente', 'subordinados' => fn ($q) => $q->where('estado', '!=', 'BAJA')])
             ->findOrFail($empleado);
 
+        // Cadena de mando hacia arriba (sin ciclos, máximo 20 niveles).
+        $cadena = collect();
+        $visto = [$e->id_empleado];
+        for ($jefe = $e->supervisor; $jefe && ! in_array($jefe->id_empleado, $visto, true) && $cadena->count() < 20; $jefe = $jefe->supervisor) {
+            $cadena->push($jefe);
+            $visto[] = $jefe->id_empleado;
+        }
+        $cv = $e->contratoVigente;
+        $salario = $cv ? (float) $cv->salario_base : null;
+        $rango = null;
+        if ($salario !== null && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max)) {
+            $rango = [
+                'min' => $e->cargo->salario_min !== null ? (float) $e->cargo->salario_min : null,
+                'max' => $e->cargo->salario_max !== null ? (float) $e->cargo->salario_max : null,
+                'dentro' => $e->cargo->salarioEnRango($salario),
+            ];
+        }
+
         return view('empleados.show', [
             'e' => $e,
+            'cadena' => $cadena,
+            'rango' => $rango,
+            'venceContrato' => $cv?->fecha_fin ? (int) round(today()->diffInDays($cv->fecha_fin, false)) : null,
+            'vacaciones' => $e->estado !== 'BAJA' ? Prestaciones::saldoVacaciones($e) : null,
             'contratos' => $e->contratos()->orderByDesc('fecha_inicio')->get(),
             'historial' => $e->historialSalarial()->with('cargo')->orderByDesc('id_historial')->get(),
             'documentos' => $e->documentos()->orderBy('tipo_documento')->orderByDesc('id_doc')->get(),
@@ -103,15 +140,15 @@ class EmpleadoController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarEmpleadoRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $datos['codigo_empleado'] ??= $this->siguienteNumero($request, 'empleado');
         $empleado = Empleado::create($datos + [
-            'id_empresa' => $request->user()->id_empresa,
+            'id_empresa' => $this->idEmpresa($request),
             'estado' => 'ACTIVO',
-            'created_by' => $request->user()->id_usuario,
-            'updated_by' => $request->user()->id_usuario,
+            'created_by' => $this->idUsuario($request),
+            'updated_by' => $this->idUsuario($request),
         ]);
 
         return redirect()->route('empleados.show', $empleado->id_empleado)->with('status', "Empleado {$empleado->nombre_completo} creado. Registra su contrato y salario.");
@@ -122,16 +159,16 @@ class EmpleadoController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->with('municipio')->findOrFail($empleado));
     }
 
-    public function update(Request $request, int $empleado): RedirectResponse
+    public function update(GuardarEmpleadoRequest $request, int $empleado): RedirectResponse
     {
         $e = $this->deMiEmpresa($request)->findOrFail($empleado);
         if ($e->estado === 'BAJA') {
             return redirect()->route('empleados.show', $e->id_empleado)->withErrors(['empleado' => 'El empleado está de baja: reactívalo para editarlo.']);
         }
-        $datos = $this->validar($request, $e);
+        $datos = $request->datosLimpios($e);
         $datos['codigo_empleado'] ??= $e->codigo_empleado;
         $request->validate(['estado' => ['required', Rule::in(self::ESTADOS_EDITABLES)]]);
-        $e->update($datos + ['estado' => $request->input('estado'), 'updated_by' => $request->user()->id_usuario]);
+        $e->update($datos + ['estado' => $request->input('estado'), 'updated_by' => $this->idUsuario($request)]);
 
         return redirect()->route('empleados.show', $e->id_empleado)->with('status', "Empleado {$e->nombre_completo} actualizado.");
     }
@@ -149,7 +186,7 @@ class EmpleadoController extends Controller
         }
 
         DB::transaction(function () use ($e, $datos, $request) {
-            $e->update($datos + ['estado' => 'BAJA', 'updated_by' => $request->user()->id_usuario]);
+            $e->update($datos + ['estado' => 'BAJA', 'updated_by' => $this->idUsuario($request)]);
             $e->contratos()->where('estado', 'VIGENTE')->update(['estado' => 'RESCINDIDO', 'fecha_fin' => $datos['fecha_baja']]);
             // Deja de ser jefe inmediato de su equipo.
             Empleado::query()->where('id_supervisor', $e->id_empleado)->update(['id_supervisor' => null]);
@@ -164,7 +201,7 @@ class EmpleadoController extends Controller
         if ($e->estado !== 'BAJA') {
             return back()->withErrors(['empleado' => 'Solo se reactivan empleados de baja.']);
         }
-        $e->update(['estado' => 'ACTIVO', 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $request->user()->id_usuario]);
+        $e->update(['estado' => 'ACTIVO', 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "{$e->nombre_completo} reactivado. Registra un contrato nuevo.");
     }
@@ -195,7 +232,7 @@ class EmpleadoController extends Controller
         if ($e->estado === 'BAJA') {
             return back()->withErrors(['contrato' => 'El empleado está de baja: reactívalo antes.']);
         }
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['numero_contrato' => ($n = strtoupper(trim((string) $request->input('numero_contrato')))) === '' ? null : $n]);
         $datos = $request->validateWithBag('contrato', [
             'numero_contrato' => ['nullable', 'string', 'max:50', Rule::unique('contrato_laboral', 'numero_contrato')->where('id_empresa', $idEmpresa)],
@@ -216,12 +253,12 @@ class EmpleadoController extends Controller
             $anterior?->update(['estado' => 'RENOVADO', 'fecha_fin' => $anterior->fecha_fin ?? $datos['fecha_inicio']]);
             $datos['numero_contrato'] ??= $this->siguienteNumero($request, 'contrato');
             ContratoLaboral::create($datos + [
-                'id_empleado' => $e->id_empleado, 'id_empresa' => $idEmpresa, 'estado' => 'VIGENTE', 'created_by' => $request->user()->id_usuario,
+                'id_empleado' => $e->id_empleado, 'id_empresa' => $idEmpresa, 'estado' => 'VIGENTE', 'created_by' => $this->idUsuario($request),
             ]);
             HistorialSalarial::create([
                 'id_empleado' => $e->id_empleado, 'id_cargo' => $e->id_cargo, 'salario_anterior' => $anterior?->salario_base,
                 'salario_nuevo' => $datos['salario_base'], 'moneda' => $datos['moneda'], 'tipo_cambio' => 'CONTRATACION',
-                'fecha_efectiva' => $datos['fecha_inicio'], 'motivo' => $anterior ? 'Nuevo contrato' : 'Contrato inicial', 'created_by' => $request->user()->id_usuario,
+                'fecha_efectiva' => $datos['fecha_inicio'], 'motivo' => $anterior ? 'Nuevo contrato' : 'Contrato inicial', 'created_by' => $this->idUsuario($request),
             ]);
             $e->update(['tipo_contrato' => $datos['tipo']]);
         });
@@ -238,7 +275,7 @@ class EmpleadoController extends Controller
             'salario_nuevo' => ['required', 'numeric', 'min:0.01', 'max:9999999999'],
             'fecha_efectiva' => ['required', 'date'],
             'motivo' => ['required', 'string', 'min:5', 'max:300'],
-            'id_cargo' => ['nullable', 'integer', Rule::exists('cargo', 'id_cargo')->where('id_empresa', $request->user()->id_empresa)->where('activo', true)],
+            'id_cargo' => ['nullable', 'integer', Rule::exists('cargo', 'id_cargo')->where('id_empresa', $this->idEmpresa($request))->where('activo', true)],
         ]);
 
         return DB::transaction(function () use ($e, $datos, $request) {
@@ -252,8 +289,8 @@ class EmpleadoController extends Controller
             HistorialSalarial::create([
                 'id_empleado' => $e->id_empleado, 'id_cargo' => $datos['id_cargo'] ?? $e->id_cargo, 'salario_anterior' => $contrato->salario_base,
                 'salario_nuevo' => $datos['salario_nuevo'], 'moneda' => $contrato->moneda, 'tipo_cambio' => $datos['tipo_cambio'],
-                'fecha_efectiva' => $datos['fecha_efectiva'], 'motivo' => $datos['motivo'], 'aprobado_por' => $request->user()->id_usuario,
-                'created_by' => $request->user()->id_usuario,
+                'fecha_efectiva' => $datos['fecha_efectiva'], 'motivo' => $datos['motivo'], 'aprobado_por' => $this->idUsuario($request),
+                'created_by' => $this->idUsuario($request),
             ]);
             $contrato->update(['salario_base' => $datos['salario_nuevo']]);
             if (! empty($datos['id_cargo'])) {
@@ -290,7 +327,7 @@ class EmpleadoController extends Controller
             throw $ex->errorBag('documento');
         }
         unset($datos['archivo']);
-        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $request->user()->id_usuario]);
+        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "Documento «{$datos['nombre']}» guardado.");
     }
@@ -307,9 +344,30 @@ class EmpleadoController extends Controller
 
     // ── Privados ─────────────────────────────────────────────────────────
 
+    /**
+     * Organigrama a partir del jefe inmediato: raíces = sin jefe vigente; cada nodo trae sus subordinados.
+     *
+     * @return list<array{empleado: Empleado, hijos: array}>
+     */
+    private function arbol(Collection $empleados): array
+    {
+        $porJefe = $empleados->groupBy(fn ($e) => (int) $e->id_supervisor);
+        $ids = $empleados->pluck('id_empleado')->all();
+        $construir = function (Empleado $e, array $visto) use (&$construir, $porJefe): array {
+            $visto[] = $e->id_empleado;
+
+            return ['empleado' => $e, 'hijos' => $porJefe->get($e->id_empleado, collect())
+                ->reject(fn ($h) => in_array($h->id_empleado, $visto, true))
+                ->map(fn ($h) => $construir($h, $visto))->values()->all()];
+        };
+
+        return $empleados->filter(fn ($e) => ! $e->id_supervisor || ! in_array($e->id_supervisor, $ids, true))
+            ->map(fn ($e) => $construir($e, []))->values()->all();
+    }
+
     private function formulario(Request $request, Empleado $e): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('empleados.form', [
             'e' => $e,
@@ -347,7 +405,7 @@ class EmpleadoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Empleado::class, $request);
     }
 
     /** EMP-0001 (empleados) o CL-AAAA-0001 (contratos laborales), por empresa. */
@@ -356,80 +414,9 @@ class EmpleadoController extends Controller
         [$tabla, $columna, $prefijo] = $que === 'empleado'
             ? ['empleado', 'codigo_empleado', 'EMP-']
             : ['contrato_laboral', 'numero_contrato', 'CL-'.now()->year.'-'];
-        $ultimo = DB::table($tabla)->where('id_empresa', $request->user()->id_empresa)->where($columna, 'like', $prefijo.'%')->pluck($columna)
+        $ultimo = DB::table($tabla)->where('id_empresa', $this->idEmpresa($request))->where($columna, 'like', $prefijo.'%')->pluck($columna)
             ->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 
         return $prefijo.str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?Empleado $e = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $documento = strtoupper(preg_replace('/[\s\-]+/', '', (string) $request->input('dpi_nit')));
-        $request->merge([
-            'dpi_nit' => $documento,
-            'codigo_empleado' => ($c = strtoupper(trim((string) $request->input('codigo_empleado')))) === '' ? null : $c,
-            'nit_personal' => ($n = strtoupper(preg_replace('/[\s\-]+/', '', (string) $request->input('nit_personal')))) === '' ? null : $n,
-            'es_rotativo' => $request->boolean('es_rotativo'),
-        ]);
-        $mia = fn (string $tabla, string $llave) => Rule::exists($tabla, $llave)->where('id_empresa', $idEmpresa);
-
-        $datos = $request->validate([
-            'primer_nombre' => ['required', 'string', 'max:80'],
-            'segundo_nombre' => ['nullable', 'string', 'max:80'],
-            'primer_apellido' => ['required', 'string', 'max:80'],
-            'segundo_apellido' => ['nullable', 'string', 'max:80'],
-            'apellido_casada' => ['nullable', 'string', 'max:80'],
-            'tipo_doc_id' => ['required', Rule::in(['DPI', 'DUI', 'DNI', 'PASAPORTE', 'OTRO'])],
-            // El DPI de Guatemala (CUI) tiene 13 dígitos.
-            'dpi_nit' => ['required', 'string', 'max:20', Rule::when($request->input('tipo_doc_id') === 'DPI', ['digits:13']),
-                Rule::unique('empleado', 'dpi_nit')->where('id_empresa', $idEmpresa)->ignore($e?->id_empleado, 'id_empleado')],
-            'nit_personal' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+K?$/'],
-            'igss_afiliacion' => ['nullable', 'string', 'max:20'],
-            'fecha_nacimiento' => ['nullable', 'date', 'before:-14 years'],
-            'genero' => ['nullable', Rule::in(['M', 'F', 'OTRO', 'NO_ESPECIFICA'])],
-            'estado_civil' => ['nullable', Rule::in(['SOLTERO', 'CASADO', 'UNION_LIBRE', 'DIVORCIADO', 'VIUDO'])],
-            'nacionalidad' => ['nullable', 'string', 'max:80'],
-            'email_personal' => ['nullable', 'email', 'max:150'],
-            'email_corporativo' => ['nullable', 'email', 'max:150'],
-            'telefono_personal' => ['nullable', 'string', 'max:20'],
-            'telefono_emergencia' => ['nullable', 'string', 'max:20'],
-            'contacto_emergencia' => ['nullable', 'string', 'max:200'],
-            'id_municipio' => ['nullable', 'integer', 'exists:municipio,id_municipio'],
-            'direccion' => ['nullable', 'string', 'max:300'],
-            'codigo_empleado' => ['nullable', 'string', 'max:30', Rule::unique('empleado', 'codigo_empleado')->where('id_empresa', $idEmpresa)->ignore($e?->id_empleado, 'id_empleado')],
-            'id_sucursal' => ['nullable', 'integer', $mia('sucursal', 'id_sucursal')],
-            'id_depto_org' => ['nullable', 'integer', $mia('departamento_org', 'id_depto_org')],
-            'id_cargo' => ['nullable', 'integer', $mia('cargo', 'id_cargo')],
-            'id_supervisor' => ['nullable', 'integer', $mia('empleado', 'id_empleado')->whereNull('deleted_at')],
-            'fecha_ingreso' => ['required', 'date'],
-            'tipo_contrato' => ['required', Rule::in(array_keys(self::TIPOS_CONTRATO))],
-            'modalidad_trabajo' => ['required', Rule::in(['PRESENCIAL', 'REMOTO', 'HIBRIDO'])],
-            // Personal rotativo: cubre a otros y cobra por día (Asistencia → Personal rotativo).
-            'es_rotativo' => ['boolean'],
-            'tarifa_dia' => ['nullable', 'numeric', 'min:0.01', 'max:999999', 'required_if:es_rotativo,true'],
-        ], [
-            'tarifa_dia.required_if' => 'Un rotativo necesita su tarifa diaria.',
-            'dpi_nit.digits' => 'El DPI debe tener 13 dígitos.',
-            'dpi_nit.unique' => 'Ya hay un empleado con ese documento.',
-            'codigo_empleado.unique' => 'Ya hay un empleado con ese código.',
-            'nit_personal.regex' => 'El NIT solo lleva números y, al final, una K.',
-            'fecha_nacimiento.before' => 'El empleado debe tener al menos 14 años.',
-        ]);
-
-        // El jefe inmediato no puede ser él mismo ni alguien de su propio equipo (evita ciclos).
-        if (! empty($datos['id_supervisor']) && $e) {
-            for ($jefe = (int) $datos['id_supervisor'], $i = 0; $jefe && $i < 50; $i++) {
-                if ($jefe === $e->id_empleado) {
-                    throw ValidationException::withMessages(['id_supervisor' => 'El jefe inmediato no puede ser el mismo empleado ni alguien a su cargo.']);
-                }
-                $jefe = (int) Empleado::query()->whereKey($jefe)->value('id_supervisor');
-            }
-        }
-
-        return $datos + array_fill_keys(['segundo_nombre', 'segundo_apellido', 'apellido_casada', 'igss_afiliacion', 'fecha_nacimiento', 'genero', 'estado_civil', 'nacionalidad',
-            'email_personal', 'email_corporativo', 'telefono_personal', 'telefono_emergencia', 'contacto_emergencia', 'id_municipio', 'direccion', 'id_sucursal', 'id_depto_org',
-            'id_cargo', 'id_supervisor', 'tarifa_dia'], null);
     }
 }

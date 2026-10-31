@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarOrdenCompraRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Core\Empresa;
@@ -10,6 +11,7 @@ use App\Models\Inventario\DetalleOrdenCompra;
 use App\Models\Inventario\OrdenCompra;
 use App\Models\Inventario\Producto;
 use App\Models\Inventario\Proveedor;
+use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,7 +47,7 @@ class OrdenCompraController extends Controller
             'ordenes' => $this->filtradas($request)->with(['proveedor', 'bodega'])
                 ->withSum('detalles as pedido', 'cantidad_pedida')->withSum('detalles as recibido', 'cantidad_recibida')
                 ->orderByDesc('fecha_emision')->orderByDesc('id_oc')->paginate(25)->withQueryString(),
-            'proveedores' => Proveedor::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('razon_social')->get(['id_proveedor', 'razon_social']),
+            'proveedores' => Proveedor::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('razon_social')->get(['id_proveedor', 'razon_social']),
             'estados' => self::ESTADOS,
             'filtros' => $request->only(['buscar', 'estado', 'proveedor']),
         ]);
@@ -80,7 +82,7 @@ class OrdenCompraController extends Controller
     {
         return view('ordenes-compra.imprimir', [
             'oc' => $this->cargar($request, $orden),
-            'empresa' => Empresa::find($request->user()->id_empresa),
+            'empresa' => Empresa::find($this->idEmpresa($request)),
             'estados' => self::ESTADOS,
         ]);
     }
@@ -92,18 +94,18 @@ class OrdenCompraController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarOrdenCompraRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
 
         $oc = DB::transaction(function () use ($request, $datos) {
             $encabezado = $datos['encabezado'];
             $encabezado['numero_oc'] ??= $this->siguienteNumero($request);
             $oc = OrdenCompra::create($encabezado + [
-                'id_empresa' => $request->user()->id_empresa,
+                'id_empresa' => $this->idEmpresa($request),
                 'estado' => 'BORRADOR',
                 'subtotal' => 0, 'iva' => 0, 'total' => 0,
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]);
             $this->guardarLineas($oc, $datos['lineas']);
 
@@ -123,13 +125,13 @@ class OrdenCompraController extends Controller
         return $this->formulario($request, $oc);
     }
 
-    public function update(Request $request, int $orden): RedirectResponse
+    public function update(GuardarOrdenCompraRequest $request, int $orden): RedirectResponse
     {
         $oc = $this->deMiEmpresa($request)->findOrFail($orden);
         if ($oc->estado !== 'BORRADOR') {
             return redirect()->route('ordenes-compra.show', $oc->id_oc)->withErrors(['orden' => 'Solo se pueden editar órdenes en borrador.']);
         }
-        $datos = $this->validar($request, $oc);
+        $datos = $request->datosLimpios();
 
         DB::transaction(function () use ($oc, $datos) {
             $encabezado = $datos['encabezado'];
@@ -143,15 +145,15 @@ class OrdenCompraController extends Controller
     }
 
     /** Aprueba (BORRADOR → ENVIADA) y ejecuta el presupuesto. Si se pasa del saldo, pide confirmación. */
-    public function aprobar(Request $request, int $orden): RedirectResponse
+    public function aprobar(Request $request, int $orden, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $orden) {
+        return DB::transaction(function () use ($request, $orden, $presupuestoService) {
             $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
             if ($oc->estado !== 'BORRADOR') {
                 return back()->withErrors(['orden' => 'Solo se pueden aprobar órdenes en borrador.']);
             }
 
-            $sobregiros = EjecucionPresupuesto::sobregiros($oc);
+            $sobregiros = $presupuestoService->validarSobregiros($oc);
             if ($sobregiros && ! $request->boolean('forzar')) {
                 return back()->with('sobregiros', array_map(fn ($s) => [
                     'partida' => $s['presupuesto']->centroCosto?->nombre.' / '.$s['presupuesto']->cuentaContable?->nombre,
@@ -159,17 +161,17 @@ class OrdenCompraController extends Controller
                 ], $sobregiros));
             }
 
-            $oc->update(['estado' => 'ENVIADA', 'aprobado_por' => $request->user()->id_usuario]);
-            EjecucionPresupuesto::registrarOrden($oc);
+            $oc->update(['estado' => 'ENVIADA', 'aprobado_por' => $this->idUsuario($request)]);
+            $presupuestoService->registrarOrden($oc);
 
             return back()->with('status', "Orden {$oc->numero_oc} aprobada".($sobregiros ? ' pasando el saldo del presupuesto.' : '.'));
         });
     }
 
     /** Cancela (BORRADOR o ENVIADA sin nada recibido) y revierte el presupuesto si ya se había aprobado. */
-    public function cancelar(Request $request, int $orden): RedirectResponse
+    public function cancelar(Request $request, int $orden, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $orden) {
+        return DB::transaction(function () use ($request, $orden, $presupuestoService) {
             $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
             if (! in_array($oc->estado, ['BORRADOR', 'ENVIADA'], true) || $oc->detalles()->where('cantidad_recibida', '>', 0)->exists()) {
                 return back()->withErrors(['orden' => 'Solo se pueden cancelar órdenes en borrador o aprobadas sin mercadería recibida.']);
@@ -178,7 +180,7 @@ class OrdenCompraController extends Controller
             $estabaAprobada = $oc->estado === 'ENVIADA';
             $oc->update(['estado' => 'CANCELADA']);
             if ($estabaAprobada) {
-                EjecucionPresupuesto::revertirOrden($oc);
+                $presupuestoService->revertirOrden($oc);
             }
 
             return back()->with('status', "Orden {$oc->numero_oc} cancelada".($estabaAprobada ? ' y revertida del presupuesto.' : '.'));
@@ -218,7 +220,7 @@ class OrdenCompraController extends Controller
 
     private function formulario(Request $request, OrdenCompra $oc): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $empresa = Empresa::find($idEmpresa);
 
         return view('ordenes-compra.form', [
@@ -238,7 +240,7 @@ class OrdenCompraController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return OrdenCompra::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(OrdenCompra::class, $request);
     }
 
     /** OC-AAAA-0001, consecutivo por empresa y año. */
@@ -249,64 +251,6 @@ class OrdenCompraController extends Controller
             ->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 
         return $prefijo.str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT);
-    }
-
-    /** @return array{encabezado: array<string, mixed>, lineas: list<array<string, mixed>>} */
-    private function validar(Request $request, ?OrdenCompra $oc = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $request->merge(['numero_oc' => ($n = strtoupper(trim((string) $request->input('numero_oc')))) === '' ? null : $n]);
-        // Se descartan las filas vacías del formulario.
-        $request->merge(['lineas' => array_values(array_filter((array) $request->input('lineas', []), fn ($l) => ! empty($l['id_producto'])))]);
-
-        $datos = $request->validate([
-            'numero_oc' => ['nullable', 'string', 'max:30', Rule::unique('orden_compra', 'numero_oc')->where('id_empresa', $idEmpresa)->ignore($oc?->id_oc, 'id_oc')],
-            'id_proveedor' => ['required', 'integer', Rule::exists('proveedor', 'id_proveedor')->where('id_empresa', $idEmpresa)->where('activo', true)->whereNull('deleted_at')],
-            'id_bodega' => ['nullable', 'integer', Rule::exists('bodega', 'id_bodega')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'fecha_emision' => ['required', 'date'],
-            'fecha_entrega_esperada' => ['nullable', 'date', 'after_or_equal:fecha_emision'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'notas' => ['nullable', 'string', 'max:2000'],
-            'lineas' => ['required', 'array', 'min:1', 'max:200'],
-            'lineas.*.id_producto' => ['required', 'integer', Rule::exists('producto', 'id_producto')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'lineas.*.descripcion' => ['nullable', 'string', 'max:300'],
-            'lineas.*.cantidad_pedida' => ['required', 'numeric', 'min:0.0001', 'max:99999999'],
-            'lineas.*.precio_unitario' => ['required', 'numeric', 'min:0', 'max:9999999999'],
-            'lineas.*.descuento' => ['nullable', 'numeric', 'min:0'],
-            'lineas.*.id_centro' => ['nullable', 'integer', Rule::exists('centro_costo', 'id_centro')->where('id_empresa', $idEmpresa)],
-            'lineas.*.id_cuenta' => ['nullable', 'integer', Rule::exists('cuenta_contable', 'id_cuenta')->where('id_empresa', $idEmpresa)->where('permite_movimiento', true)],
-        ], [
-            'numero_oc.unique' => 'Ya existe una orden con ese número.',
-            'id_proveedor.exists' => 'El proveedor no es válido o está inactivo.',
-            'lineas.required' => 'Agrega al menos un producto.',
-            'lineas.*.id_producto.exists' => 'Uno de los productos no es válido o está inactivo.',
-            'lineas.*.cantidad_pedida.min' => 'La cantidad debe ser mayor que cero.',
-        ]);
-
-        $lineas = [];
-        foreach ($datos['lineas'] as $i => $l) {
-            $bruto = round((float) $l['cantidad_pedida'] * (float) $l['precio_unitario'], 4);
-            $descuento = round((float) ($l['descuento'] ?? 0), 4);
-            if ($descuento > $bruto) {
-                throw ValidationException::withMessages(["lineas.{$i}.descuento" => 'El descuento de una línea no puede ser mayor que su importe.']);
-            }
-            $lineas[] = [
-                'id_producto' => (int) $l['id_producto'],
-                'descripcion' => $l['descripcion'] ?? null,
-                'cantidad_pedida' => $l['cantidad_pedida'],
-                'precio_unitario' => $l['precio_unitario'],
-                'descuento' => $descuento,
-                'subtotal' => round($bruto - $descuento, 4),
-                'id_centro' => $l['id_centro'] ?? null,
-                'id_cuenta' => $l['id_cuenta'] ?? null,
-            ];
-        }
-
-        return [
-            'encabezado' => collect($datos)->only(['numero_oc', 'id_proveedor', 'id_bodega', 'fecha_emision', 'fecha_entrega_esperada', 'moneda', 'notas'])
-                ->all() + ['id_bodega' => null, 'fecha_entrega_esperada' => null, 'notas' => null],
-            'lineas' => $lineas,
-        ];
     }
 
     private function guardarLineas(OrdenCompra $oc, array $lineas): void

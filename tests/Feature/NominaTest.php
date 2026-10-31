@@ -144,4 +144,18 @@ class NominaTest extends TestCase
         $this->actingAs($rrhh)->patch(route('nomina.procesar', $p))->assertForbidden();
         $this->actingAs($rrhh)->get(route('nomina.imprimir', $p))->assertForbidden();
     }
+
+    public function test_exportar_planilla_y_archivo_para_banco(): void
+    {
+        $this->actingAs($this->crearUsuario());
+        $this->empleado(4000);
+        $p = $this->periodo();
+        $this->patch(route('nomina.procesar', $p));
+
+        $resPlanilla = $this->get(route('nomina.exportar', $p))->assertOk();
+        $this->assertStringContainsString('text/csv', $resPlanilla->headers->get('Content-Type'));
+
+        $resBanco = $this->get(route('nomina.banco', $p))->assertOk();
+        $this->assertStringContainsString('text/csv', $resBanco->headers->get('Content-Type'));
+    }
 }

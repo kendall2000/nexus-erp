@@ -9,6 +9,8 @@ use App\Models\RRHH\DetalleNominaConcepto;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PeriodoNomina;
 use App\Models\RRHH\PrestamoEmpleado;
+use App\Services\RRHH\NominaService;
+use App\Support\ExportarCsv;
 use App\Support\Nomina;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Nómina por periodos. Permisos: nomina.ver / procesar (crear periodos, calcular, ajustar, pagar,
@@ -36,9 +39,27 @@ class NominaController extends Controller
 
     public function index(Request $request): View
     {
+        // Resumen del último periodo calculado: líquido, cuota patronal y costo total con provisiones.
+        $ultimo = $this->periodos($request)->whereHas('detalles')->orderByDesc('fecha_inicio')->first();
+        $resumen = null;
+        if ($ultimo) {
+            $detalles = $ultimo->detalles()->get(['id_detalle', 'total_ingresos', 'cuota_igss_pat']);
+            $patronal = round((float) $detalles->sum('cuota_igss_pat'), 2);
+            $provisiones = Nomina::provisionesSobreBase($this->baseProvisiones($ultimo));
+            $resumen = [
+                'periodo' => $ultimo,
+                'empleados' => $detalles->count(),
+                'patronal' => $patronal,
+                'provisiones' => $provisiones['total'],
+                'costo_total' => round((float) $ultimo->total_bruto + $patronal + $provisiones['total'], 2),
+            ];
+        }
+
         return view('nomina.index', [
+            'resumen' => $resumen,
+            'provisiones' => Nomina::PROVISIONES,
             'periodos' => $this->periodos($request)->withCount('detalles')->orderByDesc('fecha_inicio')->paginate(24),
-            'prestamos' => PrestamoEmpleado::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', 'ACTIVO')->with('empleado')->orderByDesc('fecha_otorgamiento')->get(),
+            'prestamos' => PrestamoEmpleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', 'ACTIVO')->with('empleado')->orderByDesc('fecha_otorgamiento')->get(),
             'empleados' => $this->empleados($request)->get(),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS,
@@ -46,13 +67,14 @@ class NominaController extends Controller
         ]);
     }
 
-    public function show(Request $request, int $periodo): View
+    public function show(Request $request, int $periodo, NominaService $nominaService): View
     {
         $p = $this->periodos($request)->findOrFail($periodo);
-        $conceptos = Nomina::conceptos($p->id_empresa);
+        $conceptos = $nominaService->asegurarConceptos($p->id_empresa);
 
         return view('nomina.show', [
             'p' => $p,
+            'provisiones' => Nomina::provisionesSobreBase($this->baseProvisiones($p)),
             'detalles' => $p->detalles()->with(['empleado', 'conceptos.concepto'])->get()->sortBy(fn ($d) => $d->empleado?->nombre_completo)->values(),
             'manuales' => collect($conceptos)->except(Nomina::AUTOMATICOS)->where('activo', true)->values(),
             'estados' => self::ESTADOS,
@@ -63,7 +85,7 @@ class NominaController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validate([
             'tipo' => ['required', Rule::in(array_keys(self::TIPOS))],
             'fecha_inicio' => ['required', 'date'],
@@ -78,7 +100,7 @@ class NominaController extends Controller
             throw ValidationException::withMessages(['fecha_inicio' => 'Ya hay un periodo '.strtolower(self::TIPOS[$datos['tipo']]).' que se cruza con esas fechas.']);
         }
         $datos['nombre'] ??= Nomina::nombreSugerido($datos['tipo'], Carbon::parse($datos['fecha_inicio']));
-        $p = PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $request->user()->id_usuario]);
+        $p = PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $this->idUsuario($request)]);
 
         return redirect()->route('nomina.show', $p->id_periodo)->with('status', "Periodo «{$p->nombre}» creado. Procésalo para calcular la nómina.");
     }
@@ -223,9 +245,40 @@ class NominaController extends Controller
         ]);
     }
 
+    /** Planilla completa del periodo en CSV (una fila por empleado). */
+    public function exportar(Request $request, int $periodo): StreamedResponse
+    {
+        $p = $this->periodos($request)->findOrFail($periodo);
+        $detalles = $p->detalles()->with(['empleado', 'conceptos.concepto'])->get()->sortBy(fn ($d) => $d->empleado?->nombre_completo);
+        $monto = fn ($d, string $codigo) => round((float) $d->conceptos->filter(fn ($l) => $l->concepto?->codigo === $codigo)->sum('monto'), 2);
+
+        return ExportarCsv::descargar('planilla_'.$p->id_periodo, [
+            'Código', 'Empleado', 'Cargo', 'Días', 'Horas extra', 'Salario base', 'Bonificación incentivo', 'Horas extra (monto)',
+            'Total ingresos', 'IGSS laboral', 'ISR', 'Préstamos', 'Total deducciones', 'Líquido', 'Cuota patronal',
+        ], $detalles->map(fn ($d) => [
+            $d->empleado?->codigo_empleado, $d->empleado?->nombre_completo, $d->cargo_snapshot, (float) $d->dias_trabajados, (float) $d->horas_extra,
+            $monto($d, 'SALBASE'), $monto($d, 'BONINC'), $monto($d, 'HEXTRA'), (float) $d->total_ingresos,
+            (float) $d->cuota_igss_emp, (float) $d->isr_retenido, $monto($d, 'PRESTAMO'), (float) $d->total_deducciones,
+            (float) $d->liquido_pagar, (float) $d->cuota_igss_pat,
+        ]));
+    }
+
+    /** Archivo para acreditar en el banco: un renglón por empleado con líquido positivo. */
+    public function banco(Request $request, int $periodo): StreamedResponse
+    {
+        $p = $this->periodos($request)->findOrFail($periodo);
+        $detalles = $p->detalles()->with('empleado')->where('liquido_pagar', '>', 0)->get()->sortBy(fn ($d) => $d->empleado?->nombre_completo);
+
+        return ExportarCsv::descargar('banco_'.$p->id_periodo, ['Código', 'Documento', 'Nombre', 'Monto', 'Moneda', 'Referencia'],
+            $detalles->map(fn ($d) => [
+                $d->empleado?->codigo_empleado, $d->empleado?->dpi_nit, $d->empleado?->nombre_completo,
+                number_format((float) $d->liquido_pagar, 2, '.', ''), $p->moneda, 'NOMINA-'.$p->id_periodo,
+            ]));
+    }
+
     public function guardarPrestamo(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validateWithBag('prestamo', [
             'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->whereNotIn('estado', ['BAJA'])],
             'monto_total' => ['required', 'numeric', 'min:1', 'max:9999999'],
@@ -233,7 +286,7 @@ class NominaController extends Controller
             'fecha_otorgamiento' => ['required', 'date', 'before_or_equal:today'],
             'motivo' => ['nullable', 'string', 'max:300'],
         ], ['cuota_quincenal.lte' => 'La cuota no puede ser mayor que el préstamo.']);
-        PrestamoEmpleado::create($datos + ['id_empresa' => $idEmpresa, 'monto_pendiente' => $datos['monto_total'], 'moneda' => 'GTQ', 'estado' => 'ACTIVO', 'aprobado_por' => $request->user()->id_usuario]);
+        PrestamoEmpleado::create($datos + ['id_empresa' => $idEmpresa, 'monto_pendiente' => $datos['monto_total'], 'moneda' => 'GTQ', 'estado' => 'ACTIVO', 'aprobado_por' => $this->idUsuario($request)]);
 
         return back()->with('status', 'Préstamo registrado: se descontará en las próximas nóminas.');
     }
@@ -257,14 +310,23 @@ class NominaController extends Controller
         });
     }
 
+    /** Base de las provisiones: salario ordinario y horas extra devengados en el periodo. */
+    private function baseProvisiones(PeriodoNomina $p): float
+    {
+        $ids = ConceptoNomina::query()->where('id_empresa', $p->id_empresa)->whereIn('codigo', ['SALBASE', 'HEXTRA'])->pluck('id_concepto');
+
+        return (float) DetalleNominaConcepto::query()->whereIn('id_detalle', $p->detalles()->pluck('id_detalle'))
+            ->whereIn('id_concepto', $ids)->sum('monto');
+    }
+
     private function periodos(Request $request): Builder
     {
-        return PeriodoNomina::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(PeriodoNomina::class, $request);
     }
 
     private function empleados(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', '!=', 'BAJA')->orderBy('primer_nombre');
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', '!=', 'BAJA')->orderBy('primer_nombre');
     }
 
     /** Siguiente quincena después del último periodo quincenal (o la actual). */

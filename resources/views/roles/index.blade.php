@@ -7,12 +7,15 @@
         [$puedeCrear, $puedeEditar, $puedeEliminar] = [$yo->puede('roles.crear'), $yo->puede('roles.editar'), $yo->puede('roles.eliminar')];
     @endphp
     <div class="mb-9">
-        <div class="row g-3 mb-4">
-            <div class="col-auto">
-                <h2 class="mb-0">Roles y permisos</h2>
-                <p class="text-700 fw-semi-bold mb-0 mt-1">Qué puede hacer cada puesto en cada módulo. Los roles Administrador y Superadmin tienen acceso a todo.</p>
-            </div>
-        </div>
+        <x-page-header
+            title="Roles y permisos"
+            subtitle="Qué puede hacer cada puesto en cada módulo. Los roles Administrador y Superadmin tienen acceso a todo."
+            :breadcrumbs="[['label' => 'Administración'], ['label' => 'Roles y permisos']]"
+        >
+            @if ($puedeCrear)
+                <a class="btn btn-primary" href="{{ route('roles.create') }}"><span class="fas fa-plus me-2"></span>Nuevo rol</a>
+            @endif
+        </x-page-header>
 
         <div id="tablaRoles" data-list='{"valueNames":["nombre","usuarios","estado"],"page":25,"pagination":true}'>
             <div class="mb-4">
@@ -23,11 +26,6 @@
                             <span class="fas fa-search search-box-icon"></span>
                         </form>
                     </div>
-                    @if ($puedeCrear)
-                        <div class="ms-xxl-auto">
-                            <a class="btn btn-primary" href="{{ route('roles.create') }}"><span class="fas fa-plus me-2"></span>Nuevo rol</a>
-                        </div>
-                    @endif
                 </div>
             </div>
 

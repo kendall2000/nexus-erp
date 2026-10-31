@@ -108,4 +108,19 @@ class AsistenciaTest extends TestCase
         $this->darPermisos($lector, ['asistencia.ver']);
         $this->actingAs($lector)->post(route('asistencia.guardar'), ['fecha' => '2026-09-29', 'asistencia' => [$this->ana => ['estado' => 'PRESENTE']]])->assertForbidden();
     }
+
+    public function test_saldos_vacaciones_exportacion_y_constancia(): void
+    {
+        $this->actingAs($this->crearUsuario());
+        $this->post(route('asistencia.solicitudes.store'), ['id_empleado' => $this->ana, 'tipo' => 'VACACIONES', 'fecha_inicio' => '2026-10-02', 'fecha_fin' => '2026-10-06']);
+        $idSol = (int) DB::table('solicitud_ausencia')->value('id_solicitud');
+        $this->patch(route('asistencia.solicitudes.resolver', [$idSol, 'aprobar']));
+
+        $resExport = $this->get(route('asistencia.vacaciones.exportar'))->assertOk();
+        $this->assertStringContainsString('text/csv', $resExport->headers->get('Content-Type'));
+
+        $this->get(route('asistencia.solicitudes.constancia', $idSol))->assertOk()
+            ->assertSee('CONSTANCIA DE VACACIONES')
+            ->assertSee('Ana López');
+    }
 }

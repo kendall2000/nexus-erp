@@ -9,22 +9,23 @@
         [$slaRespuesta, $colorRespuesta] = \App\Support\Sla::semaforo($t->fecha_limite_respuesta, $t->fecha_primera_respuesta);
         [$slaResolucion, $colorResolucion] = \App\Support\Sla::semaforo($t->fecha_limite_resolucion, $t->fecha_resolucion);
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('tickets.index') }}">Tickets</a></li>
-            <li class="breadcrumb-item active">{{ $t->numero_ticket }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $t->asunto }}</h2>
-            <p class="text-700 mb-0">{{ $t->numero_ticket }} ·
-                <span class="badge badge-phoenix badge-phoenix-{{ $color }}">{{ $nombreEstado }}</span>
-                <span class="badge badge-phoenix badge-phoenix-{{ $colorPrioridad }}">{{ $nombrePrioridad }}</span>
-                · abierto el {{ $t->fecha_apertura?->format('d/m/Y H:i') }}</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+    <x-page-header
+        :titulo="$t->asunto"
+        icono="fas fa-headset"
+        :migas="[
+            ['label' => 'Tickets', 'url' => route('tickets.index')],
+            ['label' => $t->numero_ticket],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+            <span class="badge badge-phoenix badge-phoenix-{{ $colorPrioridad }} fs--1 align-middle ms-1">{{ $nombrePrioridad }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
+            <p class="text-700 mb-0">{{ $t->numero_ticket }} · abierto el {{ $t->fecha_apertura?->format('d/m/Y H:i') }}</p>
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($abierto && $yo->puede('tickets.cerrar'))
                 <button class="btn btn-phoenix-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#cerrar">Cerrar ticket</button>
             @endif
@@ -34,12 +35,12 @@
             @if (in_array($t->estado, ['RESUELTO', 'CERRADO'], true) && $yo->puede('tickets.reabrir'))
                 <button class="btn btn-phoenix-warning" type="button" data-bs-toggle="collapse" data-bs-target="#reabrir">Reabrir</button>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($t->estado !== 'CERRADO' && $yo->puede('tickets.cerrar'))
         <div class="collapse mb-4" id="cerrar">
-            <div class="card"><div class="card-body">
+            <div class="card border border-200 shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('tickets.cerrar', $t->id_ticket) }}" class="row g-2 align-items-end">
                     @csrf
                     @method('PATCH')
@@ -58,7 +59,7 @@
     @endif
     @if (in_array($t->estado, ['RESUELTO', 'CERRADO'], true) && $yo->puede('tickets.reabrir'))
         <div class="collapse {{ $errors->has('motivo') ? 'show' : '' }} mb-4" id="reabrir">
-            <div class="card border-warning"><div class="card-body">
+            <div class="card border border-warning shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('tickets.reabrir', $t->id_ticket) }}" class="row g-2">
                     @csrf
                     @method('PATCH')
@@ -74,7 +75,7 @@
 
     <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card mb-4">
+            <div class="card border border-200 shadow-none mb-4">
                 <div class="card-body">
                     <p class="fs--1 text-600 mb-1">Descripción · {{ $canales[$t->canal_origen] ?? $t->canal_origen }} · {{ $tipos[$t->tipo] ?? $t->tipo }}</p>
                     <p class="mb-0" style="white-space: pre-line">{{ $t->descripcion }}</p>
@@ -82,7 +83,7 @@
             </div>
 
             @foreach ($comentarios as $c)
-                <div class="card mb-3 {{ $c->es_nota_interna ? 'border-warning' : '' }}">
+                <div class="card border {{ $c->es_nota_interna ? 'border-warning bg-warning-soft' : 'border-200' }} shadow-none mb-3">
                     <div class="card-body py-3">
                         <p class="fs--1 text-600 mb-1">
                             <span class="fw-semi-bold text-900">{{ $c->usuario?->nombre_completo ?? $c->autor?->nombre_completo ?? 'Sistema' }}</span>
@@ -95,7 +96,7 @@
             @endforeach
 
             @if ($abierto && $yo->puede('tickets.editar'))
-                <div class="card">
+                <div class="card border border-200 shadow-none">
                     <div class="card-body">
                         @error('ticket')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
                         <form method="POST" action="{{ route('tickets.responder', $t->id_ticket) }}">
@@ -123,14 +124,14 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card mb-4">
+            <div class="card border border-200 shadow-none mb-4">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Detalles</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-info-circle text-primary me-2"></span>Detalles</h5>
                     <dl class="row mb-0">
                         <dt class="col-5 text-700">Cliente</dt>
-                        <dd class="col-7">@if ($yo->puede('clientes.ver'))<a href="{{ route('clientes.show', $t->id_cliente) }}">{{ $t->cliente?->razon_social }}</a>@else{{ $t->cliente?->razon_social }}@endif</dd>
+                        <dd class="col-7">@if ($yo->puede('clientes.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('clientes.show', $t->id_cliente) }}">{{ $t->cliente?->razon_social }}</a>@else{{ $t->cliente?->razon_social }}@endif</dd>
                         <dt class="col-5 text-700">Contrato</dt>
-                        <dd class="col-7">@if ($t->contrato && $yo->puede('contratos.ver'))<a href="{{ route('contratos.show', $t->id_contrato) }}">{{ $t->contrato->numero_contrato }}</a>@else{{ $t->contrato?->numero_contrato ?? '—' }}@endif</dd>
+                        <dd class="col-7">@if ($t->contrato && $yo->puede('contratos.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('contratos.show', $t->id_contrato) }}">{{ $t->contrato->numero_contrato }}</a>@else{{ $t->contrato?->numero_contrato ?? '—' }}@endif</dd>
                         <dt class="col-5 text-700">Categoría</dt><dd class="col-7">{{ $t->categoria?->nombre ?? '—' }}</dd>
                         <dt class="col-5 text-700">Agente</dt><dd class="col-7">{{ $t->asignadoA?->nombre_completo ?? 'Sin asignar' }}</dd>
                         <dt class="col-5 text-700">SLA</dt><dd class="col-7">{{ $t->sla?->nombre ?? 'Sin SLA' }}</dd>
@@ -146,9 +147,9 @@
             </div>
 
             @if ($abierto && $yo->puede('tickets.asignar'))
-                <div class="card mb-4">
+                <div class="card border border-200 shadow-none mb-4">
                     <div class="card-body fs--1">
-                        <h5 class="mb-3">{{ $t->id_asignado_a ? 'Reasignar' : 'Asignar' }}</h5>
+                        <h5 class="mb-3 text-1100">{{ $t->id_asignado_a ? 'Reasignar' : 'Asignar' }}</h5>
                         <form method="POST" action="{{ route('tickets.asignar', $t->id_ticket) }}" class="d-grid gap-2">
                             @csrf
                             @method('PATCH')
@@ -167,9 +168,9 @@
             @endif
 
             @if ($escalaciones->isNotEmpty())
-                <div class="card">
+                <div class="card border border-200 shadow-none">
                     <div class="card-body fs--1">
-                        <h5 class="mb-3">Escalaciones</h5>
+                        <h5 class="mb-3 text-1100">Escalaciones</h5>
                         @foreach ($escalaciones as $e)
                             <div class="border-bottom border-200 py-1">
                                 <span class="fw-semi-bold">Nivel {{ $e->nivel }} → {{ $e->escaladoA?->nombre_completo }}</span>

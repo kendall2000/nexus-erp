@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class CategoriaTicket extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'categoria_ticket';
     protected $primaryKey = 'id_categoria';
     public $timestamps    = false;

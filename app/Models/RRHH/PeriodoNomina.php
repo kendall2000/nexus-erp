@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class PeriodoNomina extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'periodo_nomina';
     protected $primaryKey = 'id_periodo';
     public $timestamps    = true;

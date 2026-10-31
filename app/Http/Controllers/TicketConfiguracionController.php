@@ -18,7 +18,7 @@ class TicketConfiguracionController extends Controller
 {
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('tickets.configuracion', [
             'categorias' => CategoriaTicket::query()->where('id_empresa', $idEmpresa)->orderBy('nombre')->get(),
@@ -30,7 +30,7 @@ class TicketConfiguracionController extends Controller
 
     public function guardarCategoria(Request $request, ?int $categoria = null): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $c = $categoria ? CategoriaTicket::query()->where('id_empresa', $idEmpresa)->findOrFail($categoria) : new CategoriaTicket(['id_empresa' => $idEmpresa]);
         $datos = $request->validateWithBag('categoria', [
             'nombre' => ['required', 'string', 'max:100', Rule::unique('categoria_ticket', 'nombre')->where('id_empresa', $idEmpresa)->ignore($c->id_categoria, 'id_categoria')],
@@ -44,7 +44,7 @@ class TicketConfiguracionController extends Controller
 
     public function guardarSla(Request $request, ?int $sla = null): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $s = $sla ? SlaConfig::query()->where('id_empresa', $idEmpresa)->findOrFail($sla) : new SlaConfig(['id_empresa' => $idEmpresa]);
         $datos = $request->validateWithBag('sla', [
             'nombre' => ['required', 'string', 'max:100'],

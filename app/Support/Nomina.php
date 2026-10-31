@@ -54,6 +54,14 @@ class Nomina
     /** Horas extra: hora ordinaria = salario mensual / 30 / 8 (jornada diurna), pagada al 150 %. */
     public const RECARGO_HORA_EXTRA = 1.5;
 
+    /** Provisiones patronales sobre salarios devengados (Guatemala). */
+    public const PROVISIONES = [
+        'AGUINALDO' => ['nombre' => 'Provisión Aguinaldo (1/12)', 'tasa' => 0.083333],
+        'BONO14' => ['nombre' => 'Provisión Bono 14 (1/12)', 'tasa' => 0.083333],
+        'INDEMNIZACION' => ['nombre' => 'Provisión Indemnización (1/12 × 14/12)', 'tasa' => 0.097222],
+        'VACACIONES' => ['nombre' => 'Provisión Vacaciones (15/360)', 'tasa' => 0.041667],
+    ];
+
     /** Conceptos de cada empresa: código => [nombre, tipo, afecta IGSS, afecta ISR, es fijo]. */
     public const CONCEPTOS = [
         'SALBASE' => ['Salario base', 'INGRESO', true, true, true],
@@ -246,5 +254,27 @@ class Nomina
             'QUINCENAL' => 'Quincena '.($inicio->day <= 15 ? 1 : 2).' de '.$mes,
             default => ucfirst(strtolower($tipo)).' del '.$inicio->format('d/m/Y'),
         };
+    }
+
+    /** Calcula las provisiones patronales estimadas sobre una base afecta (salario ordinario + horas extra). */
+    public static function provisionesSobreBase(float $baseAfecta): array
+    {
+        $desglose = [];
+        $total = 0.0;
+        foreach (self::PROVISIONES as $codigo => $info) {
+            $monto = round($baseAfecta * $info['tasa'], 2);
+            $desglose[$codigo] = [
+                'nombre' => $info['nombre'],
+                'tasa' => $info['tasa'],
+                'monto' => $monto,
+            ];
+            $total += $monto;
+        }
+
+        return [
+            'base' => round($baseAfecta, 2),
+            'desglose' => $desglose,
+            'total' => round($total, 2),
+        ];
     }
 }

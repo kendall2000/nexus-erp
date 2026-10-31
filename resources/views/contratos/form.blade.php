@@ -8,20 +8,26 @@
         $lineas = old('lineas', $c->exists ? $c->detalles->map(fn ($d) => $d->only(['id_tipo_servicio', 'id_sitio', 'descripcion', 'cantidad', 'precio_unitario', 'descuento_pct']))->all() : []);
         if (! $lineas) { $lineas = [['cantidad' => 1, 'descuento_pct' => 0]]; }
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('contratos.index') }}">Contratos</a></li>
-            <li class="breadcrumb-item active">{{ $c->exists ? $c->numero_contrato : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $c->exists ? 'Editar contrato '.$c->numero_contrato : 'Nuevo contrato' }}</h2>
+
+    <x-page-header
+        :titulo="$c->exists ? 'Editar contrato '.$c->numero_contrato : 'Nuevo contrato'"
+        icono="fas fa-file-contract"
+        subtitulo="Define los servicios recurrentes, sitios de operación y periodicidad de facturación."
+        :migas="[
+            ['label' => 'Contratos', 'url' => route('contratos.index')],
+            ['label' => $c->exists ? $c->numero_contrato : 'Nuevo'],
+        ]"
+    />
 
     <form method="POST" action="{{ $c->exists ? route('contratos.update', $c->id_contrato) : route('contratos.store') }}" class="mb-9">
         @csrf
         @if ($c->exists)
             @method('PUT')
         @endif
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-file-signature text-primary me-2"></span>Datos generales</h5>
+            </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
@@ -72,12 +78,12 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-1100"><span class="fas fa-concierge-bell text-primary me-2"></span>Servicios (valor mensual)</h5>
+                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar servicio</button>
+            </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="mb-0">Servicios (valor mensual)</h4>
-                    <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar servicio</button>
-                </div>
                 @error('lineas')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
                 @foreach ($errors->get('lineas.*') as $mensajes)<div class="text-danger fs--1">{{ $mensajes[0] }}</div>@endforeach
                 <div class="table-responsive">
@@ -98,7 +104,7 @@
         <template id="plantilla-linea">@include('contratos.linea', ['i' => '__I__', 'l' => []])</template>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
             <a class="btn btn-phoenix-secondary" href="{{ $c->exists ? route('contratos.show', $c->id_contrato) : route('contratos.index') }}">Cancelar</a>
         </div>
     </form>

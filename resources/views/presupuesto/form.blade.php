@@ -2,13 +2,16 @@
 
 @section('contenido')
     @php $v = fn (string $campo) => old($campo, $p->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('presupuesto.index', ['anio' => $p->anio]) }}">Presupuesto {{ $p->anio }}</a></li>
-            <li class="breadcrumb-item active">{{ $p->exists ? 'Editar' : 'Nueva partida' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $p->exists ? 'Editar presupuesto' : 'Nueva partida de presupuesto' }}</h2>
+
+    <x-page-header
+        :titulo="$p->exists ? 'Editar presupuesto' : 'Nueva partida de presupuesto'"
+        icono="fas fa-chart-pie"
+        subtitulo="Asigna montos mensuales por centro de costo y cuenta contable de movimiento."
+        :migas="[
+            ['label' => 'Presupuesto '.$p->anio, 'url' => route('presupuesto.index', ['anio' => $p->anio])],
+            ['label' => $p->exists ? 'Editar' : 'Nueva partida'],
+        ]"
+    />
 
     <form method="POST" action="{{ $p->exists ? route('presupuesto.update', $p->id_presupuesto) : route('presupuesto.store') }}" class="mb-9" style="max-width: 60rem">
         @csrf
@@ -16,7 +19,10 @@
             @method('PUT')
         @endif
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-sitemap text-primary me-2"></span>Partida contable</h5>
+            </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-5">
@@ -51,18 +57,18 @@
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-                    <h5 class="mb-0">Montos por mes</h5>
-                    <div class="d-flex gap-2 align-items-end">
-                        <div>
-                            <label class="form-label fs--1 mb-1" for="total-anual">Repartir un total anual</label>
-                            <input class="form-control form-control-sm" id="total-anual" type="number" step="0.01" min="0" placeholder="Ej.: 120000" />
-                        </div>
-                        <button class="btn btn-phoenix-secondary btn-sm" type="button" id="repartir">Repartir en 12 meses</button>
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex flex-wrap justify-content-between align-items-end gap-2">
+                <h5 class="mb-0 text-1100"><span class="fas fa-calendar-alt text-primary me-2"></span>Montos por mes</h5>
+                <div class="d-flex gap-2 align-items-end">
+                    <div>
+                        <label class="form-label fs--1 mb-1" for="total-anual">Repartir un total anual</label>
+                        <input class="form-control form-control-sm" id="total-anual" type="number" step="0.01" min="0" placeholder="Ej.: 120000" />
                     </div>
+                    <button class="btn btn-phoenix-secondary btn-sm" type="button" id="repartir">Repartir en 12 meses</button>
                 </div>
+            </div>
+            <div class="card-body">
                 <div class="row g-3">
                     @foreach (\App\Models\Finanzas\PresupuestoAnual::MESES as $mes)
                         <div class="col-6 col-md-3 col-lg-2">
@@ -71,12 +77,12 @@
                         </div>
                     @endforeach
                 </div>
-                <p class="mt-3 mb-0 fw-semi-bold">Total anual: <span id="total">0.00</span></p>
+                <p class="mt-3 mb-0 fw-semi-bold text-1100">Total anual: <span id="total">0.00</span></p>
             </div>
         </div>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar en borrador</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar en borrador</button>
             <a class="btn btn-phoenix-secondary" href="{{ $p->exists ? route('presupuesto.show', $p->id_presupuesto) : route('presupuesto.index', ['anio' => $p->anio]) }}">Cancelar</a>
         </div>
     </form>

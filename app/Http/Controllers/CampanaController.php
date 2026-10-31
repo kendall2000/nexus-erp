@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CRM\GuardarCampanaRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Core\LineaNegocio;
 use App\Models\CRM\Campana;
@@ -39,7 +40,7 @@ class CampanaController extends Controller
     {
         $c = $this->deMiEmpresa($request)->with('lineaNegocio')->findOrFail($campana);
         $contactos = $c->contactos()->with(['prospecto', 'cliente'])->get();
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('campanas.show', [
             'c' => $c,
@@ -59,9 +60,9 @@ class CampanaController extends Controller
         return $this->formulario($request, new Campana(['tipo' => 'EMAIL', 'objetivo' => 'LEADS', 'moneda' => 'GTQ', 'fecha_inicio' => now(), 'estado' => 'PLANIFICADA']));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarCampanaRequest $request): RedirectResponse
     {
-        $c = Campana::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa, 'estado' => 'PLANIFICADA', 'created_by' => $request->user()->id_usuario]);
+        $c = Campana::create($request->validated() + ['id_empresa' => $this->idEmpresa($request), 'estado' => 'PLANIFICADA', 'created_by' => $this->idUsuario($request)]);
 
         return redirect()->route('campanas.show', $c->id_campana)->with('status', "Campaña «{$c->nombre}» creada.");
     }
@@ -71,10 +72,10 @@ class CampanaController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($campana));
     }
 
-    public function update(Request $request, int $campana): RedirectResponse
+    public function update(GuardarCampanaRequest $request, int $campana): RedirectResponse
     {
         $c = $this->deMiEmpresa($request)->findOrFail($campana);
-        $datos = $this->validar($request);
+        $datos = $request->validated();
         $extra = $request->validate([
             'estado' => ['required', Rule::in(array_keys(self::ESTADOS))],
             'gasto_real' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
@@ -89,7 +90,7 @@ class CampanaController extends Controller
     public function agregarContactos(Request $request, int $campana): RedirectResponse
     {
         $c = $this->deMiEmpresa($request)->findOrFail($campana);
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validate([
             'prospectos' => ['nullable', 'array'],
             'prospectos.*' => ['integer', Rule::exists('prospecto', 'id_prospecto')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
@@ -128,7 +129,7 @@ class CampanaController extends Controller
     {
         return view('campanas.form', [
             'c' => $c,
-            'lineas' => LineaNegocio::query()->where('id_empresa', $request->user()->id_empresa)->where('activo', true)->orderBy('nombre')->get(),
+            'lineas' => LineaNegocio::query()->where('id_empresa', $this->idEmpresa($request))->where('activo', true)->orderBy('nombre')->get(),
             'monedas' => DB::table('moneda')->where('activo', true)->orderBy('codigo')->get(),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS,
@@ -138,23 +139,6 @@ class CampanaController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Campana::query()->where('id_empresa', $request->user()->id_empresa);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        return $request->validate([
-            'nombre' => ['required', 'string', 'max:200'],
-            'descripcion' => ['nullable', 'string', 'max:5000'],
-            'tipo' => ['required', Rule::in(array_keys(self::TIPOS))],
-            'objetivo' => ['required', Rule::in(array_keys(self::OBJETIVOS))],
-            'id_linea' => ['nullable', 'integer', Rule::exists('linea_negocio', 'id_linea')->where('id_empresa', $request->user()->id_empresa)],
-            'fecha_inicio' => ['required', 'date'],
-            'fecha_fin' => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
-            'presupuesto' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'meta_leads' => ['nullable', 'integer', 'min:0', 'max:65535'],
-        ]);
+        return $this->consultaEmpresa(Campana::class, $request);
     }
 }

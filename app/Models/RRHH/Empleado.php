@@ -2,12 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Empleado extends Model
 {
-    use SoftDeletes;
+    use PerteneceAEmpresa, SoftDeletes;
 
     protected $table      = 'empleado';
     protected $primaryKey = 'id_empleado';

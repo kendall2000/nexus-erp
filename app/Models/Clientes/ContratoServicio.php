@@ -2,10 +2,13 @@
 
 namespace App\Models\Clientes;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class ContratoServicio extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'contrato_servicio';
     protected $primaryKey = 'id_contrato';
     public $timestamps    = true;

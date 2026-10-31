@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Finanzas\GuardarFacturaRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Clientes\ContratoServicio;
 use App\Models\Clientes\TipoServicio;
@@ -11,6 +12,7 @@ use App\Models\Core\Empresa;
 use App\Models\Finanzas\DetalleFactura;
 use App\Models\Finanzas\Factura;
 use App\Models\Finanzas\SerieFacturacion;
+use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,7 +61,7 @@ class FacturaController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('facturas.index', [
             'facturas' => $this->filtradas($request)->with('cliente')->orderByDesc('fecha_emision')->orderByDesc('id_factura')->paginate(25)->withQueryString(),
@@ -100,14 +102,14 @@ class FacturaController extends Controller
         $f = $this->cargar($request, $factura);
         abort_if($f->estado === 'BORRADOR', 404);
 
-        return view('facturas.imprimir', ['f' => $f, 'empresa' => Empresa::find($request->user()->id_empresa), 'tipos' => self::TIPOS, 'estados' => self::ESTADOS]);
+        return view('facturas.imprimir', ['f' => $f, 'empresa' => Empresa::find($this->idEmpresa($request)), 'tipos' => self::TIPOS, 'estados' => self::ESTADOS]);
     }
 
     /** Con ?contrato= se prellena con el cliente, la moneda, los servicios y el periodo del mes. */
     public function create(Request $request): View
     {
         $contrato = $request->filled('contrato')
-            ? ContratoServicio::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', 'VIGENTE')->with('detalles.tipoServicio', 'detalles.sitio')->find($request->integer('contrato'))
+            ? ContratoServicio::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', 'VIGENTE')->with('detalles.tipoServicio', 'detalles.sitio')->find($request->integer('contrato'))
             : null;
         $idCliente = $contrato?->id_cliente ?? ($request->filled('cliente') ? $request->integer('cliente') : null);
         $cliente = $idCliente ? $this->clientes($request)->find($idCliente) : null;
@@ -138,10 +140,10 @@ class FacturaController extends Controller
         return $this->formulario($request, $f);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarFacturaRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
-        $idEmpresa = $request->user()->id_empresa;
+        $datos = $request->datosLimpios();
+        $idEmpresa = $this->idEmpresa($request);
 
         $factura = DB::transaction(function () use ($request, $datos, $idEmpresa) {
             // Se bloquea la serie: dos usuarios no pueden recibir el mismo número.
@@ -157,7 +159,7 @@ class FacturaController extends Controller
                 'numero_completo' => $serie->formatearNumero($numero),
                 'estado' => 'BORRADOR',
                 'subtotal' => 0, 'base_imponible' => 0, 'iva' => 0, 'total' => 0, 'total_pagado' => 0, 'saldo_pendiente' => 0,
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]);
             $this->guardarLineas($factura, $datos['lineas']);
 
@@ -177,13 +179,13 @@ class FacturaController extends Controller
         return $this->formulario($request, $f);
     }
 
-    public function update(Request $request, int $factura): RedirectResponse
+    public function update(GuardarFacturaRequest $request, int $factura): RedirectResponse
     {
         $f = $this->deMiEmpresa($request)->findOrFail($factura);
         if ($f->estado !== 'BORRADOR') {
             return redirect()->route('facturas.show', $f->id_factura)->withErrors(['factura' => 'Solo se editan facturas en borrador.']);
         }
-        $datos = $this->validar($request, $f);
+        $datos = $request->datosLimpios();
 
         DB::transaction(function () use ($f, $datos) {
             $f->update(collect($datos['encabezado'])->except('id_serie')->all()); // la serie y el número no cambian
@@ -210,9 +212,9 @@ class FacturaController extends Controller
         });
     }
 
-    public function emitir(Request $request, int $factura): RedirectResponse
+    public function emitir(Request $request, int $factura, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $factura) {
+        return DB::transaction(function () use ($request, $factura, $presupuestoService) {
             $f = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($factura);
             if ($f->estado !== 'BORRADOR') {
                 return back()->withErrors(['factura' => 'Solo se emiten facturas en borrador.']);
@@ -221,7 +223,7 @@ class FacturaController extends Controller
                 return back()->withErrors(['factura' => 'No se puede emitir un documento en cero.']);
             }
             $f->update(['estado' => 'EMITIDA']);
-            EjecucionPresupuesto::registrarFactura($f);
+            $presupuestoService->registrarFactura($f);
 
             return back()->with('status', "{$this->nombre($f)} emitida.");
         });
@@ -258,7 +260,7 @@ class FacturaController extends Controller
             $f->update([
                 'estado' => 'ANULADA',
                 'saldo_pendiente' => 0,
-                'anulada_por' => $request->user()->id_usuario,
+                'anulada_por' => $this->idUsuario($request),
                 'fecha_anulacion' => now(),
                 'notas' => trim(($f->notas ? $f->notas."\n" : '').'[Anulada el '.now()->format('d/m/Y').'] '.$datos['motivo']),
             ]);
@@ -289,7 +291,7 @@ class FacturaController extends Controller
             $monto = round((float) $datos['monto'], 4);
             $f->update([
                 'monto_condonado' => round((float) $f->monto_condonado + $monto, 4),
-                'condonado_por' => $request->user()->id_usuario,
+                'condonado_por' => $this->idUsuario($request),
                 'fecha_condonacion' => now(),
                 'notas' => trim(($f->notas ? $f->notas."\n" : '').'[Condonado '.$f->moneda.' '.number_format($monto, 2).' el '.now()->format('d/m/Y').'] '.$datos['motivo']),
             ]);
@@ -375,23 +377,23 @@ class FacturaController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Factura::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Factura::class, $request);
     }
 
     private function clientes(Request $request): Builder
     {
-        return Cliente::query()->where('id_empresa', $request->user()->id_empresa)->where('activo', true);
+        return Cliente::query()->where('id_empresa', $this->idEmpresa($request))->where('activo', true);
     }
 
     private function tiposServicio(Request $request): Builder
     {
         return TipoServicio::query()->where('activo', true)
-            ->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $request->user()->id_empresa));
+            ->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $this->idEmpresa($request)));
     }
 
     private function formulario(Request $request, Factura $f): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $empresa = Empresa::find($idEmpresa);
 
         return view('facturas.form', [
@@ -405,79 +407,6 @@ class FacturaController extends Controller
             'fiscal' => ['tasa' => $empresa ? (float) $empresa->tasa_iva_decimal : 0.12, 'incluido' => $empresa ? (bool) $empresa->iva_incluido_en_precio : true],
             'tipos' => self::TIPOS,
         ]);
-    }
-
-    /** @return array{encabezado: array<string, mixed>, lineas: list<array<string, mixed>>} */
-    private function validar(Request $request, ?Factura $f = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        // Se descartan las filas vacías del formulario.
-        $request->merge(['lineas' => array_values(array_filter((array) $request->input('lineas', []),
-            fn ($l) => trim((string) ($l['descripcion'] ?? '')) !== '' || ! empty($l['id_tipo_servicio'])))]);
-
-        $datos = $request->validate([
-            'id_serie' => [$f ? 'nullable' : 'required', 'integer', Rule::exists('serie_facturacion', 'id_serie')->where('id_empresa', $idEmpresa)->where('activo', true)
-                ->whereIn('tipo', array_keys(self::TIPOS))],
-            'id_cliente' => ['required', 'integer', Rule::exists('cliente', 'id_cliente')->where('id_empresa', $idEmpresa)->where('activo', true)->whereNull('deleted_at')],
-            'id_contrato' => ['nullable', 'integer', Rule::exists('contrato_servicio', 'id_contrato')->where('id_empresa', $idEmpresa)->where('id_cliente', $request->integer('id_cliente'))],
-            'fecha_emision' => ['required', 'date'],
-            'fecha_vencimiento' => ['required', 'date', 'after_or_equal:fecha_emision'],
-            'periodo_servicio_inicio' => ['nullable', 'date'],
-            'periodo_servicio_fin' => ['nullable', 'date', 'after_or_equal:periodo_servicio_inicio'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'descuento' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'notas' => ['nullable', 'string', 'max:2000'],
-            'lineas' => ['required', 'array', 'min:1', 'max:200'],
-            'lineas.*.id_tipo_servicio' => ['nullable', 'integer', Rule::in($this->tiposServicio($request)->pluck('id_tipo_servicio')->all())],
-            'lineas.*.descripcion' => ['nullable', 'string', 'max:300'],
-            'lineas.*.cantidad' => ['required', 'numeric', 'min:0.01', 'max:99999999'],
-            'lineas.*.precio_unitario' => ['required', 'numeric', 'min:0', 'max:9999999999'],
-            'lineas.*.descuento' => ['nullable', 'numeric', 'min:0'],
-            'lineas.*.id_centro' => ['nullable', 'integer', Rule::exists('centro_costo', 'id_centro')->where('id_empresa', $idEmpresa)],
-            'lineas.*.id_cuenta' => ['nullable', 'integer', Rule::exists('cuenta_contable', 'id_cuenta')->where('id_empresa', $idEmpresa)->where('permite_movimiento', true)->where('tipo', 'INGRESO')],
-        ], [
-            'id_serie.required' => 'Elige la serie (define el tipo de documento).',
-            'id_cliente.exists' => 'El cliente no es válido o está inactivo.',
-            'id_contrato.exists' => 'El contrato no es de este cliente.',
-            'fecha_vencimiento.after_or_equal' => 'El vencimiento no puede ser antes de la emisión.',
-            'lineas.required' => 'Agrega al menos una línea.',
-            'lineas.*.id_tipo_servicio.in' => 'Uno de los servicios no es válido.',
-            'lineas.*.id_cuenta.exists' => 'La cuenta de una línea debe ser de ingreso y de movimiento.',
-            'lineas.*.cantidad.min' => 'La cantidad debe ser mayor que cero.',
-        ]);
-
-        $servicios = TipoServicio::query()->whereIn('id_tipo_servicio', array_filter(array_column($datos['lineas'], 'id_tipo_servicio')))->pluck('nombre', 'id_tipo_servicio');
-        $lineas = [];
-        $subtotal = 0.0;
-        foreach ($datos['lineas'] as $i => $l) {
-            $bruto = round((float) $l['cantidad'] * (float) $l['precio_unitario'], 4);
-            $descuento = round((float) ($l['descuento'] ?? 0), 4);
-            if ($descuento > $bruto) {
-                throw ValidationException::withMessages(["lineas.{$i}.descuento" => 'El descuento de una línea no puede ser mayor que su importe.']);
-            }
-            $descripcion = trim((string) ($l['descripcion'] ?? '')) ?: ($servicios[$l['id_tipo_servicio'] ?? 0] ?? '');
-            $lineas[] = [
-                'id_tipo_servicio' => $l['id_tipo_servicio'] ?? null,
-                'descripcion' => $descripcion,
-                'cantidad' => $l['cantidad'],
-                'precio_unitario' => $l['precio_unitario'],
-                'descuento' => $descuento,
-                'subtotal' => round($bruto - $descuento, 4),
-                'es_afecto_iva' => ! empty($request->input("lineas.{$i}.es_afecto_iva")),
-                'id_centro' => $l['id_centro'] ?? null,
-                'id_cuenta' => $l['id_cuenta'] ?? null,
-            ];
-            $subtotal += $bruto - $descuento;
-        }
-        if ((float) ($datos['descuento'] ?? 0) > $subtotal) {
-            throw ValidationException::withMessages(['descuento' => 'El descuento global no puede ser mayor que el subtotal.']);
-        }
-
-        return [
-            'encabezado' => collect($datos)->only(['id_serie', 'id_cliente', 'id_contrato', 'fecha_emision', 'fecha_vencimiento', 'periodo_servicio_inicio', 'periodo_servicio_fin', 'moneda', 'notas'])->all()
-                + ['descuento' => round((float) ($datos['descuento'] ?? 0), 4), 'id_contrato' => null, 'periodo_servicio_inicio' => null, 'periodo_servicio_fin' => null, 'notas' => null],
-            'lineas' => $lineas,
-        ];
     }
 
     private function guardarLineas(Factura $f, array $lineas): void

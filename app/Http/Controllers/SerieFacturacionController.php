@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Finanzas\GuardarSerieFacturacionRequest;
 use App\Models\Finanzas\SerieFacturacion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -37,9 +38,9 @@ class SerieFacturacionController extends Controller
         return view('series-facturacion.form', ['serie' => new SerieFacturacion(['tipo' => 'FACTURA', 'ultimo_numero' => 0, 'activo' => true]), 'usada' => false, 'tipos' => self::TIPOS]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarSerieFacturacionRequest $request): RedirectResponse
     {
-        $serie = SerieFacturacion::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $serie = SerieFacturacion::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('series-facturacion.index')->with('status', "Serie {$serie->codigo_serie} creada: el siguiente número será {$serie->formatearNumero($serie->ultimo_numero + 1)}.");
     }
@@ -51,11 +52,11 @@ class SerieFacturacionController extends Controller
         return view('series-facturacion.form', ['serie' => $serie, 'usada' => $serie->facturas()->exists(), 'tipos' => self::TIPOS]);
     }
 
-    public function update(Request $request, int $serie): RedirectResponse
+    public function update(GuardarSerieFacturacionRequest $request, int $serie): RedirectResponse
     {
         return DB::transaction(function () use ($request, $serie) {
             $serie = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($serie);
-            $datos = $this->validar($request, $serie);
+            $datos = $request->datosLimpios($serie);
             if ($serie->facturas()->exists()) {
                 // Con documentos emitidos, el código, el tipo y el correlativo ya no cambian.
                 $datos = collect($datos)->only(['descripcion', 'activo'])->all();
@@ -87,28 +88,6 @@ class SerieFacturacionController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return SerieFacturacion::query()->where('id_empresa', $request->user()->id_empresa);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?SerieFacturacion $serie = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $request->merge(['codigo_serie' => strtoupper(trim((string) $request->input('codigo_serie')))]);
-
-        $datos = $request->validate([
-            'codigo_serie' => ['required', 'string', 'max:10', 'regex:/^[A-Z0-9][A-Z0-9-]*$/'],
-            'tipo' => ['required', Rule::in(array_keys(self::TIPOS))],
-            'descripcion' => ['nullable', 'string', 'max:100'],
-            'ultimo_numero' => ['required', 'integer', 'min:0', 'max:99999999'],
-        ], ['codigo_serie.regex' => 'El código solo puede tener letras, números y guion.']);
-
-        $duplicada = $this->deMiEmpresa($request)->where('codigo_serie', $datos['codigo_serie'])->where('tipo', $datos['tipo'])
-            ->when($serie, fn ($q) => $q->whereKeyNot($serie->id_serie))->exists();
-        if ($duplicada) {
-            throw ValidationException::withMessages(['codigo_serie' => 'Ya hay una serie con ese código para ese tipo de documento.']);
-        }
-
-        return $datos + ['descripcion' => null, 'activo' => $request->boolean('activo')];
+        return $this->consultaEmpresa(SerieFacturacion::class, $request);
     }
 }

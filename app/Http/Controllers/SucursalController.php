@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Core\GuardarSucursalRequest;
 use App\Models\Core\DivisionGeografica;
 use App\Models\Core\Municipio;
 use App\Models\Core\Pais;
@@ -29,13 +30,13 @@ class SucursalController extends Controller
         return $this->formulario(new Sucursal(['activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarSucursalRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $sucursal = DB::transaction(function () use ($request, $datos) {
             $this->quitarCasaMatrizSiCorresponde($request, $datos);
 
-            return Sucursal::create($datos + ['id_empresa' => $request->user()->id_empresa]);
+            return Sucursal::create($datos + ['id_empresa' => $this->idEmpresa($request)]);
         });
 
         return redirect()->route('sucursales.index')->with('status', "Sucursal «{$sucursal->nombre}» creada.");
@@ -46,10 +47,10 @@ class SucursalController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->findOrFail($sucursal));
     }
 
-    public function update(Request $request, int $sucursal): RedirectResponse
+    public function update(GuardarSucursalRequest $request, int $sucursal): RedirectResponse
     {
         $sucursal = $this->deMiEmpresa($request)->findOrFail($sucursal);
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
 
         if ($sucursal->es_casa_matriz && ! $datos['es_casa_matriz']) {
             return back()->withErrors(['es_casa_matriz' => 'Para quitar la casa matriz, marca otra sucursal como casa matriz.'])->withInput();
@@ -104,33 +105,7 @@ class SucursalController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Sucursal::query()->where('id_empresa', $request->user()->id_empresa);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:150'],
-            'direccion' => ['nullable', 'string', 'max:300'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:100'],
-            'id_pais' => ['nullable', 'integer', 'required_with:id_division', Rule::exists('pais', 'id_pais')->where('activo', true)],
-            // El departamento debe ser del país y el municipio del departamento.
-            'id_division' => ['nullable', 'integer', 'required_with:id_municipio',
-                Rule::exists('division_geografica', 'id_division')->where('activo', true)->where('id_pais', (int) $request->input('id_pais'))],
-            'id_municipio' => ['nullable', 'integer',
-                Rule::exists('municipio', 'id_municipio')->where('activo', true)->where('id_division', (int) $request->input('id_division'))],
-        ], [
-            'id_division.exists' => 'El departamento no pertenece al país elegido.',
-            'id_municipio.exists' => 'El municipio no pertenece al departamento elegido.',
-        ]);
-
-        return $datos + [
-            'id_pais' => null, 'id_division' => null, 'id_municipio' => null,
-            'es_casa_matriz' => $request->boolean('es_casa_matriz'),
-            'activo' => $request->boolean('activo'),
-        ];
+        return $this->consultaEmpresa(Sucursal::class, $request);
     }
 
     private function quitarCasaMatrizSiCorresponde(Request $request, array $datos, ?Sucursal $excepto = null): void

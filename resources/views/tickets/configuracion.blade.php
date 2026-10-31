@@ -1,17 +1,20 @@
 @extends('layouts.app', ['titulo' => 'Categorías y SLA'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('tickets.index') }}">Tickets</a></li>
-            <li class="breadcrumb-item active">Categorías y SLA</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Categorías y SLA</h2>
+    <x-page-header
+        title="Categorías y SLA"
+        subtitle="Clasificación de tickets y tiempos objetivo de primera respuesta y resolución."
+        :breadcrumbs="[
+            ['label' => 'Tickets', 'url' => route('tickets.index')],
+            ['label' => 'Categorías y SLA']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary" href="{{ route('tickets.index') }}">Volver a tickets</a>
+    </x-page-header>
 
     <div class="row g-4">
         <div class="col-xl-5">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body fs--1">
                     <h5 class="mb-3">Categorías</h5>
                     @if ($errors->categoria->any())<div class="alert alert-soft-danger">{{ $errors->categoria->first() }}</div>@endif
@@ -37,7 +40,7 @@
         </div>
 
         <div class="col-xl-7">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body fs--1">
                     <h5 class="mb-1">Planes de SLA</h5>
                     <p class="text-700">Horas para la primera respuesta y para resolver, por prioridad. Sin «fines de semana», sábado y domingo no cuentan. Los cambios aplican a los tickets nuevos.</p>

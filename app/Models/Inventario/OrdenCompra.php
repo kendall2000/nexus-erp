@@ -2,11 +2,14 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Core\Empresa;
 
 class OrdenCompra extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'orden_compra';
     protected $primaryKey = 'id_oc';
     public $timestamps    = true;

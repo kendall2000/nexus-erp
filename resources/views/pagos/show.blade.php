@@ -8,19 +8,22 @@
         [$puedeRevertir, $puedeDevolver] = [$aplicado && $yo->puede('pagos.eliminar'), $aplicado && $yo->puede('pagos.devolver')];
         $formulario = old('accion');
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('pagos.index') }}">Pagos</a></li>
-            <li class="breadcrumb-item active">#{{ $p->id_pago }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Cobro #{{ $p->id_pago }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span></h2>
+    <x-page-header
+        :titulo="'Cobro #'.$p->id_pago"
+        icono="fas fa-hand-holding-usd"
+        :migas="[
+            ['label' => 'Pagos y Cobros', 'url' => route('pagos.index')],
+            ['label' => '#'.$p->id_pago],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">{{ $p->cliente?->razon_social }} · {{ $p->fecha_pago?->format('d/m/Y') }}</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($yo->puede('pagos.imprimir'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('pagos.imprimir', $p->id_pago) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Recibo</a>
             @endif
@@ -30,6 +33,18 @@
             @if ($puedeRevertir)
                 <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#revertir">Revertir</button>
             @endif
+        </x-slot:acciones>
+    </x-page-header>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Monto del Cobro" :valor="$p->moneda.' '.number_format((float) $p->monto, 2)" icono="fas fa-coins" color="success" :subtexto="$formas[$p->forma_pago] ?? $p->forma_pago" />
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Factura Asociada" :valor="$p->factura?->numero_completo ?? 'Sin factura'" icono="fas fa-file-invoice-dollar" color="primary" :subtexto="$p->factura ? 'Saldo actual: '.$p->factura->moneda.' '.number_format((float) $p->factura->saldo_pendiente, 2) : 'Anticipo / Cobro libre'" />
+        </div>
+        <div class="col-sm-12 col-xl-4">
+            <x-stat-card etiqueta="Acreditación Bancaria" :valor="$p->fecha_acreditado ? $p->fecha_acreditado->format('d/m/Y') : ($p->forma_pago === 'EFECTIVO' ? 'Inmediata (Efectivo)' : 'Pendiente')" icono="fas fa-university" :color="$p->fecha_acreditado || $p->forma_pago === 'EFECTIVO' ? 'info' : 'warning'" :subtexto="$p->banco_origen ? 'Banco: '.$p->banco_origen : 'Sin banco especificado'" />
         </div>
     </div>
 
@@ -37,7 +52,7 @@
                'devolver' => [$puedeDevolver, 'warning', 'Devolver dinero: se reembolsó al cliente. Deja de contar y la factura recupera el saldo.']] as $accion => [$puede, $colorAccion, $texto])
         @if ($puede)
             <div class="collapse {{ $formulario === $accion ? 'show' : '' }} mb-4" id="{{ $accion }}">
-                <div class="card border-{{ $colorAccion }}"><div class="card-body">
+                <div class="card border border-{{ $colorAccion }} shadow-none"><div class="card-body">
                     <p class="fs--1 mb-2">{{ $texto }}</p>
                     <form method="POST" action="{{ route('pagos.'.$accion, $p->id_pago) }}" class="row g-2 align-items-start">
                         @csrf
@@ -56,9 +71,9 @@
 
     <div class="row g-4">
         <div class="col-lg-6">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Datos del cobro</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-receipt text-primary me-2"></span>Datos del cobro</h5>
                     <dl class="row mb-0">
                         <dt class="col-5 text-700">Monto</dt><dd class="col-7 fw-bold fs-0">{{ $p->moneda }} {{ number_format((float) $p->monto, 2) }}</dd>
                         <dt class="col-5 text-700">Forma de pago</dt><dd class="col-7">{{ $formas[$p->forma_pago] ?? $p->forma_pago }}</dd>
@@ -94,13 +109,13 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Factura</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-file-invoice text-info me-2"></span>Factura</h5>
                     @if ($p->factura)
                         <dl class="row mb-0">
                             <dt class="col-5 text-700">Número</dt>
-                            <dd class="col-7">@if ($yo->puede('facturas.ver'))<a href="{{ route('facturas.show', $p->id_factura) }}">{{ $p->factura->numero_completo }}</a>@else{{ $p->factura->numero_completo }}@endif</dd>
+                            <dd class="col-7">@if ($yo->puede('facturas.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('facturas.show', $p->id_factura) }}">{{ $p->factura->numero_completo }}</a>@else{{ $p->factura->numero_completo }}@endif</dd>
                             <dt class="col-5 text-700">Total</dt><dd class="col-7">{{ $p->factura->moneda }} {{ number_format((float) $p->factura->total, 2) }}</dd>
                             <dt class="col-5 text-700">Pagado</dt><dd class="col-7">{{ number_format((float) $p->factura->total_pagado, 2) }}</dd>
                             <dt class="col-5 text-700">Saldo</dt><dd class="col-7 fw-semi-bold">{{ number_format((float) $p->factura->saldo_pendiente, 2) }}</dd>

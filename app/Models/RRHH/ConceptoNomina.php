@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class ConceptoNomina extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'concepto_nomina';
     protected $primaryKey = 'id_concepto';
     public $timestamps    = false;

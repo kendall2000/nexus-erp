@@ -2,17 +2,23 @@
 
 @section('contenido')
     @php $yo = auth()->user(); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('tickets.index') }}">Tickets</a></li>
-            <li class="breadcrumb-item active">Nuevo</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Nuevo ticket</h2>
+
+    <x-page-header
+        titulo="Nuevo ticket"
+        icono="fas fa-headset"
+        subtitulo="Abre un caso de soporte o incidente operativo asociado a un cliente y contrato."
+        :migas="[
+            ['label' => 'Tickets', 'url' => route('tickets.index')],
+            ['label' => 'Nuevo'],
+        ]"
+    />
 
     <form method="POST" action="{{ route('tickets.store') }}" class="mb-9" style="max-width: 56rem">
         @csrf
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-ticket-alt text-primary me-2"></span>Detalle del incidente</h5>
+            </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -78,7 +84,7 @@
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Abrir ticket</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-paper-plane me-2"></span>Abrir ticket</button>
             <a class="btn btn-phoenix-secondary" href="{{ route('tickets.index') }}">Cancelar</a>
         </div>
     </form>

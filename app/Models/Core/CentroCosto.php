@@ -3,10 +3,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class CentroCosto extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'centro_costo';
     protected $primaryKey = 'id_centro';
 

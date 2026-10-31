@@ -2,15 +2,18 @@
 
 @section('contenido')
     @php $v = fn (string $campo) => old($campo, $proveedor->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('proveedores.index') }}">Proveedores</a></li>
-            <li class="breadcrumb-item active">{{ $proveedor->exists ? $proveedor->razon_social : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $proveedor->exists ? 'Editar proveedor' : 'Nuevo proveedor' }}</h2>
 
-    <div class="card" style="max-width: 52rem">
+    <x-page-header
+        :titulo="$proveedor->exists ? 'Editar proveedor' : 'Nuevo proveedor'"
+        icono="fas fa-truck"
+        subtitulo="Registra datos fiscales, contacto comercial y condiciones de pago del proveedor."
+        :migas="[
+            ['label' => 'Proveedores', 'url' => route('proveedores.index')],
+            ['label' => $proveedor->exists ? $proveedor->razon_social : 'Nuevo'],
+        ]"
+    />
+
+    <div class="card border border-200 shadow-none" style="max-width: 52rem">
         <div class="card-body">
             <form method="POST" action="{{ $proveedor->exists ? route('proveedores.update', $proveedor->id_proveedor) : route('proveedores.store') }}">
                 @csrf
@@ -35,14 +38,14 @@
                         </select>
                     </div>
                 </div>
-                <h5 class="mb-3 text-800 border-top border-200 pt-3">Contacto</h5>
+                <h5 class="mb-3 text-1100 border-top border-200 pt-3"><span class="fas fa-address-book text-primary me-2"></span>Contacto</h5>
                 <div class="row g-3 mb-3">
                     <div class="col-md-4"><label class="form-label" for="contacto">Persona de contacto</label><input class="form-control" id="contacto" name="contacto" value="{{ $v('contacto') }}" maxlength="200" /></div>
                     <div class="col-md-4"><label class="form-label" for="email">Correo</label><input class="form-control" id="email" name="email" type="email" value="{{ $v('email') }}" maxlength="150" /></div>
                     <div class="col-md-4"><label class="form-label" for="telefono">Teléfono</label><input class="form-control" id="telefono" name="telefono" value="{{ $v('telefono') }}" maxlength="20" /></div>
                     <div class="col-12"><label class="form-label" for="direccion">Dirección</label><input class="form-control" id="direccion" name="direccion" value="{{ $v('direccion') }}" maxlength="300" /></div>
                 </div>
-                <h5 class="mb-3 text-800 border-top border-200 pt-3">Condiciones de pago</h5>
+                <h5 class="mb-3 text-1100 border-top border-200 pt-3"><span class="fas fa-credit-card text-primary me-2"></span>Condiciones de pago</h5>
                 <div class="row g-3 mb-4">
                     <div class="col-md-4"><label class="form-label" for="dias_credito">Días de crédito</label><input class="form-control" id="dias_credito" name="dias_credito" type="number" min="0" max="255" value="{{ $v('dias_credito') }}" required /></div>
                     <div class="col-md-4">
@@ -59,7 +62,7 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('proveedores.index') }}">Cancelar</a>
                 </div>
             </form>

@@ -2,10 +2,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class LineaNegocio extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'linea_negocio';
     protected $primaryKey = 'id_linea';
     public $timestamps    = false;

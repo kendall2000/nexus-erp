@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => $centro->exists ? 'Editar centro de costo' : 'Nuevo centro de costo'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('centros-costo.index') }}">Centros de costo</a></li>
-            <li class="breadcrumb-item active">{{ $centro->exists ? $centro->codigo : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $centro->exists ? 'Editar centro de costo' : 'Nuevo centro de costo' }}</h2>
+    <x-page-header
+        :titulo="$centro->exists ? 'Editar centro de costo' : 'Nuevo centro de costo'"
+        icono="fas fa-sitemap"
+        subtitulo="Agrupa ingresos, costos y gastos por unidad operativa o departamento."
+        :migas="[
+            ['label' => 'Centros de costo', 'url' => route('centros-costo.index')],
+            ['label' => $centro->exists ? $centro->codigo : 'Nuevo'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 40rem">
+    <div class="card border border-200 shadow-none" style="max-width: 40rem">
         <div class="card-body">
             <form method="POST" action="{{ $centro->exists ? route('centros-costo.update', $centro->id_centro) : route('centros-costo.store') }}">
                 @csrf
@@ -36,7 +38,7 @@
                     <div class="form-text mt-0">Un centro inactivo no aparece para nuevas órdenes ni presupuestos.</div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('centros-costo.index') }}">Cancelar</a>
                 </div>
             </form>

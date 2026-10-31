@@ -1,80 +1,98 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Orden de compra {{ $oc->numero_oc }}</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; margin: 24px; }
-        h1 { font-size: 20px; margin: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 6px 4px; text-align: left; vertical-align: top; }
-        th { background: #f3f4f6; font-size: 11px; text-transform: uppercase; }
-        .der { text-align: right; }
-        .encabezado { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #222; padding-bottom: 8px; }
-        .caja { display: flex; gap: 24px; margin-top: 12px; }
-        .caja div { flex: 1; }
-        .etiqueta { color: #666; font-size: 10px; text-transform: uppercase; }
-        .firmas { display: flex; gap: 48px; margin-top: 64px; }
-        .firmas div { flex: 1; border-top: 1px solid #222; padding-top: 4px; text-align: center; }
-        @media print { .no-imprimir { display: none; } body { margin: 0; } }
-    </style>
-</head>
-<body>
-    <p class="no-imprimir"><button onclick="window.print()">Imprimir</button></p>
-    <div class="encabezado">
-        <div>
-            @if (\App\Support\Sistema::config()->imgLogo)<img src="{{ \App\Support\Sistema::config()->imgLogo }}" alt="" style="max-height: 50px"><br>@endif
-            <strong>{{ $empresa?->nombre_legal ?: ($empresa?->nombre_comercial ?: \App\Support\Sistema::nombre()) }}</strong><br>
-            @if ($empresa?->nit) NIT: {{ $empresa->nit }}<br>@endif
+<x-print-layout
+    :titulo="'Orden de compra '.$oc->numero_oc"
+    :empresa="$empresa"
+    :volverUrl="route('ordenes-compra.show', $oc->id_oc)"
+>
+    <x-slot:encabezado>
+        <h3 class="text-1100 fw-bolder mb-1">ORDEN DE COMPRA</h3>
+        <p class="fs-0 fw-bold text-primary mb-1">{{ $oc->numero_oc }}</p>
+        <p class="fs--1 text-800 mb-0">
+            Emisión: <span class="fw-semi-bold">{{ $oc->fecha_emision?->format('d/m/Y') }}</span><br>
+            Estado: <span class="fw-semi-bold">{{ $estados[$oc->estado][0] ?? $oc->estado }}</span>
+        </p>
+    </x-slot:encabezado>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-sm-6">
+            <h6 class="text-600 text-uppercase fs--2 mb-1">Proveedor</h6>
+            <h5 class="text-1100 mb-1">{{ $oc->proveedor?->razon_social }}</h5>
+            <p class="fs--1 text-800 mb-0">
+                NIT: {{ $oc->proveedor?->nit ?: '—' }}<br>
+                {{ $oc->proveedor?->direccion }}<br>
+                {{ $oc->proveedor?->telefono }} {{ $oc->proveedor?->email }}
+            </p>
         </div>
-        <div class="der">
-            <h1>ORDEN DE COMPRA</h1>
-            <strong>{{ $oc->numero_oc }}</strong><br>
-            Emisión: {{ $oc->fecha_emision?->format('d/m/Y') }}<br>
-            Estado: {{ $estados[$oc->estado][0] ?? $oc->estado }}
+        <div class="col-12 col-sm-6 text-sm-end">
+            <h6 class="text-600 text-uppercase fs--2 mb-1">Entregar en</h6>
+            <p class="fs--1 text-900 fw-semi-bold mb-2">
+                {{ $oc->bodega?->nombre ?? 'Por definir' }}<br>
+                <span class="fw-normal text-700">{{ $oc->bodega?->ubicacion }}</span>
+            </p>
+            <h6 class="text-600 text-uppercase fs--2 mb-1">Entrega esperada</h6>
+            <p class="fs--1 text-900 fw-semi-bold mb-0">{{ $oc->fecha_entrega_esperada?->format('d/m/Y') ?? '—' }}</p>
         </div>
     </div>
-    <div class="caja">
-        <div>
-            <div class="etiqueta">Proveedor</div>
-            <strong>{{ $oc->proveedor?->razon_social }}</strong><br>
-            NIT: {{ $oc->proveedor?->nit ?: '—' }}<br>
-            {{ $oc->proveedor?->direccion }}<br>
-            {{ $oc->proveedor?->telefono }} {{ $oc->proveedor?->email }}
+
+    <div class="table-responsive">
+        <table class="table fs--1 text-900 mb-0 align-middle">
+            <thead class="bg-200">
+                <tr>
+                    <th class="ps-3" style="width: 48px;">#</th>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th class="text-end">Cantidad</th>
+                    <th class="text-end">Precio</th>
+                    <th class="text-end">Descuento</th>
+                    <th class="pe-3 text-end">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach ($oc->detalles as $i => $d)
+                <tr>
+                    <td class="ps-3">{{ $i + 1 }}</td>
+                    <td><code>{{ $d->producto?->codigo }}</code></td>
+                    <td>
+                        <span class="fw-semi-bold">{{ $d->producto?->nombre }}</span>
+                        @if ($d->descripcion)<br><small class="text-600">{{ $d->descripcion }}</small>@endif
+                    </td>
+                    <td class="text-end">{{ rtrim(rtrim(number_format((float) $d->cantidad_pedida, 4), '0'), '.') }} {{ $d->producto?->unidad_medida }}</td>
+                    <td class="text-end">{{ number_format((float) $d->precio_unitario, 2) }}</td>
+                    <td class="text-end">{{ (float) $d->descuento ? number_format((float) $d->descuento, 2) : '' }}</td>
+                    <td class="pe-3 text-end fw-semi-bold">{{ number_format((float) $d->subtotal, 2) }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+            <tfoot class="border-top border-300">
+                <tr>
+                    <td colspan="6" class="text-end fw-semi-bold">Subtotal</td>
+                    <td class="pe-3 text-end">{{ number_format((float) $oc->subtotal, 2) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="text-end fw-semi-bold">IVA</td>
+                    <td class="pe-3 text-end">{{ number_format((float) $oc->iva, 2) }}</td>
+                </tr>
+                <tr class="bg-200 fs-0">
+                    <td colspan="6" class="ps-3 text-end fw-bolder text-1100">Total {{ $oc->moneda }}</td>
+                    <td class="pe-3 text-end fw-bolder text-1100">{{ number_format((float) $oc->total, 2) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    @if ($oc->notas)
+        <p class="fs--1 text-800 mt-3 mb-0"><strong>Notas:</strong> {{ $oc->notas }}</p>
+    @endif
+
+    <div class="row g-5 mt-5 pt-4 text-center fs--1">
+        <div class="col-6">
+            <div class="border-top border-300 pt-2">
+                Elaborado por<br><strong>{{ $oc->creadoPor?->nombre_completo }}</strong>
+            </div>
         </div>
-        <div>
-            <div class="etiqueta">Entregar en</div>
-            {{ $oc->bodega?->nombre ?? 'Por definir' }}<br>
-            {{ $oc->bodega?->ubicacion }}<br>
-            <div class="etiqueta" style="margin-top: 6px">Entrega esperada</div>
-            {{ $oc->fecha_entrega_esperada?->format('d/m/Y') ?? '—' }}
+        <div class="col-6">
+            <div class="border-top border-300 pt-2">
+                Aprobado por<br><strong>{{ $oc->aprobadoPor?->nombre_completo }}</strong>
+            </div>
         </div>
     </div>
-    <table>
-        <thead><tr><th>#</th><th>Código</th><th>Descripción</th><th class="der">Cantidad</th><th class="der">Precio</th><th class="der">Descuento</th><th class="der">Importe</th></tr></thead>
-        <tbody>
-        @foreach ($oc->detalles as $i => $d)
-            <tr>
-                <td>{{ $i + 1 }}</td>
-                <td>{{ $d->producto?->codigo }}</td>
-                <td>{{ $d->producto?->nombre }}@if ($d->descripcion)<br><small>{{ $d->descripcion }}</small>@endif</td>
-                <td class="der">{{ rtrim(rtrim(number_format((float) $d->cantidad_pedida, 4), '0'), '.') }} {{ $d->producto?->unidad_medida }}</td>
-                <td class="der">{{ number_format((float) $d->precio_unitario, 2) }}</td>
-                <td class="der">{{ (float) $d->descuento ? number_format((float) $d->descuento, 2) : '' }}</td>
-                <td class="der">{{ number_format((float) $d->subtotal, 2) }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-        <tfoot>
-            <tr><td colspan="6" class="der">Subtotal</td><td class="der">{{ number_format((float) $oc->subtotal, 2) }}</td></tr>
-            <tr><td colspan="6" class="der">IVA</td><td class="der">{{ number_format((float) $oc->iva, 2) }}</td></tr>
-            <tr><td colspan="6" class="der"><strong>Total {{ $oc->moneda }}</strong></td><td class="der"><strong>{{ number_format((float) $oc->total, 2) }}</strong></td></tr>
-        </tfoot>
-    </table>
-    @if ($oc->notas)<p><strong>Notas:</strong> {{ $oc->notas }}</p>@endif
-    <div class="firmas">
-        <div>Elaborado por<br>{{ $oc->creadoPor?->nombre_completo }}</div>
-        <div>Aprobado por<br>{{ $oc->aprobadoPor?->nombre_completo }}</div>
-    </div>
-</body>
-</html>
+</x-print-layout>

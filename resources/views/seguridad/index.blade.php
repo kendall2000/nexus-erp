@@ -10,15 +10,17 @@
             ['IPs con fallos', $resumen->ips ?? 0, 'globe', 'info', null],
         ];
     @endphp
-    <div class="mb-4">
-        <h2 class="mb-1 text-1100">Seguridad y accesos</h2>
-        <p class="text-700 fw-semi-bold mb-0">Resumen de las últimas 24 horas.</p>
-    </div>
+
+    <x-page-header
+        title="Seguridad y accesos"
+        subtitle="Resumen de las últimas 24 horas."
+        :breadcrumbs="[['label' => 'Administración'], ['label' => 'Seguridad y accesos']]"
+    />
 
     <div class="row g-3 mb-4">
         @foreach ($tarjetas as [$titulo, $valor, $icono, $color, $evento])
             <div class="col-6 col-xl-3">
-                <div class="card h-100"><div class="card-body py-3 d-flex align-items-center gap-3">
+                <div class="card border border-300 shadow-none h-100"><div class="card-body py-3 d-flex align-items-center gap-3">
                     <span class="fs-2 text-{{ $color }}" data-feather="{{ $icono }}"></span>
                     <div>
                         <p class="fs--1 text-700 mb-1">{{ $titulo }}</p>
@@ -33,7 +35,7 @@
 
     <div class="row g-4 mb-4">
         <div class="col-xl-7">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-2">Bloqueos vigentes</h4>
                     <p class="text-700 fs--1">Usuario (o correo) + IP que agotaron los {{ $config['intentos'] }} intentos. El bloqueo vence solo a los {{ $config['bloqueo'] }} minutos; puedes quitarlo antes si confirmaste que es la persona.</p>
@@ -69,7 +71,7 @@
             </div>
         </div>
         <div class="col-xl-5">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-2">IPs con más intentos fallidos</h4>
                     <p class="text-700 fs--1">Últimos 7 días. Muchas cuentas distintas desde una misma IP suele ser un ataque.</p>
@@ -97,7 +99,7 @@
 
     <div class="row g-4 mb-4">
         <div class="col-xl-5">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-3">Reglas de inicio de sesión</h4>
                     <form method="POST" action="{{ route('seguridad.guardar') }}">
@@ -123,7 +125,7 @@
         </div>
 
         <div class="col-xl-7">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-2">Verificación en dos pasos por rol</h4>
                     <p class="text-700 fs--1">Los usuarios de un rol que la exige no pueden usar el sistema hasta activarla.</p>
@@ -151,7 +153,7 @@
         </div>
     </div>
 
-    <div class="card mb-4" id="contrasenas">
+    <div class="card border border-300 shadow-none mb-4" id="contrasenas">
         <div class="card-body">
             <h4 class="mb-2">Política de contraseñas</h4>
             <p class="text-700 fs--1">Se aplica al cambiar o recuperar la contraseña y cuando un administrador la pone. Las contraseñas actuales siguen valiendo hasta que se cambien o venzan.</p>
@@ -187,7 +189,7 @@
         </div>
     </div>
 
-    <div class="card" id="historial">
+    <div class="card border border-300 shadow-none" id="historial">
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <h4 class="mb-0">Historial de accesos</h4>

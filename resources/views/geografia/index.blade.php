@@ -3,12 +3,13 @@
 @section('contenido')
     @php $pestanas = ['pais' => 'Países', 'division' => 'Departamentos', 'municipio' => 'Municipios']; @endphp
 
-    <div class="mb-4">
-        <h2 class="mb-1 text-1100">Geografía</h2>
-        <p class="text-700 fw-semi-bold mb-0">Países, departamentos y municipios que se usan en sucursales, clientes y proveedores. Es un catálogo compartido por todas las empresas.</p>
-    </div>
+    <x-page-header
+        title="Geografía"
+        subtitle="Países, departamentos y municipios que se usan en sucursales, clientes y proveedores. Es un catálogo compartido por todas las empresas."
+        :breadcrumbs="[['label' => 'Administración'], ['label' => 'Geografía']]"
+    />
 
-    <div class="card mb-9">
+    <div class="card border border-300 shadow-none mb-9">
         <div class="card-header p-0 border-bottom">
             <ul class="nav nav-underline fs--1 px-3" role="tablist">
                 @foreach ($pestanas as $clave => $texto)

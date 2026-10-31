@@ -20,7 +20,7 @@ class BitacoraController extends Controller
 {
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('bitacora.index', [
             'cambios' => $this->filtrados($request)->with('usuario')->orderByDesc('id_cambio')->paginate(50)->withQueryString(),
@@ -83,6 +83,6 @@ class BitacoraController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return AuditoriaCambio::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(AuditoriaCambio::class, $request);
     }
 }

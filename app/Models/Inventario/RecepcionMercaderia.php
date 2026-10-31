@@ -2,10 +2,13 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class RecepcionMercaderia extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'recepcion_mercaderia';
     protected $primaryKey = 'id_recepcion';
     public $timestamps    = true;

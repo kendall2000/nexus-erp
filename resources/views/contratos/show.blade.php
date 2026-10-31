@@ -11,22 +11,25 @@
             return view('contratos.boton-estado', compact('c', 'accion', 'texto', 'clase', 'confirmar'))->render();
         };
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('contratos.index') }}">Contratos</a></li>
-            <li class="breadcrumb-item active">{{ $c->numero_contrato }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Contrato {{ $c->numero_contrato }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span></h2>
+    <x-page-header
+        :titulo="'Contrato '.$c->numero_contrato"
+        icono="fas fa-file-contract"
+        :migas="[
+            ['label' => 'Contratos', 'url' => route('contratos.index')],
+            ['label' => $c->numero_contrato],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">
-                @if ($yo->puede('clientes.ver'))<a href="{{ route('clientes.show', $c->id_cliente) }}">{{ $c->cliente?->razon_social }}</a>@else{{ $c->cliente?->razon_social }}@endif
+                @if ($yo->puede('clientes.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('clientes.show', $c->id_cliente) }}">{{ $c->cliente?->razon_social }}</a>@else{{ $c->cliente?->razon_social }}@endif
                 {{ $c->nombre_proyecto ? '· '.$c->nombre_proyecto : '' }} · {{ $c->fecha_inicio?->format('d/m/Y') }} – {{ $c->fecha_fin?->format('d/m/Y') ?? 'indefinido' }}
             </p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($c->estado === 'VIGENTE' && $yo->puede('facturas.crear'))
                 <a class="btn btn-success" href="{{ route('facturas.create', ['contrato' => $c->id_contrato]) }}"><span class="fas fa-file-invoice-dollar me-2"></span>Facturar</a>
             @endif
@@ -43,12 +46,12 @@
                 <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#cerrar">Cerrar</button>
             @endif
             @if ($yo->puede('contratos.reabrir') && in_array($c->estado, ['VENCIDO', 'CANCELADO'], true)){!! $boton('reabrir', 'Reabrir', 'btn-phoenix-warning') !!}@endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($yo->puede('contratos.cerrar') && in_array($c->estado, ['VIGENTE', 'SUSPENDIDO'], true))
         <div class="collapse {{ $errors->has('motivo') ? 'show' : '' }} mb-4" id="cerrar">
-            <div class="card border-danger"><div class="card-body">
+            <div class="card border border-danger shadow-none"><div class="card-body">
                 <p class="fs--1 mb-2">Queda {{ $c->fecha_fin && $c->fecha_fin->lte(today()) ? 'vencido' : 'cancelado' }} y el personal asignado se libera.</p>
                 <form method="POST" action="{{ route('contratos.estado', [$c->id_contrato, 'cerrar']) }}" class="row g-2">
                     @csrf
@@ -64,14 +67,20 @@
     @endif
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Valor mensual</p><h3 class="mb-0">{{ $c->moneda }} {{ $dinero($c->valor_mensual) }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Valor total estimado</p><h3 class="mb-0">{{ $c->valor_total_estimado !== null ? $c->moneda.' '.$dinero($c->valor_total_estimado) : 'Indefinido' }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Facturación</p><h3 class="mb-0">{{ $periodicidades[$c->periodicidad_factura] ?? $c->periodicidad_factura }}</h3><p class="fs--2 text-700 mb-0">{{ $c->dia_facturacion ? 'el día '.$c->dia_facturacion : '' }}{{ $c->vendedor ? ' · vendedor '.$c->vendedor->nombre_completo : '' }}</p></div></div></div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Valor mensual" :valor="$c->moneda.' '.$dinero($c->valor_mensual)" icono="fas fa-calendar-alt" color="primary" :subtexto="count($c->detalles).' servicio(s) contratado(s)'" />
+        </div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Valor total estimado" :valor="$c->valor_total_estimado !== null ? $c->moneda.' '.$dinero($c->valor_total_estimado) : 'Indefinido'" icono="fas fa-coins" color="success" :subtexto="$c->fecha_fin ? 'Hasta '.$c->fecha_fin->format('d/m/Y') : 'Duración abierta'" />
+        </div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Facturación" :valor="$periodicidades[$c->periodicidad_factura] ?? $c->periodicidad_factura" icono="fas fa-file-invoice-dollar" color="info" :subtexto="($c->dia_facturacion ? 'el día '.$c->dia_facturacion : '').($c->vendedor ? ' · vendedor '.$c->vendedor->nombre_completo : '')" />
+        </div>
     </div>
 
-    <div class="card mb-4">
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body">
-            <h5 class="mb-3">Servicios</h5>
+            <h5 class="mb-3 text-1100"><span class="fas fa-concierge-bell text-primary me-2"></span>Servicios</h5>
             <div class="table-responsive">
                 <table class="table table-sm fs--1 mb-0 align-middle">
                     <thead><tr><th>Servicio</th><th>Sitio</th><th class="text-end">Cantidad</th><th class="text-end">Precio</th><th class="text-end">Desc.</th><th class="text-end">Importe</th></tr></thead>
@@ -95,9 +104,9 @@
 
     <div class="row g-4 mb-4">
         <div class="col-lg-5">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Sitios de trabajo del cliente</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-map-marker-alt text-primary me-2"></span>Sitios de trabajo del cliente</h5>
                     @if ($errors->sitio->any())<div class="alert alert-soft-danger">{{ $errors->sitio->first() }}</div>@endif
                     @forelse ($sitios as $s)
                         <div class="border-bottom border-200 py-2">
@@ -128,9 +137,9 @@
             </div>
         </div>
         <div class="col-lg-7">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Personal asignado</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-user-shield text-primary me-2"></span>Personal asignado</h5>
                     @if ($errors->asignacion->any())<div class="alert alert-soft-danger">{{ $errors->asignacion->first() }}</div>@endif
                     @forelse ($asignaciones as $a)
                         <div class="d-flex justify-content-between align-items-start border-bottom border-200 py-2 {{ $a->activo ? '' : 'text-500' }}">
@@ -176,9 +185,9 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card border border-200 shadow-none">
         <div class="card-body">
-            <h5 class="mb-3">Facturas del contrato</h5>
+            <h5 class="mb-3 text-1100"><span class="fas fa-file-invoice-dollar text-primary me-2"></span>Facturas del contrato</h5>
             @if ($facturas->isEmpty())
                 <p class="fs--1 text-700 mb-0">Todavía no se ha facturado este contrato.</p>
             @else
@@ -188,7 +197,7 @@
                         <tbody>
                         @foreach ($facturas as $f)
                             <tr>
-                                <td>@if ($yo->puede('facturas.ver'))<a href="{{ route('facturas.show', $f->id_factura) }}">{{ $f->numero_completo }}</a>@else{{ $f->numero_completo }}@endif</td>
+                                <td>@if ($yo->puede('facturas.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('facturas.show', $f->id_factura) }}">{{ $f->numero_completo }}</a>@else{{ $f->numero_completo }}@endif</td>
                                 <td>{{ $f->fecha_emision?->format('d/m/Y') }}</td>
                                 <td>{{ $f->periodo_servicio_inicio?->format('d/m/Y') }} – {{ $f->periodo_servicio_fin?->format('d/m/Y') }}</td>
                                 <td class="text-end">{{ $f->moneda }} {{ $dinero($f->total) }}</td>

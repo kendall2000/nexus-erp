@@ -8,20 +8,23 @@
         [$nombreTemp, $colorTemp] = $temperaturas[$p->temperatura] ?? [$p->temperatura, 'secondary'];
         $abierto = in_array($p->estado, ['NUEVO', 'EN_CONTACTO', 'CALIFICADO', 'NO_CALIFICADO'], true);
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('prospectos.index') }}">Prospectos</a></li>
-            <li class="breadcrumb-item active">{{ $p->nombre_empresa }}</li>
-        </ol>
-    </nav>
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $p->nombre_empresa }}
-                <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
-                <span class="badge badge-phoenix badge-phoenix-{{ $colorTemp }} fs--1 align-middle">{{ $nombreTemp }}</span></h2>
+
+    <x-page-header
+        :titulo="$p->nombre_empresa"
+        icono="fas fa-user-plus"
+        :migas="[
+            ['label' => 'Prospectos', 'url' => route('prospectos.index')],
+            ['label' => $p->nombre_empresa],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+            <span class="badge badge-phoenix badge-phoenix-{{ $colorTemp }} fs--1 align-middle ms-1">{{ $nombreTemp }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">{{ $p->nombre_contacto }}{{ $p->cargo_contacto ? ', '.$p->cargo_contacto : '' }} · {{ $p->email_contacto }} {{ $p->telefono_contacto }}</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($abierto && $puedeEditar)
                 <button class="btn btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#convertir"><span class="fas fa-user-check me-2"></span>Convertir en cliente</button>
                 <a class="btn btn-phoenix-secondary" href="{{ route('prospectos.edit', $p->id_prospecto) }}"><span class="fas fa-pen me-2"></span>Editar</a>
@@ -34,15 +37,27 @@
                 <form method="POST" action="{{ route('prospectos.destroy', $p->id_prospecto) }}" onsubmit="return confirm(@js('¿Eliminar el prospecto '.$p->nombre_empresa.'?'))">
                     @csrf
                     @method('DELETE')
-                    <button class="btn btn-link text-danger" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
+                    <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
                 </form>
             @endif
+        </x-slot:acciones>
+    </x-page-header>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Presupuesto Estimado" :valor="$p->presupuesto_estimado !== null ? $p->moneda.' '.number_format((float) $p->presupuesto_estimado, 2) : '—'" icono="fas fa-coins" color="primary" :subtexto="'Fuente: '.($p->fuente?->nombre ?? '—')" />
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Puntuación Lead" :valor="$p->puntuacion_lead.' / 100'" icono="fas fa-star" color="warning" :subtexto="'Temperatura: '.$nombreTemp" />
+        </div>
+        <div class="col-sm-12 col-xl-4">
+            <x-stat-card etiqueta="Seguimientos" :valor="count($seguimientos)" icono="fas fa-comments" color="info" :subtexto="'Vendedor: '.($p->asignadoA?->nombre_completo ?? 'Sin asignar')" />
         </div>
     </div>
 
     @if ($abierto && $puedeEditar)
         <div class="collapse {{ $errors->has('id_etapa') || $errors->has('id_responsable') ? 'show' : '' }} mb-4" id="convertir">
-            <div class="card border-success"><div class="card-body fs--1">
+            <div class="card border border-success shadow-none"><div class="card-body fs--1">
                 <p class="mb-2">Se crea el cliente con los datos del prospecto y su contacto principal{{ $yo->puede('oportunidades.crear') ? '; también puedes abrir una oportunidad de venta' : '' }}.</p>
                 <form method="POST" action="{{ route('prospectos.convertir', $p->id_prospecto) }}" class="row g-2 align-items-end">
                     @csrf
@@ -58,7 +73,7 @@
             </div></div>
         </div>
         <div class="collapse {{ $errors->has('motivo_descarte') ? 'show' : '' }} mb-4" id="descartar">
-            <div class="card border-danger"><div class="card-body">
+            <div class="card border border-danger shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('prospectos.descartar', $p->id_prospecto) }}" class="row g-2">
                     @csrf
                     @method('PATCH')
@@ -72,8 +87,8 @@
     <div class="row g-4">
         <div class="col-lg-8">
             @if ($abierto && $puedeEditar)
-                <div class="card mb-4"><div class="card-body fs--1">
-                    <h5 class="mb-3">Registrar seguimiento</h5>
+                <div class="card border border-200 shadow-none mb-4"><div class="card-body fs--1">
+                    <h5 class="mb-3 text-1100"><span class="fas fa-comment-dots text-primary me-2"></span>Registrar seguimiento</h5>
                     @if ($errors->seguimiento->any())<div class="text-danger mb-2">{{ $errors->seguimiento->first() }}</div>@endif
                     <form method="POST" action="{{ route('prospectos.seguimiento', $p->id_prospecto) }}" class="row g-2">
                         @csrf
@@ -88,8 +103,8 @@
                     </form>
                 </div></div>
             @endif
-            <div class="card"><div class="card-body fs--1">
-                <h5 class="mb-3">Historial</h5>
+            <div class="card border border-200 shadow-none"><div class="card-body fs--1">
+                <h5 class="mb-3 text-1100"><span class="fas fa-history text-primary me-2"></span>Historial</h5>
                 @forelse ($seguimientos as $s)
                     <div class="border-bottom border-200 py-2">
                         <p class="mb-1"><span class="fw-semi-bold">{{ $tipos[$s->tipo] ?? $s->tipo }}</span> · {{ $resultados[$s->resultado] ?? $s->resultado }}
@@ -103,8 +118,8 @@
             </div></div>
         </div>
         <div class="col-lg-4">
-            <div class="card mb-4"><div class="card-body fs--1">
-                <h5 class="mb-3">Detalles</h5>
+            <div class="card border border-200 shadow-none mb-4"><div class="card-body fs--1">
+                <h5 class="mb-3 text-1100"><span class="fas fa-info-circle text-primary me-2"></span>Detalles</h5>
                 <dl class="row mb-0">
                     <dt class="col-5 text-700">Fuente</dt><dd class="col-7">{{ $p->fuente?->nombre ?? '—' }}</dd>
                     <dt class="col-5 text-700">Vendedor</dt><dd class="col-7">{{ $p->asignadoA?->nombre_completo ?? 'Sin asignar' }}</dd>
@@ -117,10 +132,10 @@
                 </dl>
             </div></div>
             @if ($p->oportunidades->isNotEmpty())
-                <div class="card"><div class="card-body fs--1">
-                    <h5 class="mb-3">Oportunidades</h5>
+                <div class="card border border-200 shadow-none"><div class="card-body fs--1">
+                    <h5 class="mb-3 text-1100"><span class="fas fa-funnel-dollar text-success me-2"></span>Oportunidades</h5>
                     @foreach ($p->oportunidades as $o)
-                        <div class="py-1">@if ($yo->puede('oportunidades.ver'))<a href="{{ route('oportunidades.show', $o->id_oportunidad) }}">{{ $o->nombre }}</a>@else{{ $o->nombre }}@endif <span class="text-600">· {{ $o->etapa?->nombre }}</span></div>
+                        <div class="py-1">@if ($yo->puede('oportunidades.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('oportunidades.show', $o->id_oportunidad) }}">{{ $o->nombre }}</a>@else{{ $o->nombre }}@endif <span class="text-600">· {{ $o->etapa?->nombre }}</span></div>
                     @endforeach
                 </div></div>
             @endif

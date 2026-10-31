@@ -11,13 +11,16 @@
             $lineas = [['cantidad' => 1, 'descuento' => 0, 'es_afecto_iva' => true]];
         }
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('facturas.index') }}">Facturas</a></li>
-            <li class="breadcrumb-item active">{{ $f->exists ? $f->numero_completo : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $f->exists ? 'Editar '.($tipos[$f->tipo] ?? '').' '.$f->numero_completo : 'Nueva factura' }}</h2>
+
+    <x-page-header
+        :titulo="$f->exists ? 'Editar '.($tipos[$f->tipo] ?? '').' '.$f->numero_completo : 'Nueva factura'"
+        icono="fas fa-file-invoice-dollar"
+        subtitulo="Emite documentos tributarios, notas de crédito o recibos asociados a clientes y contratos."
+        :migas="[
+            ['label' => 'Facturación', 'url' => route('facturas.index')],
+            ['label' => $f->exists ? $f->numero_completo : 'Nueva'],
+        ]"
+    />
 
     <form method="POST" action="{{ $f->exists ? route('facturas.update', $f->id_factura) : route('facturas.store') }}" class="mb-9">
         @csrf
@@ -26,11 +29,14 @@
         @endif
         <input type="hidden" name="id_contrato" value="{{ old('id_contrato', $f->id_contrato) }}" />
         @if (old('id_contrato', $f->id_contrato))
-            <div class="alert alert-soft-info fs--1"><span class="fas fa-file-contract me-2"></span>Factura del contrato {{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}: revisa el periodo y los montos antes de guardar.</div>
-            @error('id_contrato')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
+            <div class="alert alert-soft-info border-0 fs--1 mb-4"><span class="fas fa-file-contract me-2"></span>Factura del contrato {{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}: revisa el periodo y los montos antes de guardar.</div>
+            @error('id_contrato')<div class="alert alert-soft-danger border-0 fs--1">{{ $message }}</div>@enderror
         @endif
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-file-alt text-primary me-2"></span>Encabezado del documento</h5>
+            </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
@@ -80,12 +86,12 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-1100"><span class="fas fa-list-ul text-primary me-2"></span>Detalle</h5>
+                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar línea</button>
+            </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="mb-0">Detalle</h4>
-                    <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar línea</button>
-                </div>
                 @error('lineas')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
                 <div class="table-responsive">
                     <table class="table table-sm fs--1 align-middle mb-0" id="tabla-lineas">
@@ -125,7 +131,7 @@
         <template id="plantilla-linea">@include('facturas.linea', ['i' => '__I__', 'l' => []])</template>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar borrador</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar borrador</button>
             <a class="btn btn-phoenix-secondary" href="{{ $f->exists ? route('facturas.show', $f->id_factura) : route('facturas.index') }}">Cancelar</a>
         </div>
     </form>

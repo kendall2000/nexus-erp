@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarProveedorRequest;
 use App\Models\Core\Pais;
 use App\Models\Inventario\Proveedor;
 use App\Support\ExportarCsv;
@@ -50,9 +51,9 @@ class ProveedorController extends Controller
         return $this->formulario(new Proveedor(['activo' => true, 'tipo_proveedor' => 'BIENES', 'dias_credito' => 0, 'moneda_pago' => 'GTQ']));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarProveedorRequest $request): RedirectResponse
     {
-        $proveedor = Proveedor::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $proveedor = Proveedor::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('proveedores.index')->with('status', "Proveedor «{$proveedor->razon_social}» creado.");
     }
@@ -62,10 +63,10 @@ class ProveedorController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->findOrFail($proveedor));
     }
 
-    public function update(Request $request, int $proveedor): RedirectResponse
+    public function update(GuardarProveedorRequest $request, int $proveedor): RedirectResponse
     {
         $proveedor = $this->deMiEmpresa($request)->findOrFail($proveedor);
-        $proveedor->update($this->validar($request, $proveedor));
+        $proveedor->update($request->datosLimpios());
 
         return redirect()->route('proveedores.index')->with('status', "Proveedor «{$proveedor->razon_social}» actualizado.");
     }
@@ -115,36 +116,6 @@ class ProveedorController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Proveedor::query()->where('id_empresa', $request->user()->id_empresa);
-    }
-
-    /** @return array<string, mixed> Solo los campos del formulario (nunca id_empresa). */
-    private function validar(Request $request, ?Proveedor $proveedor = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $request->merge([
-            'razon_social' => trim((string) $request->input('razon_social')),
-            'nit' => ($n = strtoupper(preg_replace('/\s+/', '', (string) $request->input('nit')))) === '' ? null : $n,
-            'email' => ($e = strtolower(trim((string) $request->input('email')))) === '' ? null : $e,
-        ]);
-
-        $datos = $request->validate([
-            'razon_social' => ['required', 'string', 'max:250'],
-            'nombre_comercial' => ['nullable', 'string', 'max:150'],
-            'nit' => ['nullable', 'string', 'max:20',
-                Rule::unique('proveedor', 'nit')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->ignore($proveedor?->id_proveedor, 'id_proveedor')],
-            'email' => ['nullable', 'email', 'max:150'],
-            'telefono' => ['nullable', 'string', 'max:20'],
-            'direccion' => ['nullable', 'string', 'max:300'],
-            'contacto' => ['nullable', 'string', 'max:200'],
-            'id_pais' => ['required', 'integer', Rule::exists('pais', 'id_pais')],
-            'tipo_proveedor' => ['required', Rule::in(array_keys(self::TIPOS))],
-            'dias_credito' => ['required', 'integer', 'min:0', 'max:255'],
-            'moneda_pago' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-        ], [
-            'nit.unique' => 'Ya existe un proveedor con ese NIT.',
-        ]);
-
-        return $datos + ['activo' => $request->boolean('activo')];
+        return $this->consultaEmpresa(Proveedor::class, $request);
     }
 }

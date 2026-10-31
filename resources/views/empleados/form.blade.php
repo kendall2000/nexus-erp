@@ -5,15 +5,19 @@
         $v = fn (string $campo) => old($campo, $e->{$campo});
         $fecha = fn (string $campo) => old($campo, $e->{$campo}?->format('Y-m-d'));
         $invalido = fn (string $campo) => $errors->has($campo) ? 'is-invalid' : '';
+        $migas = [['label' => 'Empleados', 'url' => route('empleados.index')]];
+        if ($e->exists) {
+            $migas[] = ['label' => $e->nombre_completo, 'url' => route('empleados.show', $e->id_empleado)];
+        }
+        $migas[] = ['label' => $e->exists ? 'Editar' : 'Nuevo'];
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('empleados.index') }}">Empleados</a></li>
-            @if ($e->exists)<li class="breadcrumb-item"><a href="{{ route('empleados.show', $e->id_empleado) }}">{{ $e->nombre_completo }}</a></li>@endif
-            <li class="breadcrumb-item active">{{ $e->exists ? 'Editar' : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $e->exists ? 'Editar empleado' : 'Nuevo empleado' }}</h2>
+
+    <x-page-header
+        :titulo="$e->exists ? 'Editar empleado' : 'Nuevo empleado'"
+        icono="fas fa-user-tie"
+        subtitulo="Registra los datos personales, contacto de emergencia y ubicación organizacional del colaborador."
+        :migas="$migas"
+    />
 
     <form method="POST" action="{{ $e->exists ? route('empleados.update', $e->id_empleado) : route('empleados.store') }}" class="mb-9" style="max-width: 64rem">
         @csrf
@@ -21,9 +25,11 @@
             @method('PUT')
         @endif
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-id-card text-primary me-2"></span>Datos personales</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Datos personales</h5>
                 <div class="row g-3">
                     <div class="col-md-3"><label class="form-label" for="primer_nombre">Primer nombre</label><input class="form-control {{ $invalido('primer_nombre') }}" id="primer_nombre" name="primer_nombre" value="{{ $v('primer_nombre') }}" required maxlength="80" /></div>
                     <div class="col-md-3"><label class="form-label" for="segundo_nombre">Segundo nombre</label><input class="form-control" id="segundo_nombre" name="segundo_nombre" value="{{ $v('segundo_nombre') }}" maxlength="80" /></div>
@@ -71,9 +77,11 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-address-book text-primary me-2"></span>Contacto</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Contacto</h5>
                 <div class="row g-3">
                     <div class="col-md-4"><label class="form-label" for="email_corporativo">Correo corporativo</label><input class="form-control {{ $invalido('email_corporativo') }}" id="email_corporativo" name="email_corporativo" type="email" value="{{ $v('email_corporativo') }}" maxlength="150" /></div>
                     <div class="col-md-4"><label class="form-label" for="email_personal">Correo personal</label><input class="form-control {{ $invalido('email_personal') }}" id="email_personal" name="email_personal" type="email" value="{{ $v('email_personal') }}" maxlength="150" /></div>
@@ -96,9 +104,11 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-briefcase text-primary me-2"></span>Datos laborales</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Datos laborales</h5>
                 <div class="row g-3">
                     <div class="col-md-3">
                         <label class="form-label" for="codigo_empleado">Código</label>
@@ -172,7 +182,7 @@
         </div>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
             <a class="btn btn-phoenix-secondary" href="{{ $e->exists ? route('empleados.show', $e->id_empleado) : route('empleados.index') }}">Cancelar</a>
         </div>
     </form>

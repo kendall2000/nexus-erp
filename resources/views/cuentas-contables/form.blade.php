@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => $cuenta->exists ? 'Editar cuenta' : 'Nueva cuenta contable'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('cuentas-contables.index') }}">Cuentas contables</a></li>
-            <li class="breadcrumb-item active">{{ $cuenta->exists ? $cuenta->codigo : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $cuenta->exists ? 'Editar cuenta '.$cuenta->codigo : 'Nueva cuenta contable' }}</h2>
+    <x-page-header
+        :titulo="$cuenta->exists ? 'Editar cuenta '.$cuenta->codigo : 'Nueva cuenta contable'"
+        icono="fas fa-book"
+        subtitulo="Estructura la nomenclatura contable jerárquica para ingresos, costos y gastos."
+        :migas="[
+            ['label' => 'Cuentas contables', 'url' => route('cuentas-contables.index')],
+            ['label' => $cuenta->exists ? $cuenta->codigo : 'Nueva'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 48rem">
+    <div class="card border border-200 shadow-none" style="max-width: 48rem">
         <div class="card-body">
             <form method="POST" action="{{ $cuenta->exists ? route('cuentas-contables.update', $cuenta->id_cuenta) : route('cuentas-contables.store') }}">
                 @csrf
@@ -62,7 +64,7 @@
                     <label class="form-check-label" for="activo">Activa</label>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('cuentas-contables.index') }}">Cancelar</a>
                 </div>
             </form>

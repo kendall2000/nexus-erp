@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Clientes\GuardarClienteRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Clientes\ContactoCliente;
 use App\Models\Clientes\Industria;
@@ -72,7 +73,7 @@ class ClienteController extends Controller
     {
         $c = $this->deMiEmpresa($request)->with(['pais', 'municipio', 'contactos'])->findOrFail($cliente);
 
-        return view('clientes.imprimir', ['c' => $c, 'empresa' => Empresa::find($request->user()->id_empresa)] + $this->cuenta($c));
+        return view('clientes.imprimir', ['c' => $c, 'empresa' => Empresa::find($this->idEmpresa($request))] + $this->cuenta($c));
     }
 
     public function create(Request $request): View
@@ -83,13 +84,9 @@ class ClienteController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarClienteRequest $request): RedirectResponse
     {
-        $cliente = Cliente::create($this->validar($request) + [
-            'id_empresa' => $request->user()->id_empresa,
-            'created_by' => $request->user()->id_usuario,
-            'updated_by' => $request->user()->id_usuario,
-        ]);
+        $cliente = Cliente::create($request->datosLimpios() + $this->selloCreacion($request));
 
         return redirect()->route('clientes.show', $cliente->id_cliente)->with('status', "Cliente «{$cliente->razon_social}» creado.");
     }
@@ -99,10 +96,10 @@ class ClienteController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->with('municipio')->findOrFail($cliente));
     }
 
-    public function update(Request $request, int $cliente): RedirectResponse
+    public function update(GuardarClienteRequest $request, int $cliente): RedirectResponse
     {
         $cliente = $this->deMiEmpresa($request)->findOrFail($cliente);
-        $cliente->update($this->validar($request, $cliente) + ['updated_by' => $request->user()->id_usuario]);
+        $cliente->update($request->datosLimpios() + $this->selloActualizacion($request));
 
         return redirect()->route('clientes.show', $cliente->id_cliente)->with('status', "Cliente «{$cliente->razon_social}» actualizado.");
     }
@@ -110,7 +107,7 @@ class ClienteController extends Controller
     public function estado(Request $request, int $cliente): RedirectResponse
     {
         $cliente = $this->deMiEmpresa($request)->findOrFail($cliente);
-        $cliente->update(['activo' => ! $cliente->activo, 'updated_by' => $request->user()->id_usuario]);
+        $cliente->update(['activo' => ! $cliente->activo, 'updated_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "Cliente «{$cliente->razon_social}» ".($cliente->activo ? 'activado.' : 'desactivado.'));
     }
@@ -213,7 +210,7 @@ class ClienteController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Cliente::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Cliente::class, $request);
     }
 
     /** NIT sin espacios ni guiones y en mayúsculas («1234567-8» → «12345678»); vacío → null. */
@@ -222,54 +219,5 @@ class ClienteController extends Controller
         $nit = strtoupper(preg_replace('/[\s\-]+/', '', (string) $nit));
 
         return $nit === '' ? null : $nit;
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?Cliente $cliente = null): array
-    {
-        $idEmpresa = $request->user()->id_empresa;
-        $web = trim((string) $request->input('sitio_web'));
-        $request->merge([
-            'nit' => self::normalizarNit($request->input('nit')),
-            'sitio_web' => $web !== '' && ! preg_match('#^https?://#i', $web) ? 'https://'.$web : ($web ?: null),
-        ]);
-
-        $datos = $request->validate([
-            'razon_social' => ['required', 'string', 'max:250'],
-            'nombre_comercial' => ['nullable', 'string', 'max:150'],
-            'nit' => ['nullable', 'string', 'max:20', 'regex:/^[0-9A-Z]+$/',
-                Rule::unique('cliente', 'nit')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->where(fn ($q) => $q->where('nit', '!=', self::CONSUMIDOR_FINAL))
-                    ->ignore($cliente?->id_cliente, 'id_cliente')],
-            'tipo_persona' => ['required', Rule::in(['JURIDICA', 'NATURAL'])],
-            'id_industria' => ['nullable', 'integer', 'exists:industria,id_industria'],
-            'email_principal' => ['nullable', 'email', 'max:150'],
-            'telefono_principal' => ['nullable', 'string', 'max:20'],
-            'sitio_web' => ['nullable', 'url:http,https', 'max:200'],
-            'id_pais' => ['required', 'integer', Rule::exists('pais', 'id_pais')->where('activo', true)],
-            'id_municipio' => ['nullable', 'integer', 'exists:municipio,id_municipio'],
-            'direccion_fiscal' => ['nullable', 'string', 'max:300'],
-            'segmento' => ['nullable', Rule::in(array_keys(self::SEGMENTOS))],
-            'categoria' => ['nullable', Rule::in(self::CATEGORIAS)],
-            'moneda_facturacion' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'dias_credito' => ['required', 'integer', 'min:0', 'max:255'],
-            'limite_credito' => ['nullable', 'numeric', 'min:0', 'max:99999999999'],
-        ], [
-            'nit.unique' => 'Ya hay un cliente con ese NIT.',
-            'nit.regex' => 'El NIT solo puede tener números y letras (los guiones y espacios se quitan solos).',
-            'sitio_web.url' => 'El sitio web no es una dirección válida.',
-            'dias_credito.max' => 'Los días de crédito no pueden pasar de 255.',
-        ]);
-
-        // El municipio tiene que ser del país elegido.
-        if (! empty($datos['id_municipio'])) {
-            $paisDelMunicipio = DB::table('municipio')->join('division_geografica', 'division_geografica.id_division', '=', 'municipio.id_division')
-                ->where('municipio.id_municipio', $datos['id_municipio'])->value('division_geografica.id_pais');
-            if ((int) $paisDelMunicipio !== (int) $datos['id_pais']) {
-                throw ValidationException::withMessages(['id_municipio' => 'El municipio no pertenece al país elegido.']);
-            }
-        }
-
-        return $datos + array_fill_keys(['nombre_comercial', 'id_industria', 'email_principal', 'telefono_principal', 'id_municipio', 'direccion_fiscal', 'segmento', 'categoria', 'limite_credito'], null)
-            + ['activo' => $request->boolean('activo')];
     }
 }

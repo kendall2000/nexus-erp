@@ -1,22 +1,26 @@
 @extends('layouts.app', ['titulo' => $modulo->exists ? 'Editar módulo' : 'Nuevo módulo'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('modulos.index') }}">Módulos</a></li>
-            <li class="breadcrumb-item active">{{ $modulo->exists ? $modulo->nombre : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $modulo->exists ? 'Editar «'.$modulo->nombre.'»' : 'Nuevo módulo' }}</h2>
+    <x-page-header
+        :title="$modulo->exists ? 'Editar «'.$modulo->nombre.'»' : 'Nuevo módulo'"
+        subtitle="Configuración de menú lateral, ruta e ícono Feather y acciones de permiso."
+        :breadcrumbs="[
+            ['label' => 'Módulos', 'url' => route('modulos.index')],
+            ['label' => $modulo->exists ? $modulo->nombre : 'Nuevo']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary me-2" href="{{ route('modulos.index') }}">Cancelar</a>
+        <button class="btn btn-primary" type="submit" form="form-modulo"><span class="fas fa-check me-2"></span>Guardar</button>
+    </x-page-header>
 
-    <form method="POST" action="{{ $modulo->exists ? route('modulos.update', $modulo->id_modulo) : route('modulos.store') }}" class="mb-9">
+    <form id="form-modulo" method="POST" action="{{ $modulo->exists ? route('modulos.update', $modulo->id_modulo) : route('modulos.store') }}" class="mb-9">
         @csrf
         @if ($modulo->exists)
             @method('PUT')
         @endif
         <div class="row g-4">
             <div class="col-12 col-xl-7">
-                <div class="card h-100">
+                <div class="card border border-300 shadow-none h-100">
                     <div class="card-body">
                         <h4 class="mb-3">Datos y menú</h4>
                         <div class="row g-3 mb-3">
@@ -80,7 +84,7 @@
             </div>
 
             <div class="col-12 col-xl-5">
-                <div class="card h-100">
+                <div class="card border border-300 shadow-none h-100">
                     <div class="card-body">
                         <h4 class="mb-1">Acciones</h4>
                         <p class="text-700 fs--1">Cada acción marcada es un permiso que se asigna en Roles o como extra a un usuario. Sin acciones, solo el Administrador ve el módulo.</p>

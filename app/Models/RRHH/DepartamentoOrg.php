@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class DepartamentoOrg extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'departamento_org';
     protected $primaryKey = 'id_depto_org';
     public $timestamps    = true;

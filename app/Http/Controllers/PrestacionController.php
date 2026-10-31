@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Core\Empresa;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PrestacionLaboral;
 use App\Support\ExportarCsv;
@@ -31,11 +32,12 @@ class PrestacionController extends Controller
 
         return view('prestaciones.index', [
             'anio' => $this->anio($request),
+            'pasivo' => Prestaciones::pasivoAcumulado($this->idEmpresa($request)),
             // Un grupo por prestación anual (tipo + año) y uno por liquidación (empleado + fecha de salida).
             'grupos' => $prestaciones->groupBy(fn ($p) => $this->esLiquidacion($p) ? $p->periodo_calculo.'|'.$p->id_empleado : $p->tipo.'|'.$p->periodo_calculo)
                 ->sortKeys(),
             'totales' => $prestaciones->groupBy('estado')->map(fn ($g) => round((float) $g->sum('monto_calculado'), 2)),
-            'empleados' => Empleado::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('primer_nombre')->orderBy('primer_apellido')->get(),
+            'empleados' => Empleado::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('primer_nombre')->orderBy('primer_apellido')->get(),
             'tipos' => Prestaciones::TIPOS,
             'anuales' => Prestaciones::ANUALES,
             'estados' => self::ESTADOS,
@@ -52,6 +54,25 @@ class PrestacionController extends Controller
                 (float) $p->dias_calculados, (float) $p->monto_base, (float) $p->monto_calculado, self::ESTADOS[$p->estado][0] ?? $p->estado, $p->fecha_pago?->format('d/m/Y')]));
     }
 
+    /** Finiquito laboral imprimible de una liquidación (empleado + LIQ-AAAAMMDD). */
+    public function finiquito(Request $request, int $empleado, string $periodo): View
+    {
+        abort_unless(preg_match('/^'.preg_quote(Prestaciones::PREFIJO_LIQUIDACION, '/').'\d{8}$/', $periodo) === 1, 404);
+        $lineas = $this->deMiEmpresa($request)->where('id_empleado', $empleado)->where('periodo_calculo', $periodo)->orderBy('tipo')->get();
+        abort_if($lineas->isEmpty(), 404);
+        $e = Empleado::query()->with(['cargo', 'departamento'])->findOrFail($empleado);
+
+        return view('prestaciones.finiquito', [
+            'e' => $e,
+            'lineas' => $lineas,
+            'salida' => Carbon::createFromFormat('Ymd', substr($periodo, strlen(Prestaciones::PREFIJO_LIQUIDACION)))->startOfDay(),
+            'periodo' => $periodo,
+            'empresa' => Empresa::find($this->idEmpresa($request)),
+            'tipos' => Prestaciones::TIPOS,
+            'estados' => self::ESTADOS,
+        ]);
+    }
+
     /** Aguinaldo o bono 14 del año para toda la planilla. Recalcular conserva lo aprobado o pagado. */
     public function calcular(Request $request): RedirectResponse
     {
@@ -59,7 +80,7 @@ class PrestacionController extends Controller
             'tipo' => ['required', Rule::in(Prestaciones::ANUALES)],
             'anio' => ['required', 'integer', 'min:2000', 'max:'.(now()->year + 1)],
         ]);
-        $r = DB::transaction(fn () => Prestaciones::calcularAnual($request->user()->id_empresa, $datos['tipo'], (int) $datos['anio']));
+        $r = DB::transaction(fn () => Prestaciones::calcularAnual($this->idEmpresa($request), $datos['tipo'], (int) $datos['anio']));
 
         return redirect()->route('prestaciones.index', ['anio' => $datos['anio'], 'tipo' => $datos['tipo']])
             ->with('status', Prestaciones::TIPOS[$datos['tipo']]." {$datos['anio']}: {$r['calculados']} empleados calculados."
@@ -71,7 +92,7 @@ class PrestacionController extends Controller
     public function liquidar(Request $request): RedirectResponse
     {
         $datos = $request->validateWithBag('liquidacion', [
-            'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $request->user()->id_empresa)->whereNull('deleted_at')],
+            'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $this->idEmpresa($request))->whereNull('deleted_at')],
             'fecha_salida' => ['required', 'date'],
             'dias_vacaciones' => ['nullable', 'numeric', 'min:0', 'max:90'],
             'indemnizacion' => ['nullable', 'boolean'],
@@ -187,6 +208,6 @@ class PrestacionController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return PrestacionLaboral::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(PrestacionLaboral::class, $request);
     }
 }

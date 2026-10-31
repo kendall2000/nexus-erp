@@ -2,10 +2,13 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Producto extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'producto';
     protected $primaryKey = 'id_producto';
     public $timestamps    = true;
