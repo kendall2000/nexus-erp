@@ -1,18 +1,21 @@
 @extends('layouts.app', ['titulo' => 'Departamentos y cargos'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('empleados.index') }}">Empleados</a></li>
-            <li class="breadcrumb-item active">Departamentos y cargos</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Departamentos y cargos</h2>
+    <x-page-header
+        title="Departamentos y cargos"
+        subtitle="Estructura organizacional de la empresa y niveles salariales."
+        :breadcrumbs="[
+            ['label' => 'Empleados', 'url' => route('empleados.index')],
+            ['label' => 'Departamentos y cargos']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary" href="{{ route('empleados.index') }}">Volver a empleados</a>
+    </x-page-header>
 
     <div class="row g-4">
         {{-- Departamentos --}}
         <div class="col-xl-5">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h5 class="mb-3">Departamentos</h5>
                     @if ($errors->departamento->any())<div class="alert alert-soft-danger fs--1">{{ $errors->departamento->first() }}</div>@endif
@@ -36,7 +39,7 @@
 
         {{-- Cargos --}}
         <div class="col-xl-7">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h5 class="mb-3">Cargos</h5>
                     @if ($errors->cargo->any())<div class="alert alert-soft-danger fs--1">{{ $errors->cargo->first() }}</div>@endif

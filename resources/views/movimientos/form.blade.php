@@ -1,17 +1,20 @@
 @extends('layouts.app', ['titulo' => 'Registrar movimiento'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('movimientos.index') }}">Kardex</a></li>
-            <li class="breadcrumb-item active">Registrar movimiento</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Registrar movimiento</h2>
+    <x-page-header
+        title="Registrar movimiento"
+        subtitle="Ajustes de inventario y traslados entre bodegas en el kardex."
+        :breadcrumbs="[
+            ['label' => 'Kardex', 'url' => route('movimientos.index')],
+            ['label' => 'Registrar movimiento']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary" href="{{ route('movimientos.index') }}">Cancelar</a>
+    </x-page-header>
 
     <form method="POST" action="{{ route('movimientos.store') }}" class="mb-9" style="max-width: 48rem">
         @csrf
-        <div class="card mb-4">
+        <div class="card border border-300 shadow-none mb-4">
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-12">
@@ -77,7 +80,7 @@
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit" onclick="return confirm('Los movimientos no se pueden editar ni borrar. ¿Registrar?')">Registrar</button>
+            <button class="btn btn-primary" type="submit" onclick="return confirm('Los movimientos no se pueden editar ni borrar. ¿Registrar?')"><span class="fas fa-check me-2"></span>Registrar</button>
             <a class="btn btn-phoenix-secondary" href="{{ route('movimientos.index') }}">Cancelar</a>
         </div>
     </form>

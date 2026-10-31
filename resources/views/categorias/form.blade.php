@@ -1,17 +1,20 @@
 @extends('layouts.app', ['titulo' => $categoria->exists ? 'Editar categoría' : 'Nueva categoría'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('categorias.index') }}">Categorías de productos</a></li>
-            <li class="breadcrumb-item active">{{ $categoria->exists ? $categoria->nombre : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $categoria->exists ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+    <x-page-header
+        :title="$categoria->exists ? 'Editar categoría' : 'Nueva categoría'"
+        :breadcrumbs="[
+            ['label' => 'Categorías de productos', 'url' => route('categorias.index')],
+            ['label' => $categoria->exists ? $categoria->nombre : 'Nueva']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary me-2" href="{{ route('categorias.index') }}">Cancelar</a>
+        <button class="btn btn-primary" type="submit" form="form-categoria"><span class="fas fa-check me-2"></span>Guardar</button>
+    </x-page-header>
 
-    <div class="card" style="max-width: 40rem">
+    <div class="card border border-300 shadow-none" style="max-width: 40rem">
         <div class="card-body">
-            <form method="POST" action="{{ $categoria->exists ? route('categorias.update', $categoria->id_categoria) : route('categorias.store') }}">
+            <form id="form-categoria" method="POST" action="{{ $categoria->exists ? route('categorias.update', $categoria->id_categoria) : route('categorias.store') }}">
                 @csrf
                 @if ($categoria->exists)
                     @method('PUT')

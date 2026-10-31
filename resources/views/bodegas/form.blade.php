@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => $bodega->exists ? 'Editar bodega' : 'Nueva bodega'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('bodegas.index') }}">Bodegas</a></li>
-            <li class="breadcrumb-item active">{{ $bodega->exists ? $bodega->nombre : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $bodega->exists ? 'Editar bodega' : 'Nueva bodega' }}</h2>
+    <x-page-header
+        :titulo="$bodega->exists ? 'Editar bodega' : 'Nueva bodega'"
+        icono="fas fa-warehouse"
+        subtitulo="Define almacenes físicos, sucursal asociada y empleado responsable."
+        :migas="[
+            ['label' => 'Bodegas', 'url' => route('bodegas.index')],
+            ['label' => $bodega->exists ? $bodega->nombre : 'Nueva'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 40rem">
+    <div class="card border border-200 shadow-none" style="max-width: 40rem">
         <div class="card-body">
             <form method="POST" action="{{ $bodega->exists ? route('bodegas.update', $bodega->id_bodega) : route('bodegas.store') }}">
                 @csrf
@@ -50,7 +52,7 @@
                     <div class="form-text mt-0">Una bodega inactiva no aparece para nuevas compras ni recepciones.</div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('bodegas.index') }}">Cancelar</a>
                 </div>
             </form>

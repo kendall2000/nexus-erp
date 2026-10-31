@@ -1,73 +1,79 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Recepción {{ $r->numero_recepcion }}</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; margin: 24px; }
-        h1 { font-size: 20px; margin: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 6px 4px; text-align: left; vertical-align: top; }
-        th { background: #f3f4f6; font-size: 11px; text-transform: uppercase; }
-        .der { text-align: right; }
-        .encabezado { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #222; padding-bottom: 8px; }
-        .caja { display: flex; gap: 24px; margin-top: 12px; }
-        .caja div { flex: 1; }
-        .etiqueta { color: #666; font-size: 10px; text-transform: uppercase; }
-        .firmas { display: flex; gap: 48px; margin-top: 64px; }
-        .firmas div { flex: 1; border-top: 1px solid #222; padding-top: 4px; text-align: center; }
-        @media print { .no-imprimir { display: none; } body { margin: 0; } }
-    </style>
-</head>
-<body>
-    <p class="no-imprimir"><button onclick="window.print()">Imprimir</button></p>
-    <div class="encabezado">
-        <div>
-            @if (\App\Support\Sistema::config()->imgLogo)<img src="{{ \App\Support\Sistema::config()->imgLogo }}" alt="" style="max-height: 50px"><br>@endif
-            <strong>{{ $empresa?->nombre_legal ?: ($empresa?->nombre_comercial ?: \App\Support\Sistema::nombre()) }}</strong><br>
-            @if ($empresa?->nit) NIT: {{ $empresa->nit }}<br>@endif
+<x-print-layout
+    :titulo="'Recepción '.$r->numero_recepcion"
+    :empresa="$empresa"
+    :volverUrl="route('recepciones.show', $r->id_recepcion)"
+>
+    <x-slot:encabezado>
+        <h3 class="text-1100 fw-bolder mb-1">RECEPCIÓN DE MERCADERÍA</h3>
+        <p class="fs-0 fw-bold text-primary mb-1">{{ $r->numero_recepcion }}</p>
+        <p class="fs--1 text-800 mb-0">
+            Fecha: <span class="fw-semi-bold">{{ $r->fecha_recepcion?->format('d/m/Y') }}</span><br>
+            Orden de compra: <span class="fw-semi-bold">{{ $r->ordenCompra?->numero_oc }}</span>
+        </p>
+    </x-slot:encabezado>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-sm-6">
+            <h6 class="text-600 text-uppercase fs--2 mb-1">Proveedor</h6>
+            <h5 class="text-1100 mb-1">{{ $r->ordenCompra?->proveedor?->razon_social }}</h5>
+            <p class="fs--1 text-800 mb-0">NIT: {{ $r->ordenCompra?->proveedor?->nit ?: '—' }}</p>
         </div>
-        <div class="der">
-            <h1>RECEPCIÓN DE MERCADERÍA</h1>
-            <strong>{{ $r->numero_recepcion }}</strong><br>
-            Fecha: {{ $r->fecha_recepcion?->format('d/m/Y') }}<br>
-            Orden de compra: {{ $r->ordenCompra?->numero_oc }}
+        <div class="col-12 col-sm-6 text-sm-end">
+            <h6 class="text-600 text-uppercase fs--2 mb-1">Recibido en</h6>
+            <p class="fs--1 text-900 fw-semi-bold mb-0">
+                {{ $r->bodega?->nombre }}<br>
+                <span class="fw-normal text-700">{{ $r->bodega?->ubicacion }}</span>
+            </p>
         </div>
     </div>
-    <div class="caja">
-        <div>
-            <div class="etiqueta">Proveedor</div>
-            <strong>{{ $r->ordenCompra?->proveedor?->razon_social }}</strong><br>
-            NIT: {{ $r->ordenCompra?->proveedor?->nit ?: '—' }}
+
+    <div class="table-responsive">
+        <table class="table fs--1 text-900 mb-0 align-middle">
+            <thead class="bg-200">
+                <tr>
+                    <th class="ps-3" style="width: 48px;">#</th>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th class="text-end">Cantidad</th>
+                    <th class="text-end">Costo unitario</th>
+                    <th class="pe-3 text-end">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach ($r->detalles as $i => $d)
+                <tr>
+                    <td class="ps-3">{{ $i + 1 }}</td>
+                    <td><code>{{ $d->producto?->codigo }}</code></td>
+                    <td class="fw-semi-bold">{{ $d->producto?->nombre }}</td>
+                    <td class="text-end">{{ rtrim(rtrim(number_format((float) $d->cantidad_recibida, 4), '0'), '.') }} {{ $d->producto?->unidad_medida }}</td>
+                    <td class="text-end">{{ number_format((float) $d->costo_unitario, 2) }}</td>
+                    <td class="pe-3 text-end fw-semi-bold">{{ number_format((float) $d->subtotal, 2) }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+            <tfoot class="bg-200">
+                <tr class="fs-0">
+                    <td colspan="5" class="ps-3 text-end fw-bolder text-1100">Valor recibido {{ $r->ordenCompra?->moneda }} (sin IVA)</td>
+                    <td class="pe-3 text-end fw-bolder text-1100">{{ number_format((float) $r->detalles->sum('subtotal'), 2) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    @if ($r->notas)
+        <p class="fs--1 text-800 mt-3 mb-0"><strong>Notas:</strong> {{ $r->notas }}</p>
+    @endif
+
+    <div class="row g-5 mt-5 pt-4 text-center fs--1">
+        <div class="col-6">
+            <div class="border-top border-300 pt-2">
+                Recibido por<br><strong>{{ $r->creadoPor?->nombre_completo }}</strong>
+            </div>
         </div>
-        <div>
-            <div class="etiqueta">Recibido en</div>
-            {{ $r->bodega?->nombre }}<br>
-            {{ $r->bodega?->ubicacion }}
+        <div class="col-6">
+            <div class="border-top border-300 pt-2">
+                Entregado por (proveedor)
+            </div>
         </div>
     </div>
-    <table>
-        <thead><tr><th>#</th><th>Código</th><th>Descripción</th><th class="der">Cantidad</th><th class="der">Costo unitario</th><th class="der">Importe</th></tr></thead>
-        <tbody>
-        @foreach ($r->detalles as $i => $d)
-            <tr>
-                <td>{{ $i + 1 }}</td>
-                <td>{{ $d->producto?->codigo }}</td>
-                <td>{{ $d->producto?->nombre }}</td>
-                <td class="der">{{ rtrim(rtrim(number_format((float) $d->cantidad_recibida, 4), '0'), '.') }} {{ $d->producto?->unidad_medida }}</td>
-                <td class="der">{{ number_format((float) $d->costo_unitario, 2) }}</td>
-                <td class="der">{{ number_format((float) $d->subtotal, 2) }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-        <tfoot>
-            <tr><td colspan="5" class="der"><strong>Valor recibido {{ $r->ordenCompra?->moneda }} (sin IVA)</strong></td><td class="der"><strong>{{ number_format((float) $r->detalles->sum('subtotal'), 2) }}</strong></td></tr>
-        </tfoot>
-    </table>
-    @if ($r->notas)<p><strong>Notas:</strong> {{ $r->notas }}</p>@endif
-    <div class="firmas">
-        <div>Recibido por<br>{{ $r->creadoPor?->nombre_completo }}</div>
-        <div>Entregado por (proveedor)</div>
-    </div>
-</body>
-</html>
+</x-print-layout>

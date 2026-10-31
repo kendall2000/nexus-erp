@@ -9,21 +9,26 @@
         $dinero = fn ($n) => number_format((float) $n, 2);
         $deBaja = $e->estado === 'BAJA';
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('empleados.index') }}">Empleados</a></li>
-            <li class="breadcrumb-item active">{{ $e->nombre_completo }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $e->nombre_completo }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
-                @if ($e->es_rotativo)<span class="badge badge-phoenix badge-phoenix-info fs--1 align-middle">Rotativo · {{ $dinero($e->tarifa_dia) }} / día</span>@endif</h2>
+    <x-page-header
+        :titulo="$e->nombre_completo"
+        icono="fas fa-user-tie"
+        :migas="[
+            ['label' => 'Empleados', 'url' => route('empleados.index')],
+            ['label' => $e->nombre_completo],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+            @if ($e->es_rotativo)
+                <span class="badge badge-phoenix badge-phoenix-info fs--1 align-middle ms-1">Rotativo · {{ $dinero($e->tarifa_dia) }} / día</span>
+            @endif
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">{{ $e->codigo_empleado }} · {{ $e->cargo?->nombre ?? 'Sin cargo' }}{{ $e->departamento ? ' · '.$e->departamento->nombre : '' }}
                 · ingresó el {{ $e->fecha_ingreso?->format('d/m/Y') }} ({{ $e->antiguedad_anios }} años)</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($puedeEditar && ! $deBaja)
                 <a class="btn btn-phoenix-secondary" href="{{ route('empleados.edit', $e->id_empleado) }}"><span class="fas fa-pen me-2"></span>Editar</a>
                 <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#baja">Dar de baja</button>
@@ -39,15 +44,27 @@
                 <form method="POST" action="{{ route('empleados.destroy', $e->id_empleado) }}" onsubmit="return confirm(@js('¿Eliminar a '.$e->nombre_completo.'? Solo se permite si nunca estuvo en nómina ni asistencia.'))">
                     @csrf
                     @method('DELETE')
-                    <button class="btn btn-link text-danger" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
+                    <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
                 </form>
             @endif
+        </x-slot:acciones>
+    </x-page-header>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Salario Base" :valor="$cv ? $cv->moneda.' '.$dinero($cv->salario_base) : 'Sin contrato'" icono="fas fa-money-check-alt" color="primary" :subtexto="$cv ? $cv->numero_contrato.' · '.($tipos[$cv->tipo] ?? $cv->tipo) : 'Pendiente de registro'" />
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <x-stat-card etiqueta="Antigüedad" :valor="$e->antiguedad_anios.' años'" icono="fas fa-calendar-check" color="info" :subtexto="'Ingreso: '.($e->fecha_ingreso?->format('d/m/Y') ?? '—')" />
+        </div>
+        <div class="col-sm-12 col-xl-4">
+            <x-stat-card etiqueta="Expediente Digital" :valor="$documentos->count().' documento(s)'" icono="fas fa-folder-open" color="success" :subtexto="'Sucursal: '.($e->sucursal?->nombre ?? '—')" />
         </div>
     </div>
 
     @if ($puedeEditar && ! $deBaja)
         <div class="collapse {{ $errors->has('fecha_baja') || $errors->has('motivo_baja') ? 'show' : '' }} mb-4" id="baja">
-            <div class="card border-danger"><div class="card-body">
+            <div class="card border border-danger shadow-none"><div class="card-body">
                 <p class="fs--1 mb-2">La baja cierra el contrato vigente. El registro se conserva para nóminas e historial.</p>
                 <form method="POST" action="{{ route('empleados.baja', $e->id_empleado) }}" class="row g-2 align-items-start">
                     @csrf
@@ -68,9 +85,9 @@
 
     <div class="row g-4 mb-4">
         <div class="col-lg-5">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Datos</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-id-card text-primary me-2"></span>Datos</h5>
                     <dl class="row mb-0">
                         <dt class="col-5 text-700">Documento</dt><dd class="col-7">{{ $e->tipo_doc_id }} {{ $e->dpi_nit }}</dd>
                         <dt class="col-5 text-700">NIT / IGSS</dt><dd class="col-7">{{ $e->nit_personal ?? '—' }} / {{ $e->igss_afiliacion ?? '—' }}</dd>
@@ -81,10 +98,10 @@
                         <dt class="col-5 text-700">Dirección</dt><dd class="col-7">{{ collect([$e->direccion, $e->municipio?->nombre, $e->municipio?->division?->nombre])->filter()->implode(', ') ?: '—' }}</dd>
                         <dt class="col-5 text-700">Sucursal</dt><dd class="col-7">{{ $e->sucursal?->nombre ?? '—' }}</dd>
                         <dt class="col-5 text-700">Jefe inmediato</dt>
-                        <dd class="col-7">@if ($e->supervisor)<a href="{{ route('empleados.show', $e->id_supervisor) }}">{{ $e->supervisor->nombre_completo }}</a>@else — @endif</dd>
+                        <dd class="col-7">@if ($e->supervisor)<a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.show', $e->id_supervisor) }}">{{ $e->supervisor->nombre_completo }}</a>@else — @endif</dd>
                         @if ($e->subordinados->isNotEmpty())
                             <dt class="col-5 text-700">A su cargo</dt>
-                            <dd class="col-7">@foreach ($e->subordinados as $s)<a class="d-block" href="{{ route('empleados.show', $s->id_empleado) }}">{{ $s->nombre_completo }}</a>@endforeach</dd>
+                            <dd class="col-7">@foreach ($e->subordinados as $s)<a class="d-block text-decoration-none" href="{{ route('empleados.show', $s->id_empleado) }}">{{ $s->nombre_completo }}</a>@endforeach</dd>
                         @endif
                         @if ($deBaja)
                             <dt class="col-5 text-700">Baja</dt><dd class="col-7">{{ $e->fecha_baja?->format('d/m/Y') }} · {{ $e->motivo_baja }}</dd>
@@ -95,10 +112,10 @@
         </div>
 
         <div class="col-lg-7">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="mb-0">Contrato y salario</h5>
+                        <h5 class="mb-0 text-1100"><span class="fas fa-file-signature text-primary me-2"></span>Contrato y salario</h5>
                         @if ($puedeEditar && ! $deBaja)
                             <div class="d-flex gap-2">
                                 @if ($cv)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#salario">Cambiar salario</button>@endif
@@ -148,7 +165,7 @@
                         </div>
                     @endif
 
-                    <h6 class="mt-2">Historial salarial</h6>
+                    <h6 class="mt-2 text-900">Historial salarial</h6>
                     @forelse ($historial as $h)
                         <div class="d-flex justify-content-between border-bottom border-200 py-1">
                             <span>{{ $h->fecha_efectiva?->format('d/m/Y') }} · {{ \App\Http\Controllers\EmpleadoController::CAMBIOS_SALARIO[$h->tipo_cambio] ?? ucfirst(strtolower($h->tipo_cambio)) }}
@@ -160,7 +177,7 @@
                     @endforelse
 
                     @if ($contratos->count() > 1 || ($contratos->count() === 1 && ! $cv))
-                        <h6 class="mt-3">Contratos anteriores</h6>
+                        <h6 class="mt-3 text-900">Contratos anteriores</h6>
                         @foreach ($contratos->where('estado', '!=', 'VIGENTE') as $c)
                             <div class="d-flex justify-content-between border-bottom border-200 py-1 text-700">
                                 <span>{{ $c->numero_contrato }} · {{ $tipos[$c->tipo] ?? $c->tipo }} · {{ ucfirst(strtolower($c->estado)) }}</span>
@@ -173,10 +190,10 @@
         </div>
     </div>
 
-    <div class="card mb-4">
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body fs--1">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Documentos del expediente</h5>
+                <h5 class="mb-0 text-1100"><span class="fas fa-folder-open text-primary me-2"></span>Documentos del expediente</h5>
                 @if ($puedeEditar && $contaboListo)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#documento">Subir documento</button>@endif
             </div>
             @if ($puedeEditar && ! $contaboListo)<p class="text-warning">La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).</p>@endif
@@ -200,7 +217,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom border-200 py-2">
                     <div>
                         <span class="badge badge-phoenix badge-phoenix-secondary me-1">{{ $tiposDocumento[$d->tipo_documento] ?? $d->tipo_documento }}</span>
-                        <a class="fw-semi-bold" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
+                        <a class="fw-semi-bold text-decoration-none" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
                         @if ($vence !== null && $vence < 0)<span class="badge badge-phoenix badge-phoenix-danger ms-1">Vencido</span>
                         @elseif ($vence !== null && $vence <= 30)<span class="badge badge-phoenix badge-phoenix-warning ms-1">Vence en {{ $vence }} días</span>@endif
                         <span class="d-block text-600">{{ collect([$d->fecha_emision ? 'Emitido el '.$d->fecha_emision->format('d/m/Y') : null, $d->fecha_vencimiento ? 'vence el '.$d->fecha_vencimiento->format('d/m/Y') : null, $d->observaciones, 'subido el '.$d->created_at?->format('d/m/Y')])->filter()->implode(' · ') }}</span>

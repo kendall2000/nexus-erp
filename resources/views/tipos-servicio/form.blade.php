@@ -2,15 +2,18 @@
 
 @section('contenido')
     @php $v = fn (string $campo) => old($campo, $servicio->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('tipos-servicio.index') }}">Tipos de servicio</a></li>
-            <li class="breadcrumb-item active">{{ $servicio->exists ? $servicio->nombre : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $servicio->exists ? 'Editar servicio' : 'Nuevo tipo de servicio' }}</h2>
 
-    <div class="card" style="max-width: 48rem">
+    <x-page-header
+        :titulo="$servicio->exists ? 'Editar servicio' : 'Nuevo tipo de servicio'"
+        icono="fas fa-concierge-bell"
+        subtitulo="Define servicios facturables, tarifas base e imputación presupuestaria."
+        :migas="[
+            ['label' => 'Tipos de servicio', 'url' => route('tipos-servicio.index')],
+            ['label' => $servicio->exists ? $servicio->nombre : 'Nuevo'],
+        ]"
+    />
+
+    <div class="card border border-200 shadow-none" style="max-width: 48rem">
         <div class="card-body">
             <form method="POST" action="{{ $servicio->exists ? route('tipos-servicio.update', $servicio->id_tipo_servicio) : route('tipos-servicio.store') }}">
                 @csrf
@@ -66,7 +69,7 @@
                     <label class="form-check-label" for="activo">Activo</label>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('tipos-servicio.index') }}">Cancelar</a>
                 </div>
             </form>

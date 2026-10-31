@@ -2,18 +2,21 @@
 
 @section('contenido')
     @php $v = fn (string $campo) => old($campo, $serie->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('series-facturacion.index') }}">Series de facturación</a></li>
-            <li class="breadcrumb-item active">{{ $serie->exists ? $serie->codigo_serie : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $serie->exists ? 'Editar serie '.$serie->codigo_serie : 'Nueva serie' }}</h2>
 
-    <div class="card" style="max-width: 40rem">
+    <x-page-header
+        :titulo="$serie->exists ? 'Editar serie '.$serie->codigo_serie : 'Nueva serie'"
+        icono="fas fa-hashtag"
+        subtitulo="Configura series y correlativos para facturas, notas de crédito y recibos."
+        :migas="[
+            ['label' => 'Series de facturación', 'url' => route('series-facturacion.index')],
+            ['label' => $serie->exists ? $serie->codigo_serie : 'Nueva'],
+        ]"
+    />
+
+    <div class="card border border-200 shadow-none" style="max-width: 40rem">
         <div class="card-body">
             @if ($usada)
-                <div class="alert alert-soft-info fs--1"><span class="fas fa-lock me-2"></span>La serie ya tiene documentos: el código, el tipo y el correlativo no se pueden cambiar.</div>
+                <div class="alert alert-soft-info border-0 fs--1"><span class="fas fa-lock me-2"></span>La serie ya tiene documentos: el código, el tipo y el correlativo no se pueden cambiar.</div>
             @endif
             <form method="POST" action="{{ $serie->exists ? route('series-facturacion.update', $serie->id_serie) : route('series-facturacion.store') }}">
                 @csrf
@@ -50,7 +53,7 @@
                     <label class="form-check-label" for="activo">Activa</label>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('series-facturacion.index') }}">Cancelar</a>
                 </div>
             </form>

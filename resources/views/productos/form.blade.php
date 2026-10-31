@@ -2,13 +2,16 @@
 
 @section('contenido')
     @php $v = fn (string $campo) => old($campo, $producto->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('productos.index') }}">Productos</a></li>
-            <li class="breadcrumb-item active">{{ $producto->exists ? $producto->nombre : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $producto->exists ? 'Editar producto' : 'Nuevo producto' }}</h2>
+
+    <x-page-header
+        :titulo="$producto->exists ? 'Editar producto' : 'Nuevo producto'"
+        icono="fas fa-box-open"
+        subtitulo="Configura código SKU, precios, niveles de stock e imputación contable del artículo."
+        :migas="[
+            ['label' => 'Productos', 'url' => route('productos.index')],
+            ['label' => $producto->exists ? $producto->nombre : 'Nuevo'],
+        ]"
+    />
 
     <form method="POST" action="{{ $producto->exists ? route('productos.update', $producto->id_producto) : route('productos.store') }}" class="mb-9">
         @csrf
@@ -17,9 +20,11 @@
         @endif
         <div class="row g-4">
             <div class="col-12 col-xl-8">
-                <div class="card mb-4">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                        <h5 class="mb-0 text-1100"><span class="fas fa-tag text-primary me-2"></span>Datos generales</h5>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-3">Datos generales</h4>
                         <div class="row g-3">
                             <div class="col-md-4"><label class="form-label" for="codigo">Código</label><input class="form-control text-uppercase" id="codigo" name="codigo" value="{{ $v('codigo') }}" required maxlength="50" /></div>
                             <div class="col-md-8"><label class="form-label" for="nombre">Nombre</label><input class="form-control" id="nombre" name="nombre" value="{{ $v('nombre') }}" required maxlength="200" /></div>
@@ -41,9 +46,11 @@
                     </div>
                 </div>
 
-                <div class="card mb-4">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                        <h5 class="mb-0 text-1100"><span class="fas fa-boxes text-primary me-2"></span>Precios e inventario</h5>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-3">Precios e inventario</h4>
                         <div class="row g-3">
                             <div class="col-md-4"><label class="form-label" for="precio_compra">Precio de compra</label><input class="form-control" id="precio_compra" name="precio_compra" type="number" step="0.0001" min="0" value="{{ $v('precio_compra') }}" /></div>
                             <div class="col-md-4"><label class="form-label" for="precio_venta">Precio de venta</label><input class="form-control" id="precio_venta" name="precio_venta" type="number" step="0.0001" min="0" value="{{ $v('precio_venta') }}" /></div>
@@ -63,9 +70,11 @@
                     </div>
                 </div>
 
-                <div class="card">
+                <div class="card border border-200 shadow-none">
+                    <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                        <h5 class="mb-0 text-1100"><span class="fas fa-calculator text-primary me-2"></span>Contabilidad</h5>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-1">Contabilidad</h4>
                         <p class="text-700 fs--1">Opcional: las líneas de las órdenes de compra toman esta cuenta y centro de costo si no se indican otros (para el presupuesto).</p>
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -88,9 +97,9 @@
             </div>
 
             <div class="col-12 col-xl-4">
-                <div class="card mb-4">
+                <div class="card border border-200 shadow-none mb-4">
                     <div class="card-body">
-                        <h4 class="mb-3">Estado</h4>
+                        <h5 class="mb-3 text-1100">Estado</h5>
                         <div class="form-check form-switch mb-0">
                             <input class="form-check-input" id="activo" name="activo" type="checkbox" value="1" @checked($v('activo')) />
                             <label class="form-check-label" for="activo">Activo</label>
@@ -99,9 +108,9 @@
                     </div>
                 </div>
                 @if ($producto->exists)
-                    <div class="card">
+                    <div class="card border border-200 shadow-none">
                         <div class="card-body">
-                            <h4 class="mb-3">Existencia por bodega</h4>
+                            <h5 class="mb-3 text-1100"><span class="fas fa-warehouse text-primary me-2"></span>Existencia por bodega</h5>
                             @forelse ($producto->stocks as $s)
                                 <div class="d-flex justify-content-between fs--1 py-1 border-bottom border-200">
                                     <span>{{ $s->bodega?->nombre ?? 'Bodega #'.$s->id_bodega }}</span>
@@ -116,7 +125,7 @@
             </div>
         </div>
         <div class="d-flex gap-2 mt-4">
-            <button class="btn btn-primary" type="submit">Guardar</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
             <a class="btn btn-phoenix-secondary" href="{{ route('productos.index') }}">Cancelar</a>
         </div>
     </form>

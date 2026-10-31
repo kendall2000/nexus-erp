@@ -10,13 +10,16 @@
             $lineas = [['id_producto' => '', 'cantidad_pedida' => 1, 'precio_unitario' => '', 'descuento' => 0]];
         }
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('ordenes-compra.index') }}">Órdenes de compra</a></li>
-            <li class="breadcrumb-item active">{{ $oc->exists ? $oc->numero_oc : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $oc->exists ? 'Editar orden '.$oc->numero_oc : 'Nueva orden de compra' }}</h2>
+
+    <x-page-header
+        :titulo="$oc->exists ? 'Editar orden '.$oc->numero_oc : 'Nueva orden de compra'"
+        icono="fas fa-shopping-cart"
+        subtitulo="Solicita mercadería o insumos a proveedores imputando a centros de costo y partidas presupuestarias."
+        :migas="[
+            ['label' => 'Órdenes de compra', 'url' => route('ordenes-compra.index')],
+            ['label' => $oc->exists ? $oc->numero_oc : 'Nueva'],
+        ]"
+    />
 
     <form method="POST" action="{{ $oc->exists ? route('ordenes-compra.update', $oc->id_oc) : route('ordenes-compra.store') }}" class="mb-9" id="form-oc">
         @csrf
@@ -24,7 +27,10 @@
             @method('PUT')
         @endif
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-file-alt text-primary me-2"></span>Datos de la orden</h5>
+            </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
@@ -59,12 +65,12 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-1100"><span class="fas fa-boxes text-primary me-2"></span>Productos</h5>
+                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar línea</button>
+            </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="mb-0">Productos</h4>
-                    <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar línea</button>
-                </div>
                 <div class="table-responsive">
                     <table class="table table-sm fs--1 align-middle mb-0" id="tabla-lineas">
                         <thead>
@@ -96,7 +102,7 @@
         <template id="plantilla-linea">@include('ordenes-compra.linea', ['i' => '__I__', 'l' => []])</template>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar borrador</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar borrador</button>
             <a class="btn btn-phoenix-secondary" href="{{ $oc->exists ? route('ordenes-compra.show', $oc->id_oc) : route('ordenes-compra.index') }}">Cancelar</a>
         </div>
     </form>

@@ -6,17 +6,24 @@
         $cantidad = fn ($n) => rtrim(rtrim(number_format((float) $n, 4), '0'), '.');
         $saldo = $saldoInicial;
     @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Kardex</h2>
-            <p class="text-700 fw-semi-bold mb-0">Movimientos de inventario. No se editan ni se borran: un error se corrige con otro movimiento.</p>
-        </div>
-        @if ($yo->puede('movimientos.crear'))
-            <a class="btn btn-primary" href="{{ route('movimientos.create', array_filter(['producto' => $filtros['producto'] ?? null, 'bodega' => $filtros['bodega'] ?? null])) }}"><span class="fas fa-plus me-2"></span>Registrar movimiento</a>
-        @endif
-    </div>
 
-    <div class="card mb-4">
+    <x-page-header
+        titulo="Kardex"
+        icono="fas fa-exchange-alt"
+        subtitulo="Movimientos de inventario. No se editan ni se borran: un error se corrige con otro movimiento."
+        :migas="[
+            ['label' => 'Inventario'],
+            ['label' => 'Kardex'],
+        ]"
+    >
+        <x-slot:acciones>
+            @if ($yo->puede('movimientos.crear'))
+                <a class="btn btn-primary" href="{{ route('movimientos.create', array_filter(['producto' => $filtros['producto'] ?? null, 'bodega' => $filtros['bodega'] ?? null])) }}"><span class="fas fa-plus me-2"></span>Registrar movimiento</a>
+            @endif
+        </x-slot:acciones>
+    </x-page-header>
+
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body">
             <form method="GET" class="row g-2">
                 <div class="col-md-4">
@@ -52,71 +59,61 @@
 
     @if ($esKardex)
         <div class="row g-3 mb-4">
-            <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3">
-                <p class="fs--1 text-700 mb-1">Existencia en {{ $bodega->nombre }}</p>
-                <h3 class="mb-0">{{ $cantidad($existencia?->cantidad_actual ?? 0) }} <span class="fs--1 text-600">{{ $producto->unidad_medida }}</span></h3>
-            </div></div></div>
-            <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3">
-                <p class="fs--1 text-700 mb-1">Costo promedio</p><h3 class="mb-0">{{ number_format((float) ($existencia?->costo_promedio ?? 0), 2) }}</h3>
-            </div></div></div>
-            <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3">
-                <p class="fs--1 text-700 mb-1">Valor</p><h3 class="mb-0">{{ number_format((float) ($existencia?->valor_total ?? 0), 2) }}</h3>
-            </div></div></div>
+            <div class="col-sm-4">
+                <x-stat-card :etiqueta="'Existencia en '.$bodega->nombre" :valor="$cantidad($existencia?->cantidad_actual ?? 0).' '.$producto->unidad_medida" icono="fas fa-boxes" color="primary" />
+            </div>
+            <div class="col-sm-4">
+                <x-stat-card etiqueta="Costo promedio" :valor="number_format((float) ($existencia?->costo_promedio ?? 0), 2)" icono="fas fa-calculator" color="info" />
+            </div>
+            <div class="col-sm-4">
+                <x-stat-card etiqueta="Valor" :valor="number_format((float) ($existencia?->valor_total ?? 0), 2)" icono="fas fa-coins" color="success" />
+            </div>
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm fs--1 mb-3 align-middle">
-                    <thead>
-                    <tr>
-                        <th>Fecha</th><th>Movimiento</th>
-                        @unless ($esKardex)<th>Producto</th><th>Bodega</th>@endunless
-                        <th class="text-end">Entrada</th><th class="text-end">Salida</th>
-                        @if ($esKardex)<th class="text-end">Saldo</th>@endif
-                        <th class="text-end">Costo unit.</th><th>Detalle</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @if ($esKardex)
-                        <tr class="text-600"><td colspan="4" class="text-end fst-italic">Saldo anterior</td><td class="text-end fw-semi-bold">{{ $cantidad($saldo) }}</td><td colspan="2"></td></tr>
+    <x-phoenix-table :paginator="$movimientos">
+        <x-slot:head>
+            <tr>
+                <th>Fecha</th><th>Movimiento</th>
+                @unless ($esKardex)<th>Producto</th><th>Bodega</th>@endunless
+                <th class="text-end">Entrada</th><th class="text-end">Salida</th>
+                @if ($esKardex)<th class="text-end">Saldo</th>@endif
+                <th class="text-end">Costo unit.</th><th>Detalle</th>
+            </tr>
+        </x-slot:head>
+        @if ($esKardex)
+            <tr class="text-600"><td colspan="4" class="text-end fst-italic">Saldo anterior</td><td class="text-end fw-semi-bold">{{ $cantidad($saldo) }}</td><td colspan="2"></td></tr>
+        @endif
+        @forelse ($movimientos as $m)
+            @php
+                $signo = \App\Support\Kardex::conSigno($m);
+                if ($esKardex) { $saldo += $signo; }
+            @endphp
+            <tr>
+                <td class="text-nowrap">{{ $m->created_at?->format('d/m/Y H:i') }}</td>
+                <td class="text-nowrap">
+                    <span class="badge badge-phoenix badge-phoenix-{{ $signo > 0 ? 'success' : ($signo < 0 ? 'danger' : 'secondary') }}">{{ \App\Support\Kardex::etiqueta($m) }}</span>
+                </td>
+                @unless ($esKardex)
+                    <td><a class="fw-semi-bold text-decoration-none" href="{{ route('movimientos.index', ['producto' => $m->id_producto, 'bodega' => $m->id_bodega]) }}">{{ $m->producto?->nombre }}</a></td>
+                    <td>{{ $m->bodega?->nombre }}</td>
+                @endunless
+                <td class="text-end text-success">{{ $signo > 0 ? $cantidad($m->cantidad) : '' }}</td>
+                <td class="text-end text-danger">{{ $signo < 0 ? $cantidad($m->cantidad) : '' }}</td>
+                @if ($esKardex)<td class="text-end fw-semi-bold">{{ $cantidad($saldo) }}</td>@endif
+                <td class="text-end">{{ $m->costo_unitario !== null ? number_format((float) $m->costo_unitario, 2) : '—' }}</td>
+                <td class="fs--2 text-700">
+                    @if ($m->referencia_tipo === 'COMPRA' && $m->referencia_id && $yo->puede('recepciones.ver'))
+                        <a class="text-decoration-none" href="{{ route('recepciones.show', $m->referencia_id) }}">{{ $m->observaciones ?: 'Recepción' }}</a>
+                    @else
+                        {{ $m->observaciones }}
                     @endif
-                    @forelse ($movimientos as $m)
-                        @php
-                            $signo = \App\Support\Kardex::conSigno($m);
-                            if ($esKardex) { $saldo += $signo; }
-                        @endphp
-                        <tr>
-                            <td class="text-nowrap">{{ $m->created_at?->format('d/m/Y H:i') }}</td>
-                            <td class="text-nowrap">
-                                <span class="badge badge-phoenix badge-phoenix-{{ $signo > 0 ? 'success' : ($signo < 0 ? 'danger' : 'secondary') }}">{{ \App\Support\Kardex::etiqueta($m) }}</span>
-                            </td>
-                            @unless ($esKardex)
-                                <td><a href="{{ route('movimientos.index', ['producto' => $m->id_producto, 'bodega' => $m->id_bodega]) }}">{{ $m->producto?->nombre }}</a></td>
-                                <td>{{ $m->bodega?->nombre }}</td>
-                            @endunless
-                            <td class="text-end text-success">{{ $signo > 0 ? $cantidad($m->cantidad) : '' }}</td>
-                            <td class="text-end text-danger">{{ $signo < 0 ? $cantidad($m->cantidad) : '' }}</td>
-                            @if ($esKardex)<td class="text-end fw-semi-bold">{{ $cantidad($saldo) }}</td>@endif
-                            <td class="text-end">{{ $m->costo_unitario !== null ? number_format((float) $m->costo_unitario, 2) : '—' }}</td>
-                            <td class="fs--2 text-700">
-                                @if ($m->referencia_tipo === 'COMPRA' && $m->referencia_id && $yo->puede('recepciones.ver'))
-                                    <a href="{{ route('recepciones.show', $m->referencia_id) }}">{{ $m->observaciones ?: 'Recepción' }}</a>
-                                @else
-                                    {{ $m->observaciones }}
-                                @endif
-                                @if ($m->numero_lote)<span class="d-block">Lote {{ $m->numero_lote }}{{ $m->fecha_vencimiento ? ' · vence '.$m->fecha_vencimiento->format('d/m/Y') : '' }}</span>@endif
-                                <span class="d-block text-500">{{ $m->creadoPor?->nombre_completo }}</span>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="9" class="text-center text-700 py-4">{{ array_filter($filtros) ? 'Ningún movimiento coincide con los filtros.' : 'Todavía no hay movimientos.' }}</td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-            {{ $movimientos->links('pagination::bootstrap-5') }}
-        </div>
-    </div>
+                    @if ($m->numero_lote)<span class="d-block">Lote {{ $m->numero_lote }}{{ $m->fecha_vencimiento ? ' · vence '.$m->fecha_vencimiento->format('d/m/Y') : '' }}</span>@endif
+                    <span class="d-block text-500">{{ $m->creadoPor?->nombre_completo }}</span>
+                </td>
+            </tr>
+        @empty
+            <tr><td colspan="9" class="text-center text-700 py-4">{{ array_filter($filtros) ? 'Ningún movimiento coincide con los filtros.' : 'Todavía no hay movimientos.' }}</td></tr>
+        @endforelse
+    </x-phoenix-table>
 @endsection

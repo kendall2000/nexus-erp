@@ -3,9 +3,14 @@
 @php $cfg = \App\Support\Sistema::config(); @endphp
 
 @section('contenido')
-    <div class="text-center mb-6">
+    <div class="text-center mb-5">
         <h3 class="text-1000">{{ $cfg->loginTitulo ?: 'Iniciar sesión' }}</h3>
         <p class="text-700">{{ $cfg->loginMensajeBienve ?: 'Ingresa tus credenciales para continuar' }}</p>
+    </div>
+
+    <div class="position-relative">
+        <hr class="bg-200 mt-4 mb-4" />
+        <div class="divider-content-center bg-white dark__bg-1100">Ingresar credenciales</div>
     </div>
 
     @include('partials.alertas')
@@ -28,7 +33,7 @@
                 <span class="fas fa-key text-900 fs--1 form-icon"></span>
             </div>
         </div>
-        <div class="row flex-between-center mb-6">
+        <div class="row flex-between-center mb-5">
             <div class="col-auto">
                 <div class="form-check mb-0">
                     <input class="form-check-input" id="remember" name="remember" type="checkbox" @checked(old('remember')) />

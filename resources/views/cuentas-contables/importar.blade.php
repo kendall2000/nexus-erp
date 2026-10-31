@@ -1,16 +1,19 @@
 @extends('layouts.app', ['titulo' => 'Importar cuentas contables'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('cuentas-contables.index') }}">Cuentas contables</a></li>
-            <li class="breadcrumb-item active">Importar</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Importar plan de cuentas</h2>
+    <x-page-header
+        title="Importar plan de cuentas"
+        subtitle="Carga o actualización masiva desde Excel (.xlsx) o CSV."
+        :breadcrumbs="[
+            ['label' => 'Cuentas contables', 'url' => route('cuentas-contables.index')],
+            ['label' => 'Importar']
+        ]"
+    >
+        <a class="btn btn-phoenix-secondary" href="{{ route('cuentas-contables.index') }}">Volver</a>
+    </x-page-header>
 
     @if (! $analisis)
-        <div class="card" style="max-width: 48rem">
+        <div class="card border border-300 shadow-none" style="max-width: 48rem">
             <div class="card-body">
                 <p class="fs--1 text-700">
                     Sube un archivo Excel (.xlsx) o CSV con las columnas <strong>Código, Nombre, Tipo, Naturaleza, Código padre y Permite movimiento</strong>.
@@ -35,13 +38,13 @@
     @else
         @error('archivo')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
         <div class="row g-3 mb-4">
-            <div class="col-sm-3"><div class="card"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Filas</p><h3 class="mb-0">{{ $analisis['total'] }}</h3></div></div></div>
-            <div class="col-sm-3"><div class="card"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Nuevas</p><h3 class="mb-0 text-success">{{ $analisis['nuevas'] }}</h3></div></div></div>
-            <div class="col-sm-3"><div class="card"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">A actualizar</p><h3 class="mb-0 text-info">{{ $analisis['actualizar'] }}</h3></div></div></div>
-            <div class="col-sm-3"><div class="card"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Con errores</p><h3 class="mb-0 {{ $analisis['errores'] ? 'text-danger' : '' }}">{{ count($analisis['errores']) }}</h3></div></div></div>
+            <div class="col-sm-3"><div class="card border border-300 shadow-none"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Filas</p><h3 class="mb-0">{{ $analisis['total'] }}</h3></div></div></div>
+            <div class="col-sm-3"><div class="card border border-300 shadow-none"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Nuevas</p><h3 class="mb-0 text-success">{{ $analisis['nuevas'] }}</h3></div></div></div>
+            <div class="col-sm-3"><div class="card border border-300 shadow-none"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">A actualizar</p><h3 class="mb-0 text-info">{{ $analisis['actualizar'] }}</h3></div></div></div>
+            <div class="col-sm-3"><div class="card border border-300 shadow-none"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Con errores</p><h3 class="mb-0 {{ $analisis['errores'] ? 'text-danger' : '' }}">{{ count($analisis['errores']) }}</h3></div></div></div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-300 shadow-none mb-4">
             <div class="card-body">
                 @if ($analisis['errores'])
                     <p class="text-danger fw-semi-bold"><span class="fas fa-exclamation-triangle me-2"></span>Corrige estas filas en el archivo y vuelve a subirlo; no se importará nada mientras haya errores.</p>

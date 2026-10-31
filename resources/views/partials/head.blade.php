@@ -13,7 +13,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('assets/img/favicons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('assets/img/favicons/favicon-16x16.png') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/img/favicons/favicon.ico') }}">
+    <link rel="manifest" href="{{ asset('assets/img/favicons/manifest.json') }}">
 @endif
+<meta name="msapplication-TileImage" content="{{ asset('assets/img/favicons/mstile-150x150.png') }}">
 <meta name="theme-color" content="{{ \App\Support\Sistema::colorPrimario() }}">
 
 <script src="{{ asset('vendors/imagesloaded/imagesloaded.pkgd.min.js') }}"></script>
@@ -25,6 +27,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700;800;900&amp;display=swap" rel="stylesheet">
 <link href="{{ asset('vendors/simplebar/simplebar.min.css') }}" rel="stylesheet">
 <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
+<link href="{{ asset('assets/css/theme-rtl.min.css') }}" type="text/css" rel="stylesheet" id="style-rtl">
 <link href="{{ asset('assets/css/theme.min.css') }}" type="text/css" rel="stylesheet" id="style-default">
+<link href="{{ asset('assets/css/user-rtl.min.css') }}" type="text/css" rel="stylesheet" id="user-style-rtl">
 <link href="{{ asset('assets/css/user.min.css') }}" type="text/css" rel="stylesheet" id="user-style-default">
+<script>
+    var phoenixIsRTL = window.config.config.phoenixIsRTL;
+    if (phoenixIsRTL) {
+        var linkDefault = document.getElementById('style-default');
+        var userLinkDefault = document.getElementById('user-style-default');
+        linkDefault.setAttribute('disabled', true);
+        userLinkDefault.setAttribute('disabled', true);
+        document.querySelector('html').setAttribute('dir', 'rtl');
+    } else {
+        var linkRTL = document.getElementById('style-rtl');
+        var userLinkRTL = document.getElementById('user-style-rtl');
+        linkRTL.setAttribute('disabled', true);
+        userLinkRTL.setAttribute('disabled', true);
+    }
+</script>
 @include('partials.colores')

@@ -1,12 +1,16 @@
 @extends('layouts.app', ['titulo' => 'Seguridad de mi cuenta'])
 
 @section('contenido')
-    <h2 class="mb-4 text-1100">Seguridad de mi cuenta</h2>
+    <x-page-header
+        title="Seguridad de mi cuenta"
+        subtitle="Contraseña, verificación en dos pasos y sesiones activas."
+        :breadcrumbs="[['label' => 'Mi cuenta'], ['label' => 'Seguridad']]"
+    />
 
     <div class="row g-4">
         {{-- Contraseña --}}
         <div class="col-xl-6">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-3">Cambiar contraseña</h4>
                     @php $venceEl = \App\Support\Contrasenas::venceEl(auth()->user()); @endphp
@@ -39,7 +43,7 @@
 
         {{-- Verificación en dos pasos --}}
         <div class="col-xl-6">
-            <div class="card h-100">
+            <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-2">Verificación en dos pasos</h4>
                     <p class="text-700 fs--1">Además de tu contraseña, pide un código de tu teléfono (Google Authenticator, Microsoft Authenticator, Authy…).</p>
@@ -97,7 +101,7 @@
 
         {{-- Sesiones abiertas --}}
         <div class="col-12">
-            <div class="card">
+            <div class="card border border-300 shadow-none">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                         <h4 class="mb-0">Sesiones abiertas</h4>

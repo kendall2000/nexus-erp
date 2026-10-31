@@ -9,23 +9,28 @@
         $cantidad = fn ($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.');
         $prefijo = \App\Support\Prestaciones::PREFIJO_LIQUIDACION;
     @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Prestaciones</h2>
-            <p class="text-700 fw-semi-bold mb-0">Aguinaldo y bono 14 de toda la planilla, y liquidaciones por empleado. Se calculan, se aprueban y se pagan.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+
+    <x-page-header
+        titulo="Prestaciones"
+        icono="fas fa-award"
+        subtitulo="Aguinaldo y bono 14 de toda la planilla, y liquidaciones por empleado. Se calculan, se aprueban y se pagan."
+        :migas="[
+            ['label' => 'Recursos Humanos'],
+            ['label' => 'Prestaciones'],
+        ]"
+    >
+        <x-slot:acciones>
             @if ($yo->puede('prestaciones.exportar'))<a class="btn btn-phoenix-secondary" href="{{ route('prestaciones.exportar', ['anio' => $anio] + $filtros) }}"><span class="fas fa-file-export me-2"></span>Exportar</a>@endif
             @if ($puedeProcesar)
                 <button class="btn btn-phoenix-primary" type="button" data-bs-toggle="collapse" data-bs-target="#liquidar">Liquidar empleado</button>
                 <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#calcular"><span class="fas fa-calculator me-2"></span>Calcular aguinaldo o bono 14</button>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($puedeProcesar)
         <div class="collapse {{ $errors->hasAny(['tipo', 'anio']) ? 'show' : '' }} mb-4" id="calcular">
-            <div class="card"><div class="card-body">
+            <div class="card border border-200 shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('prestaciones.calcular') }}" class="row g-2 align-items-end">
                     @csrf
                     <div class="col-md-3">
@@ -43,7 +48,7 @@
         </div>
 
         <div class="collapse {{ $errors->liquidacion->any() ? 'show' : '' }} mb-4" id="liquidar">
-            <div class="card"><div class="card-body">
+            <div class="card border border-200 shadow-none"><div class="card-body">
                 @if ($errors->liquidacion->any())<div class="text-danger fs--1 mb-2">{{ $errors->liquidacion->first() }}</div>@endif
                 <form method="POST" action="{{ route('prestaciones.liquidar') }}" class="row g-2 align-items-end">
                     @csrf
@@ -91,10 +96,10 @@
                 ? 'Liquidación de '.$primera->empleado?->nombre_completo.' · salida el '.\Illuminate\Support\Carbon::createFromFormat('Ymd', substr($primera->periodo_calculo, strlen($prefijo)))->format('d/m/Y')
                 : ($tipos[$primera->tipo] ?? $primera->tipo).' '.$primera->periodo_calculo;
         @endphp
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
             <div class="card-body fs--1">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                    <h5 class="mb-0">{{ $titulo }} <span class="text-700 fw-normal fs--1">· {{ $liquidacion ? $grupo->count().' conceptos' : $grupo->count().' empleados' }} · {{ $dinero($grupo->sum('monto_calculado')) }}</span></h5>
+                    <h5 class="mb-0 text-1100">{{ $titulo }} <span class="text-700 fw-normal fs--1">· {{ $liquidacion ? $grupo->count().' conceptos' : $grupo->count().' empleados' }} · {{ $dinero($grupo->sum('monto_calculado')) }}</span></h5>
                     <div class="d-flex flex-wrap gap-2">
                         @if ($puedeAprobar && $grupo->contains('estado', 'CALCULADO'))
                             <form method="POST" action="{{ route('prestaciones.lote.aprobar') }}">
@@ -123,7 +128,7 @@
                             @php [$nombreEstado, $color] = $estados[$p->estado] ?? [$p->estado, 'secondary']; @endphp
                             <tr>
                                 <td class="fw-semi-bold">
-                                    @if ($liquidacion){{ $tipos[$p->tipo] ?? $p->tipo }}@else<a href="{{ route('empleados.show', $p->id_empleado) }}">{{ $p->empleado?->nombre_completo }}</a>@endif
+                                    @if ($liquidacion){{ $tipos[$p->tipo] ?? $p->tipo }}@else<a class="text-decoration-none" href="{{ route('empleados.show', $p->id_empleado) }}">{{ $p->empleado?->nombre_completo }}</a>@endif
                                 </td>
                                 <td class="text-end">{{ $cantidad($p->dias_calculados) }}</td>
                                 <td class="text-end">{{ $dinero($p->monto_base) }}</td>
@@ -161,7 +166,7 @@
             </div>
         </div>
     @empty
-        <div class="card"><div class="card-body text-700 fs--1">No hay prestaciones de {{ $anio }} con esos filtros.{{ $puedeProcesar ? ' Usa «Calcular aguinaldo o bono 14» o «Liquidar empleado».' : '' }}</div></div>
+        <div class="card border border-200 shadow-none"><div class="card-body text-700 fs--1">No hay prestaciones de {{ $anio }} con esos filtros.{{ $puedeProcesar ? ' Usa «Calcular aguinaldo o bono 14» o «Liquidar empleado».' : '' }}</div></div>
     @endforelse
 @endsection
 

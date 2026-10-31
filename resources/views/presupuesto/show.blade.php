@@ -8,19 +8,22 @@
         $dinero = fn ($n) => number_format((float) $n, 2);
         $mesActual = (int) now()->year === (int) $p->anio ? (int) now()->month : null;
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('presupuesto.index', ['anio' => $p->anio]) }}">Presupuesto {{ $p->anio }}</a></li>
-            <li class="breadcrumb-item active">{{ $p->cuentaContable?->codigo }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $p->cuentaContable?->etiqueta }} <span class="badge badge-phoenix badge-phoenix-{{ $colorEstado }} fs--1 align-middle">{{ $nombreEstado }}</span></h2>
+    <x-page-header
+        :titulo="$p->cuentaContable?->etiqueta ?? 'Partida presupuestaria'"
+        icono="fas fa-chart-pie"
+        :migas="[
+            ['label' => 'Presupuesto '.$p->anio, 'url' => route('presupuesto.index', ['anio' => $p->anio])],
+            ['label' => $p->cuentaContable?->codigo ?? '#'.$p->id_presupuesto],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $colorEstado }} fs--1 align-middle">{{ $nombreEstado }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">{{ $p->centroCosto?->etiqueta }} · {{ $p->anio }} · {{ $p->moneda }}</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($p->estado === 'BORRADOR' && $yo->puede('presupuesto.editar'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('presupuesto.edit', $p->id_presupuesto) }}"><span class="fas fa-pen me-2"></span>Editar</a>
             @endif
@@ -49,39 +52,58 @@
                 <form method="POST" action="{{ route('presupuesto.destroy', $p->id_presupuesto) }}" onsubmit="return confirm('¿Eliminar este presupuesto en borrador?')">
                     @csrf
                     @method('DELETE')
-                    <button class="btn btn-link text-danger" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
+                    <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
                 </form>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Presupuestado</p><h3 class="mb-0">{{ $dinero($p->total_presupuestado) }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Ejecutado</p><h3 class="mb-0">{{ $dinero($p->total_ejecutado) }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3">
-            <p class="fs--1 text-700 mb-1">Disponible</p><h3 class="mb-1 {{ $p->saldo_disponible < 0 ? 'text-danger' : '' }}">{{ $dinero($p->saldo_disponible) }}</h3>
-            <div class="progress" style="height: 6px"><div class="progress-bar bg-{{ $colorEje }}" style="width: {{ min(100, $p->porcentaje_ejecucion) }}%"></div></div>
-            <span class="fs--2 text-700">{{ $p->porcentaje_ejecucion }} % · {{ $nombreEje }}</span>
-        </div></div></div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Presupuestado" :valor="$dinero($p->total_presupuestado)" icono="fas fa-bullseye" color="primary" :subtexto="'Año fiscal '.$p->anio.' ('.$p->moneda.')'" />
+        </div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Ejecutado" :valor="$dinero($p->total_ejecutado)" icono="fas fa-chart-line" color="info" :subtexto="$p->porcentaje_ejecucion.' % · '.$nombreEje" />
+        </div>
+        <div class="col-sm-4">
+            <div class="card border border-200 shadow-none h-100">
+                <div class="card-body py-3">
+                    <p class="fs--1 text-700 mb-1">Disponible</p>
+                    <h3 class="mb-1 {{ $p->saldo_disponible < 0 ? 'text-danger' : '' }}">{{ $dinero($p->saldo_disponible) }}</h3>
+                    <div class="progress" style="height: 6px"><div class="progress-bar bg-{{ $colorEje }}" style="width: {{ min(100, $p->porcentaje_ejecucion) }}%"></div></div>
+                    <span class="fs--2 text-700">{{ $p->porcentaje_ejecucion }} % · {{ $nombreEje }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="mb-3">Por mes</h5>
+            <div class="card border border-200 shadow-none h-100">
+                <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                    <h5 class="mb-0 text-1100"><span class="fas fa-calendar-alt text-primary me-2"></span>Por mes</h5>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm fs--1 mb-0 align-middle">
-                            <thead><tr><th>Mes</th><th class="text-end">Presupuestado</th><th class="text-end">Ejecutado</th><th class="text-end">Disponible</th><th class="text-end">%</th></tr></thead>
-                            <tbody>
+                        <table class="table table-sm Phoenix-table fs--1 mb-0 align-middle">
+                            <thead class="bg-100">
+                                <tr>
+                                    <th class="ps-4">Mes</th>
+                                    <th class="text-end">Presupuestado</th>
+                                    <th class="text-end">Ejecutado</th>
+                                    <th class="text-end">Disponible</th>
+                                    <th class="text-end pe-4">%</th>
+                                </tr>
+                            </thead>
+                            <tbody class="list">
                             @foreach (\App\Models\Finanzas\PresupuestoAnual::MESES as $num => $mes)
                                 @php $pre = (float) $p->{'pre_'.$mes}; $eje = (float) $p->{'eje_'.$mes}; @endphp
                                 <tr class="{{ $mesActual === $num ? 'table-active fw-semi-bold' : '' }}">
-                                    <td>{{ ucfirst($mes) }}</td>
+                                    <td class="ps-4">{{ ucfirst($mes) }}</td>
                                     <td class="text-end">{{ $dinero($pre) }}</td>
                                     <td class="text-end">{{ $dinero($eje) }}</td>
                                     <td class="text-end {{ $pre - $eje < 0 ? 'text-danger' : '' }}">{{ $dinero($pre - $eje) }}</td>
-                                    <td class="text-end">{{ $pre > 0 ? round($eje / $pre * 100, 1).' %' : '—' }}</td>
+                                    <td class="text-end pe-4">{{ $pre > 0 ? round($eje / $pre * 100, 1).' %' : '—' }}</td>
                                 </tr>
                             @endforeach
                             </tbody>
@@ -91,9 +113,9 @@
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="card h-100">
+            <div class="card border border-200 shadow-none h-100">
                 <div class="card-body fs--1">
-                    <h5 class="mb-3">Detalles</h5>
+                    <h5 class="mb-3 text-1100"><span class="fas fa-info-circle text-primary me-2"></span>Detalles</h5>
                     <dl class="row mb-0">
                         <dt class="col-5 text-700">Centro</dt><dd class="col-7">{{ $p->centroCosto?->etiqueta }}</dd>
                         <dt class="col-5 text-700">Cuenta</dt><dd class="col-7">{{ $p->cuentaContable?->etiqueta }}<br><span class="text-600">{{ strtolower($p->cuentaContable?->tipo) }}</span></dd>
@@ -103,16 +125,18 @@
                         @endif
                     </dl>
                     @if ($p->estado === 'BORRADOR')
-                        <p class="text-700 mt-3 mb-0"><span class="fas fa-info-circle me-1"></span>En borrador no recibe ejecución: las órdenes aprobadas antes de aprobarlo no se le suman.</p>
+                        <div class="alert alert-soft-info border-0 fs--2 mt-3 mb-0">
+                            <span class="fas fa-info-circle me-1"></span>En borrador no recibe ejecución: las órdenes aprobadas antes de aprobarlo no se le suman.
+                        </div>
                     @endif
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card">
+    <div class="card border border-200 shadow-none">
         <div class="card-body">
-            <h5 class="mb-1">Órdenes de compra de esta partida</h5>
+            <h5 class="mb-1 text-1100"><span class="fas fa-shopping-cart text-primary me-2"></span>Órdenes de compra de esta partida</h5>
             <p class="fs--1 text-700">Líneas de órdenes aprobadas de {{ $p->anio }} con este centro y cuenta (propios de la línea o heredados del producto). Montos sin IVA.</p>
             @if ($ordenes->isEmpty())
                 <p class="text-700 fs--1 mb-0">Ninguna orden de compra ha usado esta partida.</p>
@@ -124,7 +148,7 @@
                         @foreach ($ordenes as $d)
                             <tr>
                                 <td>
-                                    @if ($yo->puede('ordenes_compra.ver'))<a href="{{ route('ordenes-compra.show', $d->id_oc) }}">{{ $d->ordenCompra->numero_oc }}</a>@else{{ $d->ordenCompra->numero_oc }}@endif
+                                    @if ($yo->puede('ordenes_compra.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('ordenes-compra.show', $d->id_oc) }}">{{ $d->ordenCompra->numero_oc }}</a>@else{{ $d->ordenCompra->numero_oc }}@endif
                                 </td>
                                 <td>{{ $d->ordenCompra->fecha_emision?->format('d/m/Y') }}</td>
                                 <td>{{ $d->producto?->nombre }}</td>

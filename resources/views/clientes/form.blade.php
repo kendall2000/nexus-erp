@@ -1,15 +1,21 @@
 @extends('layouts.app', ['titulo' => $cliente->exists ? 'Editar cliente' : 'Nuevo cliente'])
 
 @section('contenido')
-    @php $v = fn (string $campo) => old($campo, $cliente->{$campo}); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('clientes.index') }}">Clientes</a></li>
-            @if ($cliente->exists)<li class="breadcrumb-item"><a href="{{ route('clientes.show', $cliente->id_cliente) }}">{{ $cliente->razon_social }}</a></li>@endif
-            <li class="breadcrumb-item active">{{ $cliente->exists ? 'Editar' : 'Nuevo' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $cliente->exists ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
+    @php
+        $v = fn (string $campo) => old($campo, $cliente->{$campo});
+        $migas = [['label' => 'Clientes', 'url' => route('clientes.index')]];
+        if ($cliente->exists) {
+            $migas[] = ['label' => $cliente->razon_social, 'url' => route('clientes.show', $cliente->id_cliente)];
+        }
+        $migas[] = ['label' => $cliente->exists ? 'Editar' : 'Nuevo'];
+    @endphp
+
+    <x-page-header
+        :titulo="$cliente->exists ? 'Editar cliente' : 'Nuevo cliente'"
+        icono="fas fa-user-tie"
+        subtitulo="Configura los datos fiscales, ubicación y condiciones de crédito del cliente."
+        :migas="$migas"
+    />
 
     <form method="POST" action="{{ $cliente->exists ? route('clientes.update', $cliente->id_cliente) : route('clientes.store') }}" class="mb-9" style="max-width: 60rem">
         @csrf
@@ -17,9 +23,11 @@
             @method('PUT')
         @endif
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-building text-primary me-2"></span>Datos generales</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Datos generales</h5>
                 <div class="row g-3">
                     <div class="col-md-8">
                         <label class="form-label" for="razon_social">Razón social</label>
@@ -64,9 +72,11 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-map-marker-alt text-primary me-2"></span>Contacto y ubicación</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Contacto y ubicación</h5>
                 <div class="row g-3">
                     <div class="col-md-5">
                         <label class="form-label" for="email_principal">Correo</label>
@@ -100,9 +110,11 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card border border-200 shadow-none mb-4">
+            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100"><span class="fas fa-credit-card text-primary me-2"></span>Facturación y crédito</h5>
+            </div>
             <div class="card-body">
-                <h5 class="mb-3">Facturación y crédito</h5>
                 <div class="row g-3">
                     <div class="col-md-3">
                         <label class="form-label" for="moneda_facturacion">Moneda</label>
@@ -130,7 +142,7 @@
         </div>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Guardar</button>
+            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
             <a class="btn btn-phoenix-secondary" href="{{ $cliente->exists ? route('clientes.show', $cliente->id_cliente) : route('clientes.index') }}">Cancelar</a>
         </div>
     </form>

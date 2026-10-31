@@ -2,12 +2,13 @@
 
 namespace App\Models\Clientes;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Cliente extends Model
 {
-    use SoftDeletes;
+    use PerteneceAEmpresa, SoftDeletes;
 
     protected $table      = 'cliente';
     protected $primaryKey = 'id_cliente';

@@ -9,19 +9,22 @@
         $patronal = $detalles->sum(fn ($d) => (float) $d->cuota_igss_pat);
         $automaticos = \App\Support\Nomina::AUTOMATICOS;
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('nomina.index') }}">Nómina</a></li>
-            <li class="breadcrumb-item active">{{ $p->nombre }}</li>
-        </ol>
-    </nav>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $p->nombre }} <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span></h2>
+    <x-page-header
+        :titulo="$p->nombre"
+        icono="fas fa-money-check-alt"
+        :migas="[
+            ['label' => 'Nómina', 'url' => route('nomina.index')],
+            ['label' => $p->nombre],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">{{ $tipos[$p->tipo] ?? $p->tipo }} · {{ $p->fecha_inicio?->format('d/m/Y') }} – {{ $p->fecha_fin?->format('d/m/Y') }} · pago {{ $p->fecha_pago?->format('d/m/Y') }}</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($editable && $puedeProcesar)
                 <form method="POST" action="{{ route('nomina.procesar', $p->id_periodo) }}">
                     @csrf
@@ -54,23 +57,31 @@
             @if ($detalles->isNotEmpty() && $yo->puede('nomina.imprimir'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('nomina.imprimir', $p->id_periodo) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Boletas</a>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-3"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Total devengado</p><h4 class="mb-0">{{ $dinero($p->total_bruto) }}</h4></div></div></div>
-        <div class="col-sm-3"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Deducciones</p><h4 class="mb-0">{{ $dinero($p->total_deducciones) }}</h4></div></div></div>
-        <div class="col-sm-3"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Líquido a pagar</p><h4 class="mb-0">{{ $p->moneda }} {{ $dinero($p->total_neto) }}</h4></div></div></div>
-        <div class="col-sm-3"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Cuota patronal (IGSS, INTECAP, IRTRA)</p><h4 class="mb-0">{{ $dinero($patronal) }}</h4></div></div></div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Total devengado" :valor="$dinero($p->total_bruto)" icono="fas fa-coins" color="primary" :subtexto="$detalles->count().' colaborador(es)'" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Deducciones" :valor="$dinero($p->total_deducciones)" icono="fas fa-minus-circle" color="danger" subtexto="IGSS, ISR y préstamos" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Líquido a pagar" :valor="$p->moneda.' '.$dinero($p->total_neto)" icono="fas fa-wallet" color="success" :subtexto="'Pago: '.($p->fecha_pago?->format('d/m/Y') ?? '—')" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Cuota patronal (IGSS, INTECAP, IRTRA)" :valor="$dinero($patronal)" icono="fas fa-building" color="info" subtexto="Aporte patronal obligatorio" />
+        </div>
     </div>
 
     @if ($errors->ajuste->any())<div class="alert alert-soft-danger fs--1">{{ $errors->ajuste->first() }}</div>@endif
 
     @forelse ($detalles as $d)
         @php $negativo = (float) $d->liquido_pagar < 0; @endphp
-        <details class="card mb-2" @if ($errors->ajuste->any() && (int) old('id_detalle') === $d->id_detalle) open @endif>
+        <details class="card border border-200 shadow-none mb-2" @if ($errors->ajuste->any() && (int) old('id_detalle') === $d->id_detalle) open @endif>
             <summary class="card-body py-2 d-flex flex-wrap justify-content-between gap-2 fs--1" style="cursor: pointer">
-                <span><span class="fw-semi-bold">{{ $d->empleado?->nombre_completo }}</span> <span class="text-600">{{ $d->cargo_snapshot }} · {{ rtrim(rtrim(number_format((float) $d->dias_trabajados, 2), '0'), '.') }} días</span></span>
+                <span><span class="fw-semi-bold text-1000">{{ $d->empleado?->nombre_completo }}</span> <span class="text-600">{{ $d->cargo_snapshot }} · {{ rtrim(rtrim(number_format((float) $d->dias_trabajados, 2), '0'), '.') }} días</span></span>
                 <span class="text-nowrap">{{ $dinero($d->total_ingresos) }} − {{ $dinero($d->total_deducciones) }} = <strong class="{{ $negativo ? 'text-danger' : '' }}">{{ $dinero($d->liquido_pagar) }}</strong></span>
             </summary>
             <div class="card-body pt-0 fs--1">
@@ -111,12 +122,12 @@
                                 <div class="col-4"><button class="btn btn-primary btn-sm w-100" type="submit">Aplicar</button></div>
                             </form>
                         @endif
-                        @if ($yo->puede('nomina.imprimir'))<a class="d-inline-block mt-2" href="{{ route('nomina.imprimir', [$p->id_periodo, 'detalle' => $d->id_detalle]) }}" target="_blank" rel="noopener">Boleta de pago</a>@endif
+                        @if ($yo->puede('nomina.imprimir'))<a class="d-inline-block mt-2 fw-semi-bold text-decoration-none" href="{{ route('nomina.imprimir', [$p->id_periodo, 'detalle' => $d->id_detalle]) }}" target="_blank" rel="noopener"><span class="fas fa-print me-1"></span>Boleta de pago</a>@endif
                     </div>
                 </div>
             </div>
         </details>
     @empty
-        <div class="card"><div class="card-body text-700 fs--1">Todavía no se ha calculado este periodo. Usa «Calcular nómina»: incluye a los empleados con contrato vigente en estas fechas.</div></div>
+        <div class="card border border-200 shadow-none"><div class="card-body text-700 fs--1">Todavía no se ha calculado este periodo. Usa «Calcular nómina»: incluye a los empleados con contrato vigente en estas fechas.</div></div>
     @endforelse
 @endsection

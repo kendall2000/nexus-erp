@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Clientes\GuardarClienteRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Clientes\ContactoCliente;
 use App\Models\Clientes\Industria;
@@ -83,13 +84,9 @@ class ClienteController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarClienteRequest $request): RedirectResponse
     {
-        $cliente = Cliente::create($this->validar($request) + [
-            'id_empresa' => $request->user()->id_empresa,
-            'created_by' => $request->user()->id_usuario,
-            'updated_by' => $request->user()->id_usuario,
-        ]);
+        $cliente = Cliente::create($request->datosLimpios() + $this->selloCreacion($request));
 
         return redirect()->route('clientes.show', $cliente->id_cliente)->with('status', "Cliente «{$cliente->razon_social}» creado.");
     }
@@ -99,10 +96,10 @@ class ClienteController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->with('municipio')->findOrFail($cliente));
     }
 
-    public function update(Request $request, int $cliente): RedirectResponse
+    public function update(GuardarClienteRequest $request, int $cliente): RedirectResponse
     {
         $cliente = $this->deMiEmpresa($request)->findOrFail($cliente);
-        $cliente->update($this->validar($request, $cliente) + ['updated_by' => $request->user()->id_usuario]);
+        $cliente->update($request->datosLimpios() + $this->selloActualizacion($request));
 
         return redirect()->route('clientes.show', $cliente->id_cliente)->with('status', "Cliente «{$cliente->razon_social}» actualizado.");
     }
@@ -213,7 +210,7 @@ class ClienteController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Cliente::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Cliente::class, $request);
     }
 
     /** NIT sin espacios ni guiones y en mayúsculas («1234567-8» → «12345678»); vacío → null. */

@@ -2,16 +2,19 @@
 
 @section('contenido')
     @php $cantidad = fn ($n) => rtrim(rtrim(number_format((float) $n, 4), '0'), '.'); @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('recepciones.index') }}">Recepciones</a></li>
-            <li class="breadcrumb-item active">Nueva</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">Nueva recepción</h2>
+
+    <x-page-header
+        titulo="Nueva recepción"
+        icono="fas fa-truck-loading"
+        subtitulo="Registra el ingreso físico de mercadería a bodega y actualiza automáticamente el kardex."
+        :migas="[
+            ['label' => 'Recepciones', 'url' => route('recepciones.index')],
+            ['label' => 'Nueva'],
+        ]"
+    />
 
     {{-- Paso 1: elegir la orden --}}
-    <div class="card mb-4">
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body">
             @if ($ordenes->isEmpty())
                 <p class="mb-0 text-700"><span class="fas fa-info-circle me-2"></span>No hay órdenes aprobadas con mercadería pendiente. Primero aprueba una orden de compra.</p>
@@ -40,7 +43,7 @@
             <input type="hidden" name="id_oc" value="{{ $oc->id_oc }}" />
             @error('id_oc')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
 
-            <div class="card mb-4">
+            <div class="card border border-200 shadow-none mb-4">
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-3">
@@ -68,7 +71,7 @@
                 </div>
             </div>
 
-            <div class="card mb-4">
+            <div class="card border border-200 shadow-none mb-4">
                 <div class="card-body">
                     @error('lineas')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
                     <div class="table-responsive">

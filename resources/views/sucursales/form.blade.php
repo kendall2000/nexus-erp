@@ -1,15 +1,17 @@
 @extends('layouts.app', ['titulo' => $sucursal->exists ? 'Editar sucursal' : 'Nueva sucursal'])
 
 @section('contenido')
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('sucursales.index') }}">Sucursales</a></li>
-            <li class="breadcrumb-item active">{{ $sucursal->exists ? $sucursal->nombre : 'Nueva' }}</li>
-        </ol>
-    </nav>
-    <h2 class="mb-4 text-1100">{{ $sucursal->exists ? 'Editar sucursal' : 'Nueva sucursal' }}</h2>
+    <x-page-header
+        :titulo="$sucursal->exists ? 'Editar sucursal' : 'Nueva sucursal'"
+        icono="fas fa-store-alt"
+        subtitulo="Define sedes operativas, ubicación geográfica y condición de casa matriz."
+        :migas="[
+            ['label' => 'Sucursales', 'url' => route('sucursales.index')],
+            ['label' => $sucursal->exists ? $sucursal->nombre : 'Nueva'],
+        ]"
+    />
 
-    <div class="card" style="max-width: 48rem">
+    <div class="card border border-200 shadow-none" style="max-width: 48rem">
         <div class="card-body">
             <form method="POST" action="{{ $sucursal->exists ? route('sucursales.update', $sucursal->id_sucursal) : route('sucursales.store') }}">
                 @csrf
@@ -63,7 +65,7 @@
                     <label class="form-check-label" for="activo">Activa</label>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Guardar</button>
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar</button>
                     <a class="btn btn-phoenix-secondary" href="{{ route('sucursales.index') }}">Cancelar</a>
                 </div>
             </form>

@@ -7,22 +7,29 @@
         $puedeAprobar = $yo->puede('asistencia.aprobar');
         $cantidad = fn ($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.');
     @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Asistencia</h2>
-            <p class="text-700 fw-semi-bold mb-0">Registro diario (entrada a las {{ $horaEntrada }}) y solicitudes de ausencia. Nómina descuenta las ausencias y trae las horas extra.</p>
-        </div>
-        <form method="GET" class="d-flex gap-2">
-            <a class="btn btn-phoenix-primary btn-sm text-nowrap" href="{{ route('rotativos.index') }}"><span class="fas fa-people-arrows me-1"></span>Personal rotativo</a>
-            <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->subDay()->toDateString()]) }}" title="Día anterior"><span class="fas fa-chevron-left"></span></a>
-            <input class="form-control form-control-sm" type="date" name="fecha" value="{{ $fecha->toDateString() }}" max="{{ today()->toDateString() }}" onchange="this.form.submit()" />
-            @if ($fecha->lt(today()))<a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->addDay()->toDateString()]) }}" title="Día siguiente"><span class="fas fa-chevron-right"></span></a>@endif
-        </form>
-    </div>
 
-    <div class="card mb-4">
+    <x-page-header
+        titulo="Asistencia"
+        icono="fas fa-user-clock"
+        :subtitulo="'Registro diario (entrada a las '.$horaEntrada.') y solicitudes de ausencia. Nómina descuenta las ausencias y trae las horas extra.'"
+        :migas="[
+            ['label' => 'Recursos Humanos'],
+            ['label' => 'Asistencia'],
+        ]"
+    >
+        <x-slot:acciones>
+            <form method="GET" class="d-flex gap-2">
+                <a class="btn btn-phoenix-primary btn-sm text-nowrap" href="{{ route('rotativos.index') }}"><span class="fas fa-people-arrows me-1"></span>Personal rotativo</a>
+                <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->subDay()->toDateString()]) }}" title="Día anterior"><span class="fas fa-chevron-left"></span></a>
+                <input class="form-control form-control-sm" type="date" name="fecha" value="{{ $fecha->toDateString() }}" max="{{ today()->toDateString() }}" onchange="this.form.submit()" />
+                @if ($fecha->lt(today()))<a class="btn btn-phoenix-secondary btn-sm" href="{{ route('asistencia.index', ['fecha' => $fecha->copy()->addDay()->toDateString()]) }}" title="Día siguiente"><span class="fas fa-chevron-right"></span></a>@endif
+            </form>
+        </x-slot:acciones>
+    </x-page-header>
+
+    <div class="card border border-200 shadow-none mb-4">
         <div class="card-body">
-            <h5 class="mb-3">{{ ucfirst(['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][$fecha->dayOfWeek]) }} {{ $fecha->format('d/m/Y') }}
+            <h5 class="mb-3 text-1100">{{ ucfirst(['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][$fecha->dayOfWeek]) }} {{ $fecha->format('d/m/Y') }}
                 @if ($fecha->isWeekend())<span class="badge badge-phoenix badge-phoenix-secondary fs--2 align-middle">Fin de semana</span>@endif</h5>
             @if ($empleados->isEmpty())
                 <p class="text-700 fs--1 mb-0">No hay empleados activos en esta fecha.</p>
@@ -60,7 +67,7 @@
                     </div>
                     @if ($puedeEditar)
                         <div class="d-flex gap-2 align-items-center">
-                            <button class="btn btn-primary" type="submit">Guardar asistencia del día</button>
+                            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar asistencia del día</button>
                             <button class="btn btn-phoenix-secondary" type="button" id="todos-presentes">Marcar pendientes como presentes</button>
                         </div>
                     @endif
@@ -69,10 +76,10 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card border border-200 shadow-none">
         <div class="card-body fs--1">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Solicitudes de ausencia</h5>
+                <h5 class="mb-0 text-1100"><span class="fas fa-calendar-minus text-primary me-2"></span>Solicitudes de ausencia</h5>
                 @if ($puedeEditar)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nueva-solicitud">Nueva solicitud</button>@endif
             </div>
             @if ($puedeEditar)

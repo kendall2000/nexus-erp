@@ -7,37 +7,40 @@
         $dinero = fn ($n) => number_format((float) $n, 2);
         $cerrada = $o->etapa?->es_ganada || $o->etapa?->es_perdida;
     @endphp
-    <nav class="mb-2" aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('oportunidades.index') }}">Oportunidades</a></li>
-            <li class="breadcrumb-item active">{{ $o->nombre }}</li>
-        </ol>
-    </nav>
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">{{ $o->nombre }}
-                <span class="badge fs--1 align-middle" style="background: {{ $o->etapa?->color_hex ?? '#94A3B8' }}">{{ $o->etapa?->nombre }}</span></h2>
+
+    <x-page-header
+        :titulo="$o->nombre"
+        icono="fas fa-funnel-dollar"
+        :migas="[
+            ['label' => 'Oportunidades', 'url' => route('oportunidades.index')],
+            ['label' => $o->nombre],
+        ]"
+    >
+        <x-slot:insignia>
+            <span class="badge fs--1 align-middle" style="background: {{ $o->etapa?->color_hex ?? '#94A3B8' }}">{{ $o->etapa?->nombre }}</span>
+        </x-slot:insignia>
+        <x-slot:subtituloSlot>
             <p class="text-700 mb-0">
                 @if ($o->cliente)
-                    @if ($yo->puede('clientes.ver'))<a href="{{ route('clientes.show', $o->id_cliente) }}">{{ $o->cliente->razon_social }}</a>@else{{ $o->cliente->razon_social }}@endif
+                    @if ($yo->puede('clientes.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('clientes.show', $o->id_cliente) }}">{{ $o->cliente->razon_social }}</a>@else{{ $o->cliente->razon_social }}@endif
                 @elseif ($o->prospecto)
-                    Prospecto: @if ($yo->puede('prospectos.ver'))<a href="{{ route('prospectos.show', $o->id_prospecto) }}">{{ $o->prospecto->nombre_empresa }}</a>@else{{ $o->prospecto->nombre_empresa }}@endif
+                    Prospecto: @if ($yo->puede('prospectos.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('prospectos.show', $o->id_prospecto) }}">{{ $o->prospecto->nombre_empresa }}</a>@else{{ $o->prospecto->nombre_empresa }}@endif
                 @endif
                 · {{ $o->responsable?->nombre_completo }}
             </p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
+        </x-slot:subtituloSlot>
+        <x-slot:acciones>
             @if ($o->etapa?->es_ganada && $o->id_cliente && $yo->puede('contratos.crear'))
                 <a class="btn btn-success" href="{{ route('contratos.create', ['cliente' => $o->id_cliente]) }}"><span class="fas fa-file-contract me-2"></span>Registrar contrato</a>
             @endif
             @if ($puedeEditar)
                 <a class="btn btn-phoenix-secondary" href="{{ route('oportunidades.edit', $o->id_oportunidad) }}"><span class="fas fa-pen me-2"></span>Editar</a>
             @endif
-        </div>
-    </div>
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($puedeEditar)
-        <div class="card mb-4"><div class="card-body py-3">
+        <div class="card border border-200 shadow-none mb-4"><div class="card-body py-3">
             <form method="POST" action="{{ route('oportunidades.mover', $o->id_oportunidad) }}" class="row g-2 align-items-center">
                 @csrf
                 @method('PATCH')
@@ -54,16 +57,22 @@
     @endif
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Valor estimado</p><h3 class="mb-0">{{ $o->moneda }} {{ $dinero($o->valor_estimado) }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">Probabilidad · ponderado</p><h3 class="mb-0">{{ $o->probabilidad }} % · {{ $dinero((float) $o->valor_estimado * $o->probabilidad / 100) }}</h3></div></div></div>
-        <div class="col-sm-4"><div class="card h-100"><div class="card-body py-3"><p class="fs--1 text-700 mb-1">{{ $cerrada ? 'Cerrada el' : 'Cierre estimado' }}</p><h3 class="mb-0">{{ ($o->fecha_cierre_real ?? $o->fecha_cierre_estimada)?->format('d/m/Y') ?? '—' }}</h3>@if ($o->razon_cierre)<p class="fs--2 text-700 mb-0">{{ $o->razon_cierre }}</p>@endif</div></div></div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Valor estimado" :valor="$o->moneda.' '.$dinero($o->valor_estimado)" icono="fas fa-dollar-sign" color="primary" :subtexto="'Línea: '.($o->lineaNegocio?->nombre ?? '—')" />
+        </div>
+        <div class="col-sm-4">
+            <x-stat-card etiqueta="Probabilidad · ponderado" :valor="$o->probabilidad.' % · '.$dinero((float) $o->valor_estimado * $o->probabilidad / 100)" icono="fas fa-percentage" color="info" :subtexto="'Etapa: '.($o->etapa?->nombre ?? '—')" />
+        </div>
+        <div class="col-sm-4">
+            <x-stat-card :etiqueta="$cerrada ? 'Cerrada el' : 'Cierre estimado'" :valor="($o->fecha_cierre_real ?? $o->fecha_cierre_estimada)?->format('d/m/Y') ?? '—'" icono="fas fa-calendar-check" color="success" :subtexto="$o->razon_cierre ?: null" />
+        </div>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card"><div class="card-body fs--1">
+            <div class="card border border-200 shadow-none"><div class="card-body fs--1">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">Propuestas</h5>
+                    <h5 class="mb-0 text-1100"><span class="fas fa-file-signature text-primary me-2"></span>Propuestas</h5>
                     @if ($puedeEditar && ! $cerrada)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nueva-propuesta">Nueva propuesta</button>@endif
                 </div>
                 @if ($puedeEditar && ! $cerrada)
@@ -110,8 +119,8 @@
             </div></div>
         </div>
         <div class="col-lg-4">
-            <div class="card"><div class="card-body fs--1">
-                <h5 class="mb-3">Detalles</h5>
+            <div class="card border border-200 shadow-none"><div class="card-body fs--1">
+                <h5 class="mb-3 text-1100"><span class="fas fa-info-circle text-primary me-2"></span>Detalles</h5>
                 <dl class="row mb-0">
                     <dt class="col-5 text-700">Línea</dt><dd class="col-7">{{ $o->lineaNegocio?->nombre ?? '—' }}</dd>
                     <dt class="col-5 text-700">Competidores</dt><dd class="col-7">{{ $o->competidores ?? '—' }}</dd>

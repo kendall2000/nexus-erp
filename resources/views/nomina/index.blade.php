@@ -2,19 +2,26 @@
 
 @section('contenido')
     @php $yo = auth()->user(); $puedeProcesar = $yo->puede('nomina.procesar'); @endphp
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-            <h2 class="mb-1 text-1100">Nómina</h2>
-            <p class="text-700 fw-semi-bold mb-0">Periodos de pago: salario proporcional, bonificación incentivo, IGSS, ISR y préstamos.</p>
-        </div>
-        @if ($puedeProcesar)
-            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#nuevo-periodo" aria-expanded="{{ $errors->any() && ! $errors->prestamo->any() ? 'true' : 'false' }}"><span class="fas fa-plus me-2"></span>Nuevo periodo</button>
-        @endif
-    </div>
+
+    <x-page-header
+        titulo="Nómina"
+        icono="fas fa-money-check-alt"
+        subtitulo="Periodos de pago: salario proporcional, bonificación incentivo, IGSS, ISR y préstamos."
+        :migas="[
+            ['label' => 'Recursos Humanos'],
+            ['label' => 'Nómina'],
+        ]"
+    >
+        <x-slot:acciones>
+            @if ($puedeProcesar)
+                <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#nuevo-periodo" aria-expanded="{{ $errors->any() && ! $errors->prestamo->any() ? 'true' : 'false' }}"><span class="fas fa-plus me-2"></span>Nuevo periodo</button>
+            @endif
+        </x-slot:acciones>
+    </x-page-header>
 
     @if ($puedeProcesar)
         <div class="collapse {{ $errors->any() && ! $errors->prestamo->any() ? 'show' : '' }} mb-4" id="nuevo-periodo">
-            <div class="card"><div class="card-body">
+            <div class="card border border-200 shadow-none"><div class="card-body">
                 <form method="POST" action="{{ route('nomina.store') }}" class="row g-2 align-items-end">
                     @csrf
                     <div class="col-md-2">
@@ -36,37 +43,40 @@
         </div>
     @endif
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm fs--1 mb-3 align-middle">
-                    <thead><tr><th>Periodo</th><th>Fechas</th><th class="text-end">Empleados</th><th class="text-end">Bruto</th><th class="text-end">Deducciones</th><th class="text-end">Líquido</th><th>Estado</th></tr></thead>
-                    <tbody>
-                    @forelse ($periodos as $p)
-                        @php [$nombreEstado, $color] = $estados[$p->estado] ?? [$p->estado, 'secondary']; @endphp
-                        <tr>
-                            <td><a class="fw-semi-bold" href="{{ route('nomina.show', $p->id_periodo) }}">{{ $p->nombre }}</a><span class="d-block fs--2 text-600">{{ $tipos[$p->tipo] ?? $p->tipo }}</span></td>
-                            <td class="text-nowrap">{{ $p->fecha_inicio?->format('d/m/Y') }} – {{ $p->fecha_fin?->format('d/m/Y') }}<span class="d-block fs--2 text-600">pago {{ $p->fecha_pago?->format('d/m/Y') }}</span></td>
-                            <td class="text-end">{{ $p->detalles_count }}</td>
-                            <td class="text-end">{{ number_format((float) $p->total_bruto, 2) }}</td>
-                            <td class="text-end">{{ number_format((float) $p->total_deducciones, 2) }}</td>
-                            <td class="text-end fw-semi-bold">{{ $p->moneda }} {{ number_format((float) $p->total_neto, 2) }}</td>
-                            <td><span class="badge badge-phoenix badge-phoenix-{{ $color }}">{{ $nombreEstado }}</span></td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="text-center text-700 py-4">Todavía no hay periodos de nómina.</td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-            {{ $periodos->links('pagination::bootstrap-5') }}
-        </div>
+    <div class="mb-4">
+        <x-phoenix-table :paginator="$periodos">
+            <x-slot:head>
+                <tr>
+                    <th>Periodo</th>
+                    <th>Fechas</th>
+                    <th class="text-end">Empleados</th>
+                    <th class="text-end">Bruto</th>
+                    <th class="text-end">Deducciones</th>
+                    <th class="text-end">Líquido</th>
+                    <th>Estado</th>
+                </tr>
+            </x-slot:head>
+            @forelse ($periodos as $p)
+                @php [$nombreEstado, $color] = $estados[$p->estado] ?? [$p->estado, 'secondary']; @endphp
+                <tr>
+                    <td><a class="fw-semi-bold text-decoration-none" href="{{ route('nomina.show', $p->id_periodo) }}">{{ $p->nombre }}</a><span class="d-block fs--2 text-600">{{ $tipos[$p->tipo] ?? $p->tipo }}</span></td>
+                    <td class="text-nowrap">{{ $p->fecha_inicio?->format('d/m/Y') }} – {{ $p->fecha_fin?->format('d/m/Y') }}<span class="d-block fs--2 text-600">pago {{ $p->fecha_pago?->format('d/m/Y') }}</span></td>
+                    <td class="text-end">{{ $p->detalles_count }}</td>
+                    <td class="text-end">{{ number_format((float) $p->total_bruto, 2) }}</td>
+                    <td class="text-end">{{ number_format((float) $p->total_deducciones, 2) }}</td>
+                    <td class="text-end fw-semi-bold">{{ $p->moneda }} {{ number_format((float) $p->total_neto, 2) }}</td>
+                    <td><span class="badge badge-phoenix badge-phoenix-{{ $color }}">{{ $nombreEstado }}</span></td>
+                </tr>
+            @empty
+                <tr><td colspan="7" class="text-center text-700 py-4">Todavía no hay periodos de nómina.</td></tr>
+            @endforelse
+        </x-phoenix-table>
     </div>
 
-    <div class="card">
+    <div class="card border border-200 shadow-none">
         <div class="card-body fs--1">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Préstamos activos</h5>
+                <h5 class="mb-0 text-1100"><span class="fas fa-hand-holding-usd text-primary me-2"></span>Préstamos activos</h5>
                 @if ($puedeProcesar)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nuevo-prestamo">Registrar préstamo</button>@endif
             </div>
             @if ($puedeProcesar)
