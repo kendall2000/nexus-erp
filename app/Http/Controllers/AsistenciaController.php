@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Core\Empresa;
 use App\Models\RRHH\Asistencia;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\SolicitudAusencia;
+use App\Support\ExportarCsv;
+use App\Support\Prestaciones;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Asistencia diaria y solicitudes de ausencia. Permisos: asistencia.ver / editar (registrar asistencia y
@@ -45,11 +50,21 @@ class AsistenciaController extends Controller
         $empleados = $this->empleados($request, $fecha)->get();
         $registros = Asistencia::query()->where('id_empresa', $this->idEmpresa($request))->whereDate('fecha', $fecha)->get()->keyBy('id_empleado');
         $mes = $fecha->copy()->startOfMonth();
+        $saldos = $this->saldosVacaciones($request);
 
         return view('asistencia.index', [
             'fecha' => $fecha,
             'empleados' => $empleados,
             'registros' => $registros,
+            'saldos' => $saldos,
+            'kpis' => [
+                'presentes' => $registros->whereIn('estado', ['PRESENTE', 'TARDE'])->count(),
+                'ausentes' => $registros->where('estado', 'AUSENTE')->count(),
+                'vacaciones' => $registros->where('estado', 'VACACIONES')->count(),
+                'pendientes' => SolicitudAusencia::query()->whereIn('id_empleado', $this->todosLosEmpleados($request))->where('estado', 'PENDIENTE')->count(),
+                'dias_disponibles' => round($saldos->sum(fn ($s) => $s['saldo']['disponible']), 2),
+                'pasivo' => round($saldos->sum(fn ($s) => $s['saldo']['valor_estimado']), 2),
+            ],
             'resumen' => Asistencia::query()->where('id_empresa', $this->idEmpresa($request))->whereBetween('fecha', [$mes, $mes->copy()->endOfMonth()])
                 ->selectRaw("id_empleado, SUM(CASE WHEN estado IN ('PRESENTE','TARDE') THEN 1 ELSE 0 END) as presentes, SUM(CASE WHEN estado = 'TARDE' THEN 1 ELSE 0 END) as tardes,
                     SUM(CASE WHEN estado = 'AUSENTE' THEN 1 ELSE 0 END) as ausencias, SUM(minutos_tarde) as minutos, SUM(horas_extra) as extras")
@@ -158,6 +173,29 @@ class AsistenciaController extends Controller
         });
     }
 
+    /** Saldos de vacaciones del personal vigente en CSV. */
+    public function exportarVacaciones(Request $request): StreamedResponse
+    {
+        return ExportarCsv::descargar('saldos_vacaciones', ['Código', 'Empleado', 'Ingreso', 'Días de servicio', 'Devengado', 'Gozados', 'En aprobación', 'Disponible', 'Salario diario', 'Valor estimado'],
+            $this->saldosVacaciones($request)->map(fn ($s) => [
+                $s['empleado']->codigo_empleado, $s['empleado']->nombre_completo, $s['empleado']->fecha_ingreso?->format('d/m/Y'), $s['saldo']['dias_servicio'],
+                $s['saldo']['devengado'], $s['saldo']['gozados'], $s['saldo']['pendientes'], $s['saldo']['disponible'], $s['saldo']['salario_diario'], $s['saldo']['valor_estimado'],
+            ]));
+    }
+
+    /** Constancia imprimible de una solicitud de vacaciones o permiso. */
+    public function constancia(Request $request, int $solicitud): View
+    {
+        $s = SolicitudAusencia::query()->whereIn('id_empleado', $this->todosLosEmpleados($request))->with(['empleado.cargo', 'empleado.departamento', 'aprobadoPor'])->findOrFail($solicitud);
+
+        return view('asistencia.constancia', [
+            's' => $s,
+            'empresa' => Empresa::find($this->idEmpresa($request)),
+            'tipos' => self::TIPOS_AUSENCIA,
+            'saldo' => $s->tipo === 'VACACIONES' && $s->empleado ? Prestaciones::saldoVacaciones($s->empleado) : null,
+        ]);
+    }
+
     /** Crea o actualiza el registro del empleado en ese día (uno por día). */
     private static function guardarDia(int $idEmpleado, Carbon $dia, array $datos): void
     {
@@ -173,6 +211,15 @@ class AsistenciaController extends Controller
     }
 
     // ── Privados ─────────────────────────────────────────────────────────
+
+    /** Saldo de vacaciones de cada empleado vigente (15 días por año; gozados = solicitudes aprobadas). */
+    private function saldosVacaciones(Request $request): Collection
+    {
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', '!=', 'BAJA')
+            ->with(['contratos', 'solicitudesAusencia' => fn ($q) => $q->where('tipo', 'VACACIONES')])
+            ->orderBy('primer_nombre')->orderBy('primer_apellido')->get()
+            ->map(fn ($e) => ['empleado' => $e, 'saldo' => Prestaciones::saldoVacaciones($e)]);
+    }
 
     /** Empleados que trabajaban en esa fecha (ingresados y sin baja anterior). */
     private function empleados(Request $request, Carbon $fecha): Builder

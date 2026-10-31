@@ -74,6 +74,28 @@
         </div>
     @endif
 
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Pasivo laboral acumulado" :valor="$dinero($pasivo['totales']['total'])" icono="fas fa-balance-scale" color="danger" :subtexto="count($pasivo['filas']).' colaborador(es) al '.today()->format('d/m/Y')" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Aguinaldo + Bono 14 devengados" :valor="$dinero($pasivo['totales']['aguinaldo'] + $pasivo['totales']['bono14'])" icono="fas fa-gift" color="primary" subtexto="Proporcional al periodo en curso" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card :etiqueta="'Por pagar '.$anio" :valor="$dinero(($totales['CALCULADO'] ?? 0) + ($totales['APROBADO'] ?? 0))" icono="fas fa-hourglass-half" color="warning" :subtexto="'Aprobado: '.$dinero($totales['APROBADO'] ?? 0)" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card :etiqueta="'Pagado '.$anio" :valor="$dinero($totales['PAGADO'] ?? 0)" icono="fas fa-check-circle" color="success" subtexto="Aguinaldo, bono 14 y liquidaciones" />
+        </div>
+    </div>
+
+    <ul class="nav nav-underline mb-3" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-calculos" role="tab"><span class="fas fa-calculator me-1"></span>Cálculos y liquidaciones</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-pasivo" role="tab"><span class="fas fa-balance-scale me-1"></span>Pasivo laboral acumulado</a></li>
+    </ul>
+
+    <div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-calculos" role="tabpanel">
     <form method="GET" class="row g-2 mb-3">
         <div class="col-auto"><input class="form-control form-control-sm" type="number" name="anio" min="2000" max="2100" value="{{ $anio }}" title="Año" style="width: 6rem" /></div>
         <div class="col-auto"><select class="form-select form-select-sm" name="tipo"><option value="">Todas las prestaciones</option>@foreach ($tipos as $k => $n)<option value="{{ $k }}" @selected(($filtros['tipo'] ?? '') === $k)>{{ $n }}</option>@endforeach</select></div>
@@ -101,6 +123,9 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                     <h5 class="mb-0 text-1100">{{ $titulo }} <span class="text-700 fw-normal fs--1">· {{ $liquidacion ? $grupo->count().' conceptos' : $grupo->count().' empleados' }} · {{ $dinero($grupo->sum('monto_calculado')) }}</span></h5>
                     <div class="d-flex flex-wrap gap-2">
+                        @if ($liquidacion)
+                            <a class="btn btn-phoenix-secondary btn-sm" href="{{ route('prestaciones.finiquito', [$primera->id_empleado, $primera->periodo_calculo]) }}" target="_blank" rel="noopener"><span class="fas fa-print me-1"></span>Finiquito</a>
+                        @endif
                         @if ($puedeAprobar && $grupo->contains('estado', 'CALCULADO'))
                             <form method="POST" action="{{ route('prestaciones.lote.aprobar') }}">
                                 @csrf
@@ -168,6 +193,46 @@
     @empty
         <div class="card border border-200 shadow-none"><div class="card-body text-700 fs--1">No hay prestaciones de {{ $anio }} con esos filtros.{{ $puedeProcesar ? ' Usa «Calcular aguinaldo o bono 14» o «Liquidar empleado».' : '' }}</div></div>
     @endforelse
+    </div>
+
+    <div class="tab-pane fade" id="tab-pasivo" role="tabpanel">
+        <div class="card border border-200 shadow-none"><div class="card-body fs--1">
+            <h5 class="mb-1 text-1100"><span class="fas fa-balance-scale text-primary me-2"></span>Pasivo laboral al {{ today()->format('d/m/Y') }}</h5>
+            <p class="text-600 mb-3">Lo que la empresa debería si hoy terminara la relación laboral de cada colaborador: aguinaldo (desde el 1 de diciembre), bono 14 (desde el 1 de julio), vacaciones disponibles e indemnización (salario × 14/12 por año).</p>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead><tr><th>Empleado</th><th class="text-end">Salario</th><th class="text-end">Aguinaldo</th><th class="text-end">Bono 14</th><th class="text-end">Vacaciones</th><th class="text-end">Indemnización</th><th class="text-end">Total</th></tr></thead>
+                    <tbody>
+                    @forelse ($pasivo['filas'] as $f)
+                        <tr>
+                            <td><a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.show', $f['empleado']->id_empleado) }}">{{ $f['empleado']->nombre_completo }}</a>
+                                <span class="d-block fs--2 text-600">{{ $f['empleado']->cargo?->nombre ?? 'Sin cargo' }} · {{ $f['dias_servicio'] }} días de servicio</span></td>
+                            <td class="text-end">{{ $dinero($f['salario']) }}</td>
+                            <td class="text-end">{{ $dinero($f['aguinaldo']) }}<span class="d-block fs--2 text-600">{{ $f['dias_aguinaldo'] }} días</span></td>
+                            <td class="text-end">{{ $dinero($f['bono14']) }}<span class="d-block fs--2 text-600">{{ $f['dias_bono14'] }} días</span></td>
+                            <td class="text-end">{{ $dinero($f['vacaciones_monto']) }}<span class="d-block fs--2 text-600">{{ $cantidad($f['vacaciones_dias']) }} días</span></td>
+                            <td class="text-end">{{ $dinero($f['indemnizacion']) }}</td>
+                            <td class="text-end fw-bold">{{ $dinero($f['total']) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="text-center text-700 py-4">No hay colaboradores activos con contrato.</td></tr>
+                    @endforelse
+                    </tbody>
+                    @if ($pasivo['filas'])
+                        <tfoot class="fw-bold border-top border-300"><tr>
+                            <td colspan="2">Total</td>
+                            <td class="text-end">{{ $dinero($pasivo['totales']['aguinaldo']) }}</td>
+                            <td class="text-end">{{ $dinero($pasivo['totales']['bono14']) }}</td>
+                            <td class="text-end">{{ $dinero($pasivo['totales']['vacaciones']) }}</td>
+                            <td class="text-end">{{ $dinero($pasivo['totales']['indemnizacion']) }}</td>
+                            <td class="text-end">{{ $dinero($pasivo['totales']['total']) }}</td>
+                        </tr></tfoot>
+                    @endif
+                </table>
+            </div>
+        </div></div>
+    </div>
+    </div>
 @endsection
 
 @push('scripts')

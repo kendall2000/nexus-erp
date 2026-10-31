@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Core\Empresa;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PrestacionLaboral;
 use App\Support\ExportarCsv;
@@ -31,6 +32,7 @@ class PrestacionController extends Controller
 
         return view('prestaciones.index', [
             'anio' => $this->anio($request),
+            'pasivo' => Prestaciones::pasivoAcumulado($this->idEmpresa($request)),
             // Un grupo por prestación anual (tipo + año) y uno por liquidación (empleado + fecha de salida).
             'grupos' => $prestaciones->groupBy(fn ($p) => $this->esLiquidacion($p) ? $p->periodo_calculo.'|'.$p->id_empleado : $p->tipo.'|'.$p->periodo_calculo)
                 ->sortKeys(),
@@ -50,6 +52,25 @@ class PrestacionController extends Controller
         return ExportarCsv::descargar('prestaciones', ['Empleado', 'Código', 'Prestación', 'Periodo', 'Días', 'Base', 'Monto', 'Estado', 'Fecha de pago'],
             $prestaciones->map(fn ($p) => [$p->empleado?->nombre_completo, $p->empleado?->codigo_empleado, Prestaciones::TIPOS[$p->tipo] ?? $p->tipo, $p->periodo_calculo,
                 (float) $p->dias_calculados, (float) $p->monto_base, (float) $p->monto_calculado, self::ESTADOS[$p->estado][0] ?? $p->estado, $p->fecha_pago?->format('d/m/Y')]));
+    }
+
+    /** Finiquito laboral imprimible de una liquidación (empleado + LIQ-AAAAMMDD). */
+    public function finiquito(Request $request, int $empleado, string $periodo): View
+    {
+        abort_unless(preg_match('/^'.preg_quote(Prestaciones::PREFIJO_LIQUIDACION, '/').'\d{8}$/', $periodo) === 1, 404);
+        $lineas = $this->deMiEmpresa($request)->where('id_empleado', $empleado)->where('periodo_calculo', $periodo)->orderBy('tipo')->get();
+        abort_if($lineas->isEmpty(), 404);
+        $e = Empleado::query()->with(['cargo', 'departamento'])->findOrFail($empleado);
+
+        return view('prestaciones.finiquito', [
+            'e' => $e,
+            'lineas' => $lineas,
+            'salida' => Carbon::createFromFormat('Ymd', substr($periodo, strlen(Prestaciones::PREFIJO_LIQUIDACION)))->startOfDay(),
+            'periodo' => $periodo,
+            'empresa' => Empresa::find($this->idEmpresa($request)),
+            'tipos' => Prestaciones::TIPOS,
+            'estados' => self::ESTADOS,
+        ]);
     }
 
     /** Aguinaldo o bono 14 del año para toda la planilla. Recalcular conserva lo aprobado o pagado. */

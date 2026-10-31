@@ -26,6 +26,28 @@
         @endif
     </x-page-header>
 
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Colaboradores activos" :valor="$kpis['activos']" icono="fas fa-user-check" color="success" :subtexto="$kpis['vigentes'].' vigentes (incluye vacaciones y licencias)'" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Ingresos del mes" :valor="$kpis['ingresos_mes']" icono="fas fa-user-plus" color="primary" :subtexto="ucfirst(\App\Models\Finanzas\PresupuestoAnual::MESES[now()->month] ?? '').' '.now()->year" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Contratos por vencer" :valor="$kpis['por_vencer']" icono="fas fa-file-contract" color="warning" :alerta="$kpis['por_vencer'] > 0" subtexto="En los próximos 30 días" />
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <x-stat-card etiqueta="Cabezas de área" :valor="$kpis['cabezas']" icono="fas fa-sitemap" color="info" subtexto="Sin jefe inmediato asignado" />
+        </div>
+    </div>
+
+    <ul class="nav nav-underline mb-3" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-listado" role="tab"><span class="fas fa-list me-1"></span>Listado de personal</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-organigrama" role="tab"><span class="fas fa-sitemap me-1"></span>Organigrama</a></li>
+    </ul>
+
+    <div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-listado" role="tabpanel">
     <div class="mb-4">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-md-5">
@@ -113,4 +135,37 @@
             </tbody>
         </table>
     </x-phoenix-table>
+    </div>
+
+    <div class="tab-pane fade" id="tab-organigrama" role="tabpanel">
+        <div class="card border border-200 shadow-none"><div class="card-body">
+            <p class="fs--1 text-600 mb-3">Construido a partir del jefe inmediato de cada colaborador vigente. Asigna el jefe en la ficha del empleado para completar la estructura.</p>
+            @if ($organigrama)
+                <div class="organigrama scrollbar">
+                    <ul>
+                        @foreach ($organigrama as $nodo)
+                            @include('empleados.organigrama-nodo', ['nodo' => $nodo])
+                        @endforeach
+                    </ul>
+                </div>
+            @else
+                <p class="text-700 fs--1 mb-0">Todavía no hay colaboradores vigentes.</p>
+            @endif
+        </div></div>
+    </div>
+    </div>
 @endsection
+
+@push('estilos')
+    <style>
+        .organigrama { overflow-x: auto; }
+        .organigrama ul { list-style: none; margin: 0; padding-left: 1.75rem; position: relative; }
+        .organigrama > ul { padding-left: 0; }
+        .organigrama li.org-nodo { position: relative; padding: .35rem 0 .35rem 1rem; }
+        .organigrama ul ul li.org-nodo::before { content: ''; position: absolute; left: -0.75rem; top: 0; bottom: 0; border-left: 2px solid var(--phoenix-gray-300, #cbd0dd); }
+        .organigrama ul ul li.org-nodo:last-child::before { bottom: 50%; }
+        .organigrama ul ul li.org-nodo::after { content: ''; position: absolute; left: -0.75rem; top: 50%; width: 1.5rem; border-top: 2px solid var(--phoenix-gray-300, #cbd0dd); }
+        .organigrama .org-tarjeta { border: 1px solid var(--phoenix-gray-200, #e3e6ed); border-radius: .5rem; padding: .4rem .75rem; background: var(--phoenix-white, #fff); }
+        .organigrama .org-tarjeta:hover { border-color: var(--phoenix-primary, #3874ff); }
+    </style>
+@endpush

@@ -51,16 +51,47 @@
     </x-page-header>
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-4">
+        <div class="col-sm-6 col-xl-3">
             <x-stat-card etiqueta="Salario Base" :valor="$cv ? $cv->moneda.' '.$dinero($cv->salario_base) : 'Sin contrato'" icono="fas fa-money-check-alt" color="primary" :subtexto="$cv ? $cv->numero_contrato.' · '.($tipos[$cv->tipo] ?? $cv->tipo) : 'Pendiente de registro'" />
         </div>
-        <div class="col-sm-6 col-xl-4">
+        <div class="col-sm-6 col-xl-3">
             <x-stat-card etiqueta="Antigüedad" :valor="$e->antiguedad_anios.' años'" icono="fas fa-calendar-check" color="info" :subtexto="'Ingreso: '.($e->fecha_ingreso?->format('d/m/Y') ?? '—')" />
         </div>
-        <div class="col-sm-12 col-xl-4">
+        <div class="col-sm-6 col-xl-3">
+            @if ($vacaciones)
+                <x-stat-card etiqueta="Vacaciones disponibles" :valor="rtrim(rtrim(number_format($vacaciones['disponible'], 2), '0'), '.').' días'" icono="fas fa-umbrella-beach" color="warning"
+                    :subtexto="'Devengado '.rtrim(rtrim(number_format($vacaciones['devengado'], 2), '0'), '.').' · gozados '.rtrim(rtrim(number_format($vacaciones['gozados'], 2), '0'), '.').($vacaciones['pendientes'] > 0 ? ' · en aprobación '.rtrim(rtrim(number_format($vacaciones['pendientes'], 2), '0'), '.') : '')" />
+            @else
+                <x-stat-card etiqueta="Vacaciones disponibles" valor="—" icono="fas fa-umbrella-beach" color="warning" subtexto="Colaborador de baja" />
+            @endif
+        </div>
+        <div class="col-sm-6 col-xl-3">
             <x-stat-card etiqueta="Expediente Digital" :valor="$documentos->count().' documento(s)'" icono="fas fa-folder-open" color="success" :subtexto="'Sucursal: '.($e->sucursal?->nombre ?? '—')" />
         </div>
     </div>
+
+    @if ($cadena->isNotEmpty())
+        <nav class="mb-3 fs--1" aria-label="Cadena de mando">
+            <span class="text-600 me-1"><span class="fas fa-sitemap me-1"></span>Reporta a:</span>
+            @foreach ($cadena as $jefe)
+                <a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.show', $jefe->id_empleado) }}">{{ $jefe->nombre_completo }}</a>@if ($jefe->cargo)<span class="text-600"> ({{ $jefe->cargo->nombre }})</span>@endif
+                @if (! $loop->last)<span class="fas fa-chevron-right fs--2 text-400 mx-2"></span>@endif
+            @endforeach
+        </nav>
+    @endif
+
+    @if ($venceContrato !== null && $venceContrato <= 30 && ! $deBaja)
+        <div class="alert alert-soft-{{ $venceContrato < 0 ? 'danger' : 'warning' }} fs--1 py-2">
+            <span class="fas fa-file-contract me-2"></span>{{ $venceContrato < 0 ? 'El contrato venció hace '.abs($venceContrato).' días.' : 'El contrato vence en '.$venceContrato.' días ('.$cv->fecha_fin->format('d/m/Y').').' }} Registra una renovación si continúa.
+        </div>
+    @endif
+
+    @if ($rango && ! $rango['dentro'])
+        <div class="alert alert-soft-warning fs--1 py-2">
+            <span class="fas fa-exclamation-triangle me-2"></span>El salario está fuera del rango del cargo «{{ $e->cargo->nombre }}»:
+            {{ $rango['min'] !== null ? $dinero($rango['min']) : '—' }} – {{ $rango['max'] !== null ? $dinero($rango['max']) : '—' }}.
+        </div>
+    @endif
 
     @if ($puedeEditar && ! $deBaja)
         <div class="collapse {{ $errors->has('fecha_baja') || $errors->has('motivo_baja') ? 'show' : '' }} mb-4" id="baja">
@@ -126,7 +157,9 @@
 
                     @if ($cv)
                         <dl class="row mb-3">
-                            <dt class="col-5 text-700">Salario base</dt><dd class="col-7 fs-0 fw-bold">{{ $cv->moneda }} {{ $dinero($cv->salario_base) }}</dd>
+                            <dt class="col-5 text-700">Salario base</dt><dd class="col-7 fs-0 fw-bold">{{ $cv->moneda }} {{ $dinero($cv->salario_base) }}
+                                @if ($rango)<span class="badge badge-phoenix badge-phoenix-{{ $rango['dentro'] ? 'success' : 'warning' }} fs--2 align-middle ms-1">{{ $rango['dentro'] ? 'En rango del cargo' : 'Fuera de rango' }}</span>@endif</dd>
+                            @if ($rango)<dt class="col-5 text-700">Rango del cargo</dt><dd class="col-7">{{ $rango['min'] !== null ? $dinero($rango['min']) : '—' }} – {{ $rango['max'] !== null ? $dinero($rango['max']) : '—' }}</dd>@endif
                             <dt class="col-5 text-700">Contrato</dt><dd class="col-7">{{ $cv->numero_contrato }} · {{ $tipos[$cv->tipo] ?? $cv->tipo }}</dd>
                             <dt class="col-5 text-700">Vigencia</dt><dd class="col-7">{{ $cv->fecha_inicio?->format('d/m/Y') }} – {{ $cv->fecha_fin?->format('d/m/Y') ?? 'indefinido' }}</dd>
                             <dt class="col-5 text-700">Jornada</dt><dd class="col-7">{{ $jornadas[$cv->jornada] ?? $cv->jornada }} · {{ $cv->horas_semana }} h/semana</dd>

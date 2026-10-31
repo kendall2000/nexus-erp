@@ -57,6 +57,15 @@
             @if ($detalles->isNotEmpty() && $yo->puede('nomina.imprimir'))
                 <a class="btn btn-phoenix-secondary" href="{{ route('nomina.imprimir', $p->id_periodo) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Boletas</a>
             @endif
+            @if ($detalles->isNotEmpty())
+                <div class="dropdown">
+                    <button class="btn btn-phoenix-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"><span class="fas fa-file-export me-2"></span>Exportar</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('nomina.exportar', $p->id_periodo) }}"><span class="fas fa-file-excel me-2"></span>Planilla (CSV)</a></li>
+                        <li><a class="dropdown-item" href="{{ route('nomina.banco', $p->id_periodo) }}"><span class="fas fa-university me-2"></span>Archivo para banco (CSV)</a></li>
+                    </ul>
+                </div>
+            @endif
         </x-slot:acciones>
     </x-page-header>
 
@@ -74,6 +83,30 @@
             <x-stat-card etiqueta="Cuota patronal (IGSS, INTECAP, IRTRA)" :valor="$dinero($patronal)" icono="fas fa-building" color="info" subtexto="Aporte patronal obligatorio" />
         </div>
     </div>
+
+    @if ($detalles->isNotEmpty())
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <x-stat-card etiqueta="Costo total empresa" :valor="$dinero((float) $p->total_bruto + $patronal + $provisiones['total'])" icono="fas fa-chart-pie" color="primary" subtexto="Devengado + cuota patronal + provisiones" />
+            </div>
+            <div class="col-lg-8">
+                <div class="card h-100"><div class="card-body py-3 fs--1">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-semi-bold text-700">Provisión de prestaciones</span>
+                        <span class="fw-bold text-1100">{{ $dinero($provisiones['total']) }} <span class="text-600 fw-normal">sobre {{ $dinero($provisiones['base']) }}</span></span>
+                    </div>
+                    <div class="row g-2">
+                        @foreach ($provisiones['desglose'] as $prov)
+                            <div class="col-sm-6 col-xl-3"><div class="border border-200 rounded-2 p-2 h-100">
+                                <div class="fs--2 text-600">{{ $prov['nombre'] }}</div>
+                                <div class="fw-semi-bold">{{ $dinero($prov['monto']) }}</div>
+                            </div></div>
+                        @endforeach
+                    </div>
+                </div></div>
+            </div>
+        </div>
+    @endif
 
     @if ($errors->ajuste->any())<div class="alert alert-soft-danger fs--1">{{ $errors->ajuste->first() }}</div>@endif
 

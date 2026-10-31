@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Core\CentroCosto;
 use App\Models\RRHH\Cargo;
 use App\Models\RRHH\DepartamentoOrg;
+use App\Models\RRHH\Empleado;
 use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -19,13 +20,32 @@ class OrganizacionController extends Controller
 {
     public const NIVELES = [1 => 'Operativo', 2 => 'Supervisión', 3 => 'Gerencia', 4 => 'Dirección'];
 
+    public const COLORES_NIVEL = [1 => 'secondary', 2 => 'info', 3 => 'primary', 4 => 'warning'];
+
     public function index(Request $request): View
     {
         $idEmpresa = $this->idEmpresa($request);
+        $departamentos = $this->departamentos($request)->with('padre')->withCount(['empleados', 'cargos'])->orderBy('nombre')->get();
+        $cargos = $this->cargos($request)->with('departamento')->withCount(['empleados' => fn ($q) => $q->where('estado', '!=', 'BAJA')])
+            ->orderBy('nivel_jerarquico', 'desc')->orderBy('nombre')->get();
+
+        // Empleados vigentes con salario fuera del rango de su cargo.
+        $fueraDeRango = Empleado::query()->where('id_empresa', $idEmpresa)->where('estado', '!=', 'BAJA')->whereNotNull('id_cargo')
+            ->with(['cargo', 'contratoVigente'])->get()
+            ->filter(fn ($e) => $e->contratoVigente && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max) && ! $e->cargo->salarioEnRango((float) $e->contratoVigente->salario_base))
+            ->values();
 
         return view('organizacion.index', [
-            'departamentos' => $this->departamentos($request)->with('padre')->withCount(['empleados', 'cargos'])->orderBy('nombre')->get(),
-            'cargos' => $this->cargos($request)->with('departamento')->withCount('empleados')->orderBy('nivel_jerarquico', 'desc')->orderBy('nombre')->get(),
+            'departamentos' => $departamentos,
+            'cargos' => $cargos,
+            'fueraDeRango' => $fueraDeRango,
+            'kpis' => [
+                'departamentos' => $departamentos->where('activo', true)->count(),
+                'cargos' => $cargos->where('activo', true)->count(),
+                'sin_rango' => $cargos->where('activo', true)->filter(fn ($c) => ! $c->salario_min && ! $c->salario_max)->count(),
+                'fuera_rango' => $fueraDeRango->count(),
+            ],
+            'colores' => self::COLORES_NIVEL,
             'centros' => CentroCosto::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('codigo')->get(),
             'monedas' => DB::table('moneda')->where('activo', true)->orderBy('codigo')->get(),
             'niveles' => self::NIVELES,

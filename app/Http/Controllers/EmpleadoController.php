@@ -14,10 +14,12 @@ use App\Models\RRHH\EmpleadoDocumento;
 use App\Models\RRHH\HistorialSalarial;
 use App\Support\Archivos;
 use App\Support\ExportarCsv;
+use App\Support\Prestaciones;
 use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -53,9 +55,21 @@ class EmpleadoController extends Controller
     public function index(Request $request): View
     {
         $idEmpresa = $this->idEmpresa($request);
+        $vigentes = $this->deMiEmpresa($request)->where('estado', '!=', 'BAJA')->with(['cargo:id_cargo,nombre', 'departamento:id_depto_org,nombre'])
+            ->orderBy('primer_nombre')->get(['id_empleado', 'id_supervisor', 'id_cargo', 'id_depto_org', 'primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'apellido_casada', 'codigo_empleado', 'fecha_ingreso', 'estado']);
+        $ids = $vigentes->pluck('id_empleado')->all();
 
         return view('empleados.index', [
             'empleados' => $this->filtrados($request)->with(['cargo', 'departamento', 'contratoVigente'])->orderBy('primer_apellido')->orderBy('primer_nombre')->paginate(25)->withQueryString(),
+            'kpis' => [
+                'activos' => $vigentes->where('estado', 'ACTIVO')->count(),
+                'vigentes' => $vigentes->count(),
+                'ingresos_mes' => $vigentes->filter(fn ($e) => $e->fecha_ingreso?->isSameMonth(today()))->count(),
+                'por_vencer' => ContratoLaboral::query()->whereIn('id_empleado', $ids)->where('estado', 'VIGENTE')->whereNotNull('fecha_fin')
+                    ->whereBetween('fecha_fin', [today()->toDateString(), today()->addDays(30)->toDateString()])->count(),
+                'cabezas' => $vigentes->filter(fn ($e) => ! $e->id_supervisor || ! in_array($e->id_supervisor, $ids, true))->count(),
+            ],
+            'organigrama' => $this->arbol($vigentes),
             'departamentos' => DepartamentoOrg::query()->where('id_empresa', $idEmpresa)->orderBy('nombre')->get(),
             'estados' => self::ESTADOS,
             'filtros' => $request->only(['buscar', 'departamento', 'estado']),
@@ -81,8 +95,30 @@ class EmpleadoController extends Controller
         $e = $this->deMiEmpresa($request)->with(['cargo', 'departamento', 'sucursal', 'supervisor', 'municipio.division', 'contratoVigente', 'subordinados' => fn ($q) => $q->where('estado', '!=', 'BAJA')])
             ->findOrFail($empleado);
 
+        // Cadena de mando hacia arriba (sin ciclos, máximo 20 niveles).
+        $cadena = collect();
+        $visto = [$e->id_empleado];
+        for ($jefe = $e->supervisor; $jefe && ! in_array($jefe->id_empleado, $visto, true) && $cadena->count() < 20; $jefe = $jefe->supervisor) {
+            $cadena->push($jefe);
+            $visto[] = $jefe->id_empleado;
+        }
+        $cv = $e->contratoVigente;
+        $salario = $cv ? (float) $cv->salario_base : null;
+        $rango = null;
+        if ($salario !== null && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max)) {
+            $rango = [
+                'min' => $e->cargo->salario_min !== null ? (float) $e->cargo->salario_min : null,
+                'max' => $e->cargo->salario_max !== null ? (float) $e->cargo->salario_max : null,
+                'dentro' => $e->cargo->salarioEnRango($salario),
+            ];
+        }
+
         return view('empleados.show', [
             'e' => $e,
+            'cadena' => $cadena,
+            'rango' => $rango,
+            'venceContrato' => $cv?->fecha_fin ? (int) round(today()->diffInDays($cv->fecha_fin, false)) : null,
+            'vacaciones' => $e->estado !== 'BAJA' ? Prestaciones::saldoVacaciones($e) : null,
             'contratos' => $e->contratos()->orderByDesc('fecha_inicio')->get(),
             'historial' => $e->historialSalarial()->with('cargo')->orderByDesc('id_historial')->get(),
             'documentos' => $e->documentos()->orderBy('tipo_documento')->orderByDesc('id_doc')->get(),
@@ -307,6 +343,27 @@ class EmpleadoController extends Controller
     }
 
     // ── Privados ─────────────────────────────────────────────────────────
+
+    /**
+     * Organigrama a partir del jefe inmediato: raíces = sin jefe vigente; cada nodo trae sus subordinados.
+     *
+     * @return list<array{empleado: Empleado, hijos: array}>
+     */
+    private function arbol(Collection $empleados): array
+    {
+        $porJefe = $empleados->groupBy(fn ($e) => (int) $e->id_supervisor);
+        $ids = $empleados->pluck('id_empleado')->all();
+        $construir = function (Empleado $e, array $visto) use (&$construir, $porJefe): array {
+            $visto[] = $e->id_empleado;
+
+            return ['empleado' => $e, 'hijos' => $porJefe->get($e->id_empleado, collect())
+                ->reject(fn ($h) => in_array($h->id_empleado, $visto, true))
+                ->map(fn ($h) => $construir($h, $visto))->values()->all()];
+        };
+
+        return $empleados->filter(fn ($e) => ! $e->id_supervisor || ! in_array($e->id_supervisor, $ids, true))
+            ->map(fn ($e) => $construir($e, []))->values()->all();
+    }
 
     private function formulario(Request $request, Empleado $e): View
     {

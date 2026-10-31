@@ -43,6 +43,32 @@
         </div>
     @endif
 
+    @php $dinero = fn ($n) => number_format((float) $n, 2); @endphp
+    @if ($resumen)
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <x-stat-card etiqueta="Líquido del último periodo" :valor="$resumen['periodo']->moneda.' '.$dinero($resumen['periodo']->total_neto)" icono="fas fa-wallet" color="success" :subtexto="$resumen['periodo']->nombre.' · '.$resumen['empleados'].' colaborador(es)'" />
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <x-stat-card etiqueta="Cuota patronal (12.67 %)" :valor="$dinero($resumen['patronal'])" icono="fas fa-building" color="info" subtexto="IGSS 10.67 % + INTECAP 1 % + IRTRA 1 %" />
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <x-stat-card etiqueta="Provisiones de prestaciones" :valor="$dinero($resumen['provisiones'])" icono="fas fa-piggy-bank" color="warning" subtexto="Aguinaldo, Bono 14, indemnización y vacaciones" />
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <x-stat-card etiqueta="Costo total empresa" :valor="$dinero($resumen['costo_total'])" icono="fas fa-chart-pie" color="primary" subtexto="Devengado + cuota patronal + provisiones" />
+            </div>
+        </div>
+    @endif
+
+    <ul class="nav nav-underline mb-3" role="tablist">
+        <li class="nav-item"><a class="nav-link {{ $errors->prestamo->any() ? '' : 'active' }}" data-bs-toggle="tab" href="#tab-periodos" role="tab"><span class="fas fa-calendar-alt me-1"></span>Periodos de nómina</a></li>
+        <li class="nav-item"><a class="nav-link {{ $errors->prestamo->any() ? 'active' : '' }}" data-bs-toggle="tab" href="#tab-prestamos" role="tab"><span class="fas fa-hand-holding-usd me-1"></span>Préstamos activos <span class="badge badge-phoenix badge-phoenix-secondary ms-1">{{ $prestamos->count() }}</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-reglas" role="tab"><span class="fas fa-balance-scale me-1"></span>Reglas y provisiones de ley</a></li>
+    </ul>
+
+    <div class="tab-content">
+    <div class="tab-pane fade {{ $errors->prestamo->any() ? '' : 'show active' }}" id="tab-periodos" role="tabpanel">
     <div class="mb-4">
         <x-phoenix-table :paginator="$periodos">
             <x-slot:head>
@@ -72,7 +98,9 @@
             @endforelse
         </x-phoenix-table>
     </div>
+    </div>
 
+    <div class="tab-pane fade {{ $errors->prestamo->any() ? 'show active' : '' }}" id="tab-prestamos" role="tabpanel">
     <div class="card border border-200 shadow-none">
         <div class="card-body fs--1">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -102,5 +130,37 @@
                 <p class="text-700 mb-0">No hay préstamos activos.</p>
             @endforelse
         </div>
+    </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-reglas" role="tabpanel">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="card border border-200 shadow-none h-100"><div class="card-body fs--1">
+                    <h5 class="mb-3 text-1100"><span class="fas fa-user me-2 text-primary"></span>Descuentos al colaborador</h5>
+                    <table class="table table-sm mb-0">
+                        <tr><td>IGSS laboral</td><td class="text-end fw-semi-bold">{{ \App\Support\Nomina::IGSS_LABORAL * 100 }} %</td></tr>
+                        <tr><td>ISR asalariados (renta anual proyectada − Q{{ number_format(\App\Support\Nomina::ISR_DEDUCCION_UNICA) }} − IGSS)</td><td class="text-end fw-semi-bold">5 % / 7 %</td></tr>
+                        <tr><td>Tramo ISR</td><td class="text-end">Q{{ number_format(\App\Support\Nomina::ISR_TRAMO) }}</td></tr>
+                        <tr><td>Bonificación incentivo (Decreto 37-2001, no afecta IGSS)</td><td class="text-end">Q{{ number_format(\App\Support\Nomina::BONIFICACION_INCENTIVO_MENSUAL, 2) }} / mes</td></tr>
+                        <tr><td>Horas extra (salario / 30 / 8)</td><td class="text-end">× {{ \App\Support\Nomina::RECARGO_HORA_EXTRA }}</td></tr>
+                    </table>
+                </div></div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border border-200 shadow-none h-100"><div class="card-body fs--1">
+                    <h5 class="mb-3 text-1100"><span class="fas fa-building me-2 text-primary"></span>Costo patronal y provisiones</h5>
+                    <table class="table table-sm mb-0">
+                        <tr><td>Cuota patronal (IGSS 10.67 % + INTECAP 1 % + IRTRA 1 %)</td><td class="text-end fw-semi-bold">{{ \App\Support\Nomina::IGSS_PATRONAL * 100 }} %</td></tr>
+                        @foreach ($provisiones as $prov)
+                            <tr><td>{{ $prov['nombre'] }}</td><td class="text-end fw-semi-bold">{{ number_format($prov['tasa'] * 100, 2) }} %</td></tr>
+                        @endforeach
+                        <tr class="fw-bold"><td>Total provisiones</td><td class="text-end">{{ number_format(collect($provisiones)->sum('tasa') * 100, 2) }} %</td></tr>
+                    </table>
+                    <p class="text-600 fs--2 mt-2 mb-0">Las provisiones se calculan sobre salario ordinario y horas extra. Conviene validar las tasas con el contador.</p>
+                </div></div>
+            </div>
+        </div>
+    </div>
     </div>
 @endsection

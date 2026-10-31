@@ -44,6 +44,8 @@ Route::prefix('sistema/empleados/organizacion')->name('organizacion.')->controll
 Route::prefix('sistema/nomina')->name('nomina.')->controller(NominaController::class)->group(function () {
     Route::get('/', 'index')->middleware('permiso:nomina.ver')->name('index');
     Route::get('{periodo}', 'show')->whereNumber('periodo')->middleware('permiso:nomina.ver')->name('show');
+    Route::get('{periodo}/exportar', 'exportar')->whereNumber('periodo')->middleware('permiso:nomina.ver')->name('exportar');
+    Route::get('{periodo}/banco', 'banco')->whereNumber('periodo')->middleware('permiso:nomina.ver')->name('banco');
     Route::get('{periodo}/boletas', 'imprimir')->whereNumber('periodo')->middleware('permiso:nomina.imprimir')->name('imprimir');
     Route::middleware('permiso:nomina.procesar')->group(function () {
         Route::post('/', 'store')->name('store');
@@ -60,6 +62,8 @@ Route::prefix('sistema/nomina')->name('nomina.')->controller(NominaController::c
 // Asistencia diaria y solicitudes de ausencia
 Route::prefix('sistema/asistencia')->name('asistencia.')->controller(AsistenciaController::class)->group(function () {
     Route::get('/', 'index')->middleware('permiso:asistencia.ver')->name('index');
+    Route::get('vacaciones/exportar', 'exportarVacaciones')->middleware('permiso:asistencia.ver')->name('vacaciones.exportar');
+    Route::get('solicitudes/{solicitud}/constancia', 'constancia')->whereNumber('solicitud')->middleware('permiso:asistencia.ver')->name('solicitudes.constancia');
     Route::post('/', 'guardar')->middleware('permiso:asistencia.editar')->name('guardar');
     Route::post('solicitudes', 'solicitar')->middleware('permiso:asistencia.editar')->name('solicitudes.store');
     Route::patch('solicitudes/{solicitud}/{decision}', 'resolver')->whereNumber('solicitud')->whereIn('decision', ['aprobar', 'rechazar'])
@@ -69,6 +73,7 @@ Route::prefix('sistema/asistencia')->name('asistencia.')->controller(AsistenciaC
 // Prestaciones laborales: aguinaldo, bono 14 y liquidaciones
 Route::prefix('sistema/prestaciones')->name('prestaciones.')->controller(PrestacionController::class)->group(function () {
     Route::get('/', 'index')->middleware('permiso:prestaciones.ver')->name('index');
+    Route::get('finiquito/{empleado}/{periodo}', 'finiquito')->whereNumber('empleado')->middleware('permiso:prestaciones.ver')->name('finiquito');
     Route::get('exportar', 'exportar')->middleware('permiso:prestaciones.exportar')->name('exportar');
     Route::middleware('permiso:prestaciones.procesar')->group(function () {
         Route::post('calcular', 'calcular')->name('calcular');
