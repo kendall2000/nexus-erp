@@ -6,6 +6,7 @@ use App\Models\Inventario\Bodega;
 use App\Models\Inventario\MovimientoInventario;
 use App\Models\Inventario\Producto;
 use App\Models\Inventario\StockBodega;
+use App\Services\Inventario\KardexService;
 use App\Support\Kardex;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -78,7 +79,7 @@ class MovimientoController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, KardexService $kardexService): RedirectResponse
     {
         $idEmpresa = $request->user()->id_empresa;
         $bodegaValida = Rule::exists('bodega', 'id_bodega')->where('id_empresa', $idEmpresa)->where('activo', true);
@@ -107,7 +108,7 @@ class MovimientoController extends Controller
             ], ['numero_lote.required' => 'Este producto se controla por lote.', 'fecha_vencimiento.required' => 'Este producto es perecedero: indica el vencimiento.']);
         }
 
-        $movimientos = DB::transaction(fn () => Kardex::registrar($idEmpresa, $request->user()->id_usuario, $producto->moneda ?: 'GTQ', $datos));
+        $movimientos = DB::transaction(fn () => $kardexService->registrarMovimiento($idEmpresa, $request->user()->id_usuario, $producto->moneda ?: 'GTQ', $datos));
         $etiqueta = Kardex::MANUALES[$datos['tipo']][0];
 
         return redirect()->route('movimientos.index', ['producto' => $producto->id_producto, 'bodega' => $datos['id_bodega']])
@@ -137,6 +138,6 @@ class MovimientoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return MovimientoInventario::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(MovimientoInventario::class, $request);
     }
 }

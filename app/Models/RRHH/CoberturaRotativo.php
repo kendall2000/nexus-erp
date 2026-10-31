@@ -2,12 +2,15 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 class CoberturaRotativo extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'cobertura_rotativo';
     protected $primaryKey = 'id_cobertura';
     public $timestamps    = true;

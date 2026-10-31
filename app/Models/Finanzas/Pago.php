@@ -2,10 +2,13 @@
 
 namespace App\Models\Finanzas;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Pago extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'pago';
     protected $primaryKey = 'id_pago';
     public $timestamps    = false;

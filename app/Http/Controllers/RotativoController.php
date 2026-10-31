@@ -137,7 +137,7 @@ class RotativoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return CoberturaRotativo::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(CoberturaRotativo::class, $request);
     }
 
     private function empleados(Request $request): Builder

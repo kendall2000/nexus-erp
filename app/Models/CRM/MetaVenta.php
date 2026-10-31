@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class MetaVenta extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'meta_venta';
     protected $primaryKey = 'id_meta';
     public $timestamps    = true;

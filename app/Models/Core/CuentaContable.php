@@ -3,10 +3,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class CuentaContable extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'cuenta_contable';
     protected $primaryKey = 'id_cuenta';
     public $timestamps    = false;

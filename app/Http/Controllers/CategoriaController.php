@@ -83,7 +83,7 @@ class CategoriaController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return CategoriaProducto::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(CategoriaProducto::class, $request);
     }
 
     /** @return array<string, mixed> */

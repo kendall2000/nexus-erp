@@ -83,6 +83,6 @@ class BitacoraController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return AuditoriaCambio::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(AuditoriaCambio::class, $request);
     }
 }

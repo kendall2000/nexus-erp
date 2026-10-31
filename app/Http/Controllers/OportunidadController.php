@@ -8,6 +8,7 @@ use App\Models\CRM\Oportunidad;
 use App\Models\CRM\Propuesta;
 use App\Models\CRM\Prospecto;
 use App\Models\RRHH\Empleado;
+use App\Services\CRM\CrmService;
 use App\Support\Crm;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -28,10 +29,10 @@ class OportunidadController extends Controller
         'ACEPTADA' => ['Aceptada', 'success'], 'RECHAZADA' => ['Rechazada', 'danger'], 'VENCIDA' => ['Vencida', 'dark'],
     ];
 
-    public function index(Request $request): View
+    public function index(Request $request, CrmService $crmService): View
     {
-        $idEmpresa = $request->user()->id_empresa;
-        $etapas = Crm::etapas($idEmpresa);
+        $idEmpresa = $this->idEmpresa($request);
+        $etapas = $crmService->etapasEmbudo($idEmpresa);
         $oportunidades = $this->deMiEmpresa($request)->with(['cliente', 'prospecto', 'responsable'])
             ->when($request->filled('responsable'), fn ($q) => $q->where('id_responsable', $request->integer('responsable')))
             ->orderBy('fecha_cierre_estimada')->get();
@@ -177,7 +178,7 @@ class OportunidadController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Oportunidad::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Oportunidad::class, $request);
     }
 
     private function vendedores(Request $request): Builder

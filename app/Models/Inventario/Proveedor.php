@@ -2,12 +2,13 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Proveedor extends Model
 {
-    use SoftDeletes;
+    use PerteneceAEmpresa, SoftDeletes;
 
     protected $table      = 'proveedor';
     protected $primaryKey = 'id_proveedor';

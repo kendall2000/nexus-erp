@@ -239,7 +239,7 @@ class CuentaContableController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return CuentaContable::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(CuentaContable::class, $request);
     }
 
     /** Recorrido del árbol en profundidad: cada padre seguido de sus subcuentas. */

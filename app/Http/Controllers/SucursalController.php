@@ -104,7 +104,7 @@ class SucursalController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Sucursal::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Sucursal::class, $request);
     }
 
     /** @return array<string, mixed> */

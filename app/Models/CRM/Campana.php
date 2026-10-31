@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Campana extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'campana';
     protected $primaryKey = 'id_campana';
     public $timestamps    = true;

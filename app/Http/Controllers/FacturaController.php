@@ -11,6 +11,7 @@ use App\Models\Core\Empresa;
 use App\Models\Finanzas\DetalleFactura;
 use App\Models\Finanzas\Factura;
 use App\Models\Finanzas\SerieFacturacion;
+use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
 use Illuminate\Database\Eloquent\Builder;
@@ -210,9 +211,9 @@ class FacturaController extends Controller
         });
     }
 
-    public function emitir(Request $request, int $factura): RedirectResponse
+    public function emitir(Request $request, int $factura, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $factura) {
+        return DB::transaction(function () use ($request, $factura, $presupuestoService) {
             $f = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($factura);
             if ($f->estado !== 'BORRADOR') {
                 return back()->withErrors(['factura' => 'Solo se emiten facturas en borrador.']);
@@ -221,7 +222,7 @@ class FacturaController extends Controller
                 return back()->withErrors(['factura' => 'No se puede emitir un documento en cero.']);
             }
             $f->update(['estado' => 'EMITIDA']);
-            EjecucionPresupuesto::registrarFactura($f);
+            $presupuestoService->registrarFactura($f);
 
             return back()->with('status', "{$this->nombre($f)} emitida.");
         });
@@ -375,7 +376,7 @@ class FacturaController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Factura::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Factura::class, $request);
     }
 
     private function clientes(Request $request): Builder

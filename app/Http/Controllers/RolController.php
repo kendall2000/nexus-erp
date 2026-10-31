@@ -137,7 +137,7 @@ class RolController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Rol::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Rol::class, $request);
     }
 
     /** @return array<string, mixed> */

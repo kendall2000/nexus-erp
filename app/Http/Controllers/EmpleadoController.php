@@ -347,7 +347,7 @@ class EmpleadoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Empleado::class, $request);
     }
 
     /** EMP-0001 (empleados) o CL-AAAA-0001 (contratos laborales), por empresa. */

@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Cargo extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'cargo';
     protected $primaryKey = 'id_cargo';
     public $timestamps    = true;

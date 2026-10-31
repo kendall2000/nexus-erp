@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class EtapaFunnel extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'etapa_funnel';
     protected $primaryKey = 'id_etapa';
     public $timestamps    = false;

@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'ticket';
     protected $primaryKey = 'id_ticket';
     public $timestamps    = true;

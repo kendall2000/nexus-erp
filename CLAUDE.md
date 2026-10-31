@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Nexus ERP: Laravel 13 (PHP 8.3+) multiempresa para compras, inventario, clientes y finanzas. Todo el código, los nombres, los mensajes y los commits van **en español**. El repositorio git está un nivel arriba (`C:\laragon\www\nexus-erp`); la aplicación vive en `nexuserp/`. Se trabaja en la rama `dev` (`main` es la principal).
+Nexus ERP: Laravel 13 (PHP 8.3+) multiempresa para compras, inventario, clientes y finanzas. Todo el código, los nombres, los mensajes y los commits van **en español**. La aplicación vive directamente en la raíz del repositorio (`nexus-erp/`). Se trabaja en la rama `dev` (`main` es la principal).
 
 ## Comandos
 

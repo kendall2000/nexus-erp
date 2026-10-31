@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class EvaluacionSatisfaccion extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'evaluacion_satisfaccion';
     protected $primaryKey = 'id_evaluacion';
     public $timestamps    = false;

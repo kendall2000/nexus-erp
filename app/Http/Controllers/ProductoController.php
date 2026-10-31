@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarProductoRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Inventario\CategoriaProducto;
@@ -55,9 +56,9 @@ class ProductoController extends Controller
         return $this->formulario($request, new Producto(['activo' => true, 'unidad_medida' => 'UND', 'moneda' => 'GTQ', 'stock_minimo' => 0]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarProductoRequest $request): RedirectResponse
     {
-        $producto = Producto::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $producto = Producto::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('productos.index')->with('status', "Producto «{$producto->nombre}» creado.");
     }
@@ -69,10 +70,10 @@ class ProductoController extends Controller
         return $this->formulario($request, $producto);
     }
 
-    public function update(Request $request, int $producto): RedirectResponse
+    public function update(GuardarProductoRequest $request, int $producto): RedirectResponse
     {
         $producto = $this->deMiEmpresa($request)->findOrFail($producto);
-        $producto->update($this->validar($request, $producto));
+        $producto->update($request->datosLimpios());
 
         return redirect()->route('productos.index')->with('status', "Producto «{$producto->nombre}» actualizado.");
     }
@@ -135,7 +136,7 @@ class ProductoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Producto::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Producto::class, $request);
     }
 
     private function categorias(Request $request, bool $soloActivas = false)

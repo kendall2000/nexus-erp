@@ -2,6 +2,7 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Support\MatrizPermisos;
@@ -13,7 +14,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class Usuario extends Authenticatable
 {
-    use Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use PerteneceAEmpresa, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /** @var list<string>|null Códigos de permiso calculados (ver codigosPermiso). */
     private ?array $codigosPermiso = null;

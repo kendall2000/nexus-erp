@@ -9,6 +9,7 @@ use App\Models\RRHH\DetalleNominaConcepto;
 use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PeriodoNomina;
 use App\Models\RRHH\PrestamoEmpleado;
+use App\Services\RRHH\NominaService;
 use App\Support\Nomina;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -46,10 +47,10 @@ class NominaController extends Controller
         ]);
     }
 
-    public function show(Request $request, int $periodo): View
+    public function show(Request $request, int $periodo, NominaService $nominaService): View
     {
         $p = $this->periodos($request)->findOrFail($periodo);
-        $conceptos = Nomina::conceptos($p->id_empresa);
+        $conceptos = $nominaService->asegurarConceptos($p->id_empresa);
 
         return view('nomina.show', [
             'p' => $p,
@@ -259,7 +260,7 @@ class NominaController extends Controller
 
     private function periodos(Request $request): Builder
     {
-        return PeriodoNomina::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(PeriodoNomina::class, $request);
     }
 
     private function empleados(Request $request): Builder

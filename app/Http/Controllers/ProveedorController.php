@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarProveedorRequest;
 use App\Models\Core\Pais;
 use App\Models\Inventario\Proveedor;
 use App\Support\ExportarCsv;
@@ -50,9 +51,9 @@ class ProveedorController extends Controller
         return $this->formulario(new Proveedor(['activo' => true, 'tipo_proveedor' => 'BIENES', 'dias_credito' => 0, 'moneda_pago' => 'GTQ']));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarProveedorRequest $request): RedirectResponse
     {
-        $proveedor = Proveedor::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $proveedor = Proveedor::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('proveedores.index')->with('status', "Proveedor «{$proveedor->razon_social}» creado.");
     }
@@ -62,10 +63,10 @@ class ProveedorController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->findOrFail($proveedor));
     }
 
-    public function update(Request $request, int $proveedor): RedirectResponse
+    public function update(GuardarProveedorRequest $request, int $proveedor): RedirectResponse
     {
         $proveedor = $this->deMiEmpresa($request)->findOrFail($proveedor);
-        $proveedor->update($this->validar($request, $proveedor));
+        $proveedor->update($request->datosLimpios());
 
         return redirect()->route('proveedores.index')->with('status', "Proveedor «{$proveedor->razon_social}» actualizado.");
     }
@@ -115,7 +116,7 @@ class ProveedorController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Proveedor::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Proveedor::class, $request);
     }
 
     /** @return array<string, mixed> Solo los campos del formulario (nunca id_empresa). */

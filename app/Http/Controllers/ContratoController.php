@@ -281,7 +281,7 @@ class ContratoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return ContratoServicio::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(ContratoServicio::class, $request);
     }
 
     /** CS-AAAA-0001, consecutivo por empresa y año. */

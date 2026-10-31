@@ -279,7 +279,7 @@ class PresupuestoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return PresupuestoAnual::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(PresupuestoAnual::class, $request);
     }
 
     private function anio(Request $request): int

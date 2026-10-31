@@ -2,10 +2,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Sucursal extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'sucursal';
     protected $primaryKey = 'id_sucursal';
     public $timestamps    = true;

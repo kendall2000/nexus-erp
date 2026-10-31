@@ -2,12 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Prospecto extends Model
 {
-    use SoftDeletes;
+    use PerteneceAEmpresa, SoftDeletes;
 
     protected $table      = 'prospecto';
     protected $primaryKey = 'id_prospecto';

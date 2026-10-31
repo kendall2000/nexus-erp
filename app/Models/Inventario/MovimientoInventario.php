@@ -2,10 +2,13 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class MovimientoInventario extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'movimiento_inventario';
     protected $primaryKey = 'id_movimiento';
     public $timestamps    = false;

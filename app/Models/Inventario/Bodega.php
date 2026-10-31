@@ -2,10 +2,13 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Bodega extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'bodega';
     protected $primaryKey = 'id_bodega';
     public $timestamps    = false;

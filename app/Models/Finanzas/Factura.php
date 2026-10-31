@@ -2,10 +2,13 @@
 
 namespace App\Models\Finanzas;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class Factura extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'factura';
     protected $primaryKey = 'id_factura';
     public $timestamps    = true;

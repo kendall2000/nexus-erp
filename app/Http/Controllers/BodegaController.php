@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Inventario\GuardarBodegaRequest;
 use App\Models\Core\Sucursal;
 use App\Models\Inventario\Bodega;
 use App\Models\RRHH\Empleado;
@@ -31,9 +32,9 @@ class BodegaController extends Controller
         return $this->formulario($request, new Bodega(['activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarBodegaRequest $request): RedirectResponse
     {
-        $bodega = Bodega::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $bodega = Bodega::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('bodegas.index')->with('status', "Bodega «{$bodega->nombre}» creada.");
     }
@@ -43,10 +44,10 @@ class BodegaController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($bodega));
     }
 
-    public function update(Request $request, int $bodega): RedirectResponse
+    public function update(GuardarBodegaRequest $request, int $bodega): RedirectResponse
     {
         $bodega = $this->deMiEmpresa($request)->findOrFail($bodega);
-        $bodega->update($this->validar($request));
+        $bodega->update($request->datosLimpios());
 
         return redirect()->route('bodegas.index')->with('status', "Bodega «{$bodega->nombre}» actualizada.");
     }
@@ -95,7 +96,7 @@ class BodegaController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Bodega::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Bodega::class, $request);
     }
 
     /** @return array<string, mixed> */

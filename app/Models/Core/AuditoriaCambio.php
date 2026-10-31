@@ -2,10 +2,13 @@
 
 namespace App\Models\Core;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class AuditoriaCambio extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'auditoria_cambio';
     protected $primaryKey = 'id_cambio';
     public $timestamps    = false;

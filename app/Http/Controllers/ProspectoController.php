@@ -237,7 +237,7 @@ class ProspectoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Prospecto::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Prospecto::class, $request);
     }
 
     private function vendedores(Request $request): Builder

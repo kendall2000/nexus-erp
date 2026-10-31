@@ -2,10 +2,13 @@
 
 namespace App\Models\CRM;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class SlaConfig extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'sla_config';
     protected $primaryKey = 'id_sla';
     public $timestamps    = false;

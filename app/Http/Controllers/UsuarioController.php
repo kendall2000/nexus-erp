@@ -218,7 +218,7 @@ class UsuarioController extends Controller
 
     private function deMiEmpresa(Request $request)
     {
-        return Usuario::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Usuario::class, $request);
     }
 
     /** Usuario de mi empresa que puedo gestionar: nadie toca a quien tiene más acceso que él. */

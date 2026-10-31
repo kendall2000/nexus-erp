@@ -95,7 +95,7 @@ class CentroCostoController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return CentroCosto::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(CentroCosto::class, $request);
     }
 
     /** @return array<string, mixed> */

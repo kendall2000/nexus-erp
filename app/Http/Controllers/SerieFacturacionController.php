@@ -87,7 +87,7 @@ class SerieFacturacionController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return SerieFacturacion::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(SerieFacturacion::class, $request);
     }
 
     /** @return array<string, mixed> */

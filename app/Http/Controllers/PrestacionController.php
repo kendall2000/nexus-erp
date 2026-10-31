@@ -187,6 +187,6 @@ class PrestacionController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return PrestacionLaboral::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(PrestacionLaboral::class, $request);
     }
 }

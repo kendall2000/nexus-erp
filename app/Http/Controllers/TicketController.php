@@ -269,7 +269,7 @@ class TicketController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Ticket::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Ticket::class, $request);
     }
 
     private function agentes(Request $request): Builder

@@ -119,7 +119,7 @@ class TipoServicioController extends Controller
 
     private function lineas(Request $request): Builder
     {
-        return LineaNegocio::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(LineaNegocio::class, $request);
     }
 
     /** @return array<string, mixed> */

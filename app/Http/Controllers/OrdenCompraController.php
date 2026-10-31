@@ -10,6 +10,7 @@ use App\Models\Inventario\DetalleOrdenCompra;
 use App\Models\Inventario\OrdenCompra;
 use App\Models\Inventario\Producto;
 use App\Models\Inventario\Proveedor;
+use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
 use Illuminate\Database\Eloquent\Builder;
@@ -143,15 +144,15 @@ class OrdenCompraController extends Controller
     }
 
     /** Aprueba (BORRADOR → ENVIADA) y ejecuta el presupuesto. Si se pasa del saldo, pide confirmación. */
-    public function aprobar(Request $request, int $orden): RedirectResponse
+    public function aprobar(Request $request, int $orden, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $orden) {
+        return DB::transaction(function () use ($request, $orden, $presupuestoService) {
             $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
             if ($oc->estado !== 'BORRADOR') {
                 return back()->withErrors(['orden' => 'Solo se pueden aprobar órdenes en borrador.']);
             }
 
-            $sobregiros = EjecucionPresupuesto::sobregiros($oc);
+            $sobregiros = $presupuestoService->validarSobregiros($oc);
             if ($sobregiros && ! $request->boolean('forzar')) {
                 return back()->with('sobregiros', array_map(fn ($s) => [
                     'partida' => $s['presupuesto']->centroCosto?->nombre.' / '.$s['presupuesto']->cuentaContable?->nombre,
@@ -160,16 +161,16 @@ class OrdenCompraController extends Controller
             }
 
             $oc->update(['estado' => 'ENVIADA', 'aprobado_por' => $request->user()->id_usuario]);
-            EjecucionPresupuesto::registrarOrden($oc);
+            $presupuestoService->registrarOrden($oc);
 
             return back()->with('status', "Orden {$oc->numero_oc} aprobada".($sobregiros ? ' pasando el saldo del presupuesto.' : '.'));
         });
     }
 
     /** Cancela (BORRADOR o ENVIADA sin nada recibido) y revierte el presupuesto si ya se había aprobado. */
-    public function cancelar(Request $request, int $orden): RedirectResponse
+    public function cancelar(Request $request, int $orden, PresupuestoService $presupuestoService): RedirectResponse
     {
-        return DB::transaction(function () use ($request, $orden) {
+        return DB::transaction(function () use ($request, $orden, $presupuestoService) {
             $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
             if (! in_array($oc->estado, ['BORRADOR', 'ENVIADA'], true) || $oc->detalles()->where('cantidad_recibida', '>', 0)->exists()) {
                 return back()->withErrors(['orden' => 'Solo se pueden cancelar órdenes en borrador o aprobadas sin mercadería recibida.']);
@@ -178,7 +179,7 @@ class OrdenCompraController extends Controller
             $estabaAprobada = $oc->estado === 'ENVIADA';
             $oc->update(['estado' => 'CANCELADA']);
             if ($estabaAprobada) {
-                EjecucionPresupuesto::revertirOrden($oc);
+                $presupuestoService->revertirOrden($oc);
             }
 
             return back()->with('status', "Orden {$oc->numero_oc} cancelada".($estabaAprobada ? ' y revertida del presupuesto.' : '.'));
@@ -238,7 +239,7 @@ class OrdenCompraController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return OrdenCompra::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(OrdenCompra::class, $request);
     }
 
     /** OC-AAAA-0001, consecutivo por empresa y año. */

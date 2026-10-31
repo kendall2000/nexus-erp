@@ -2,10 +2,13 @@
 
 namespace App\Models\RRHH;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class ContratoLaboral extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'contrato_laboral';
     protected $primaryKey = 'id_contrato';
     public $timestamps    = true;

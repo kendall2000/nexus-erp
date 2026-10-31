@@ -2,10 +2,13 @@
 
 namespace App\Models\Finanzas;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class SerieFacturacion extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'serie_facturacion';
     protected $primaryKey = 'id_serie';
     public $timestamps    = false;

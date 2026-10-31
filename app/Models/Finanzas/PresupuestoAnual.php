@@ -3,10 +3,13 @@
 
 namespace App\Models\Finanzas;
 
+use App\Models\Concerns\PerteneceAEmpresa;
 use Illuminate\Database\Eloquent\Model;
 
 class PresupuestoAnual extends Model
 {
+    use PerteneceAEmpresa;
+
     protected $table      = 'presupuesto_anual';
     protected $primaryKey = 'id_presupuesto';
     public    $timestamps = true;

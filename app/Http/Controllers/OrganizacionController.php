@@ -101,11 +101,11 @@ class OrganizacionController extends Controller
 
     private function departamentos(Request $request): Builder
     {
-        return DepartamentoOrg::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(DepartamentoOrg::class, $request);
     }
 
     private function cargos(Request $request): Builder
     {
-        return Cargo::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Cargo::class, $request);
     }
 }

@@ -138,7 +138,7 @@ class CampanaController extends Controller
 
     private function deMiEmpresa(Request $request): Builder
     {
-        return Campana::query()->where('id_empresa', $request->user()->id_empresa);
+        return $this->consultaEmpresa(Campana::class, $request);
     }
 
     /** @return array<string, mixed> */
