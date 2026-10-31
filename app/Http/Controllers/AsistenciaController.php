@@ -43,14 +43,14 @@ class AsistenciaController extends Controller
     {
         $fecha = $this->fecha($request->query('fecha')) ?? today();
         $empleados = $this->empleados($request, $fecha)->get();
-        $registros = Asistencia::query()->where('id_empresa', $request->user()->id_empresa)->whereDate('fecha', $fecha)->get()->keyBy('id_empleado');
+        $registros = Asistencia::query()->where('id_empresa', $this->idEmpresa($request))->whereDate('fecha', $fecha)->get()->keyBy('id_empleado');
         $mes = $fecha->copy()->startOfMonth();
 
         return view('asistencia.index', [
             'fecha' => $fecha,
             'empleados' => $empleados,
             'registros' => $registros,
-            'resumen' => Asistencia::query()->where('id_empresa', $request->user()->id_empresa)->whereBetween('fecha', [$mes, $mes->copy()->endOfMonth()])
+            'resumen' => Asistencia::query()->where('id_empresa', $this->idEmpresa($request))->whereBetween('fecha', [$mes, $mes->copy()->endOfMonth()])
                 ->selectRaw("id_empleado, SUM(CASE WHEN estado IN ('PRESENTE','TARDE') THEN 1 ELSE 0 END) as presentes, SUM(CASE WHEN estado = 'TARDE' THEN 1 ELSE 0 END) as tardes,
                     SUM(CASE WHEN estado = 'AUSENTE' THEN 1 ELSE 0 END) as ausencias, SUM(minutos_tarde) as minutos, SUM(horas_extra) as extras")
                 ->groupBy('id_empleado')->get()->keyBy('id_empleado'),
@@ -66,7 +66,7 @@ class AsistenciaController extends Controller
     /** Guarda la asistencia del día de todos los empleados del formulario. */
     public function guardar(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validate([
             'fecha' => ['required', 'date', 'before_or_equal:today'],
             'asistencia' => ['required', 'array'],
@@ -140,13 +140,13 @@ class AsistenciaController extends Controller
             if ($s->estado !== 'PENDIENTE') {
                 return back()->withErrors(['solicitud' => 'La solicitud ya fue resuelta.']);
             }
-            $s->update(['estado' => $decision === 'aprobar' ? 'APROBADO' : 'RECHAZADO', 'aprobado_por' => $request->user()->id_usuario,
+            $s->update(['estado' => $decision === 'aprobar' ? 'APROBADO' : 'RECHAZADO', 'aprobado_por' => $this->idUsuario($request),
                 'fecha_aprobacion' => now(), 'observaciones' => $datos['observaciones'] ?? null]);
             if ($decision === 'aprobar') {
                 foreach (CarbonPeriod::create($s->fecha_inicio, $s->fecha_fin) as $dia) {
                     if (! $dia->isWeekend()) {
                         self::guardarDia($s->id_empleado, $dia, [
-                            'id_empresa' => $request->user()->id_empresa, 'estado' => self::ESTADO_POR_AUSENCIA[$s->tipo], 'hora_entrada' => null, 'hora_salida' => null,
+                            'id_empresa' => $this->idEmpresa($request), 'estado' => self::ESTADO_POR_AUSENCIA[$s->tipo], 'hora_entrada' => null, 'hora_salida' => null,
                             'minutos_tarde' => 0, 'horas_extra' => 0, 'tipo' => 'NORMAL', 'registrado_por' => 'SISTEMA',
                             'observaciones' => self::TIPOS_AUSENCIA[$s->tipo].' (solicitud #'.$s->id_solicitud.')',
                         ]);
@@ -177,7 +177,7 @@ class AsistenciaController extends Controller
     /** Empleados que trabajaban en esa fecha (ingresados y sin baja anterior). */
     private function empleados(Request $request, Carbon $fecha): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->whereDate('fecha_ingreso', '<=', $fecha)
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->whereDate('fecha_ingreso', '<=', $fecha)
             ->where(fn ($q) => $q->where('estado', '!=', 'BAJA')->orWhereDate('fecha_baja', '>=', $fecha))
             ->orderBy('primer_nombre')->orderBy('primer_apellido');
     }
@@ -185,7 +185,7 @@ class AsistenciaController extends Controller
     /** @return list<int> */
     private function todosLosEmpleados(Request $request): array
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->pluck('id_empleado')->map(fn ($id) => (int) $id)->all();
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->pluck('id_empleado')->map(fn ($id) => (int) $id)->all();
     }
 
     private function fecha(mixed $valor): ?Carbon

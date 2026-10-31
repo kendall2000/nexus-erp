@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Core\GuardarLineaNegocioRequest;
 use App\Models\Core\LineaNegocio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -24,9 +25,9 @@ class LineaNegocioController extends Controller
         return view('lineas-negocio.form', ['linea' => new LineaNegocio(['activo' => true])]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarLineaNegocioRequest $request): RedirectResponse
     {
-        $linea = LineaNegocio::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $linea = LineaNegocio::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('lineas-negocio.index')->with('status', "Línea «{$linea->nombre}» creada.");
     }
@@ -36,10 +37,10 @@ class LineaNegocioController extends Controller
         return view('lineas-negocio.form', ['linea' => $this->deMiEmpresa($request)->findOrFail($linea)]);
     }
 
-    public function update(Request $request, int $linea): RedirectResponse
+    public function update(GuardarLineaNegocioRequest $request, int $linea): RedirectResponse
     {
         $linea = $this->deMiEmpresa($request)->findOrFail($linea);
-        $linea->update($this->validar($request, $linea));
+        $linea->update($request->datosLimpios());
 
         return redirect()->route('lineas-negocio.index')->with('status', "Línea «{$linea->nombre}» actualizada.");
     }
@@ -72,7 +73,7 @@ class LineaNegocioController extends Controller
     private function validar(Request $request, ?LineaNegocio $linea = null): array
     {
         $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:100', Rule::unique('linea_negocio', 'nombre')->where('id_empresa', $request->user()->id_empresa)->ignore($linea?->id_linea, 'id_linea')],
+            'nombre' => ['required', 'string', 'max:100', Rule::unique('linea_negocio', 'nombre')->where('id_empresa', $this->idEmpresa($request))->ignore($linea?->id_linea, 'id_linea')],
             'descripcion' => ['nullable', 'string', 'max:2000'],
         ], ['nombre.unique' => 'Ya existe una línea con ese nombre.']);
 

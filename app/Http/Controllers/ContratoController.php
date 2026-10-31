@@ -43,7 +43,7 @@ class ContratoController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $vigentes = $this->deMiEmpresa($request)->where('estado', 'VIGENTE');
 
         return view('contratos.index', [
@@ -63,7 +63,7 @@ class ContratoController extends Controller
     public function show(Request $request, int $contrato): View
     {
         $c = $this->cargar($request, $contrato);
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('contratos.show', [
             'c' => $c,
@@ -82,7 +82,7 @@ class ContratoController extends Controller
     {
         return view('contratos.imprimir', [
             'c' => $this->cargar($request, $contrato),
-            'empresa' => Empresa::find($request->user()->id_empresa),
+            'empresa' => Empresa::find($this->idEmpresa($request)),
             'periodicidades' => self::PERIODICIDADES,
         ]);
     }
@@ -102,8 +102,8 @@ class ContratoController extends Controller
             $encabezado = $datos['encabezado'];
             $encabezado['numero_contrato'] ??= $this->siguienteNumero($request);
             $c = ContratoServicio::create($encabezado + [
-                'id_empresa' => $request->user()->id_empresa, 'estado' => 'BORRADOR', 'valor_mensual' => 0,
-                'created_by' => $request->user()->id_usuario, 'updated_by' => $request->user()->id_usuario,
+                'id_empresa' => $this->idEmpresa($request), 'estado' => 'BORRADOR', 'valor_mensual' => 0,
+                'created_by' => $this->idUsuario($request), 'updated_by' => $this->idUsuario($request),
             ]);
             $this->guardarLineas($c, $datos['lineas']);
 
@@ -137,7 +137,7 @@ class ContratoController extends Controller
             if ($c->estado !== 'BORRADOR') {
                 unset($encabezado['id_cliente']);
             }
-            $c->update($encabezado + ['updated_by' => $request->user()->id_usuario]);
+            $c->update($encabezado + $this->selloActualizacion($request));
             $c->detalles()->delete();
             $this->guardarLineas($c, $datos['lineas']);
         });
@@ -173,7 +173,7 @@ class ContratoController extends Controller
             }
             // Al cerrar: VENCIDO si llegó a su fecha de fin; si no, CANCELADO.
             $nuevo = $hacia ?? ($c->fecha_fin && $c->fecha_fin->lte(today()) ? 'VENCIDO' : 'CANCELADO');
-            $cambios = ['estado' => $nuevo, 'updated_by' => $request->user()->id_usuario];
+            $cambios = ['estado' => $nuevo, 'updated_by' => $this->idUsuario($request)];
             if ($motivo) {
                 $cambios['notas'] = trim(($c->notas ? $c->notas."\n" : '').'[Cerrado el '.now()->format('d/m/Y').'] '.$motivo);
                 // El personal deja de estar asignado.
@@ -247,7 +247,7 @@ class ContratoController extends Controller
 
     private function formulario(Request $request, ContratoServicio $c): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $clientes = Cliente::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('razon_social')->get(['id_cliente', 'razon_social', 'moneda_facturacion']);
 
         return view('contratos.form', [
@@ -297,7 +297,7 @@ class ContratoController extends Controller
     /** @return array{encabezado: array<string, mixed>, lineas: list<array<string, mixed>>} */
     private function validar(Request $request, ?ContratoServicio $c = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge([
             'numero_contrato' => ($n = strtoupper(trim((string) $request->input('numero_contrato')))) === '' ? null : $n,
             'lineas' => array_values(array_filter((array) $request->input('lineas', []), fn ($l) => ! empty($l['id_tipo_servicio']))),

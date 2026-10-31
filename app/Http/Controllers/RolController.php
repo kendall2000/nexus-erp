@@ -39,7 +39,7 @@ class RolController extends Controller
         $permisos = $this->permisosElegidos($request);
 
         $rol = DB::transaction(function () use ($request, $datos, $permisos) {
-            $rol = Rol::create($datos + ['id_empresa' => $request->user()->id_empresa, 'es_rol_sistema' => false]);
+            $rol = Rol::create($datos + ['id_empresa' => $this->idEmpresa($request), 'es_rol_sistema' => false]);
             $rol->permisos()->sync($permisos);
             Bitacora::registrarLista('rol_permiso', (string) $rol->id_rol, 'permisos', [], Bitacora::codigosPermiso($permisos), $rol->id_empresa);
 
@@ -143,7 +143,7 @@ class RolController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?Rol $rol = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['nombre' => trim((string) $request->input('nombre'))]);
 
         $datos = $request->validate([

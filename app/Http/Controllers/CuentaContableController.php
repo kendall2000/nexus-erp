@@ -74,7 +74,7 @@ class CuentaContableController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $cuenta = DB::transaction(function () use ($request, $idEmpresa) {
             $cuenta = CuentaContable::create($this->validar($request) + ['id_empresa' => $idEmpresa, 'nivel' => 1]);
             PlanCuentas::recalcularNiveles($idEmpresa);
@@ -148,7 +148,7 @@ class CuentaContableController extends Controller
         ]);
 
         $filas = $this->leerArchivo($request->file('archivo'));
-        $analisis = $this->analizar($filas, $request->user()->id_empresa);
+        $analisis = $this->analizar($filas, $this->idEmpresa($request));
         session(['importacion_cuentas' => $analisis]);
 
         return redirect()->route('cuentas-contables.importar');
@@ -160,7 +160,7 @@ class CuentaContableController extends Controller
         if (! $previa) {
             return redirect()->route('cuentas-contables.importar')->withErrors(['archivo' => 'Vuelve a subir el archivo.']);
         }
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         // Se vuelve a analizar contra el plan actual por si cambió desde la vista previa.
         $analisis = $this->analizar($previa['filas'], $idEmpresa);
@@ -203,7 +203,7 @@ class CuentaContableController extends Controller
 
     private function formulario(Request $request, CuentaContable $cuenta): View
     {
-        $plan = PlanCuentas::actual($request->user()->id_empresa);
+        $plan = PlanCuentas::actual($this->idEmpresa($request));
         // Una cuenta no puede colgar de sí misma ni de sus subcuentas.
         $excluir = [];
         if ($cuenta->exists) {
@@ -261,7 +261,7 @@ class CuentaContableController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?CuentaContable $cuenta = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['codigo' => trim((string) $request->input('codigo'))]);
 
         $datos = $request->validate([

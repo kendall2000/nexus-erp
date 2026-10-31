@@ -20,7 +20,7 @@ class BitacoraController extends Controller
 {
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('bitacora.index', [
             'cambios' => $this->filtrados($request)->with('usuario')->orderByDesc('id_cambio')->paginate(50)->withQueryString(),

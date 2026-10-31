@@ -35,7 +35,7 @@ class PrestacionController extends Controller
             'grupos' => $prestaciones->groupBy(fn ($p) => $this->esLiquidacion($p) ? $p->periodo_calculo.'|'.$p->id_empleado : $p->tipo.'|'.$p->periodo_calculo)
                 ->sortKeys(),
             'totales' => $prestaciones->groupBy('estado')->map(fn ($g) => round((float) $g->sum('monto_calculado'), 2)),
-            'empleados' => Empleado::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('primer_nombre')->orderBy('primer_apellido')->get(),
+            'empleados' => Empleado::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('primer_nombre')->orderBy('primer_apellido')->get(),
             'tipos' => Prestaciones::TIPOS,
             'anuales' => Prestaciones::ANUALES,
             'estados' => self::ESTADOS,
@@ -59,7 +59,7 @@ class PrestacionController extends Controller
             'tipo' => ['required', Rule::in(Prestaciones::ANUALES)],
             'anio' => ['required', 'integer', 'min:2000', 'max:'.(now()->year + 1)],
         ]);
-        $r = DB::transaction(fn () => Prestaciones::calcularAnual($request->user()->id_empresa, $datos['tipo'], (int) $datos['anio']));
+        $r = DB::transaction(fn () => Prestaciones::calcularAnual($this->idEmpresa($request), $datos['tipo'], (int) $datos['anio']));
 
         return redirect()->route('prestaciones.index', ['anio' => $datos['anio'], 'tipo' => $datos['tipo']])
             ->with('status', Prestaciones::TIPOS[$datos['tipo']]." {$datos['anio']}: {$r['calculados']} empleados calculados."
@@ -71,7 +71,7 @@ class PrestacionController extends Controller
     public function liquidar(Request $request): RedirectResponse
     {
         $datos = $request->validateWithBag('liquidacion', [
-            'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $request->user()->id_empresa)->whereNull('deleted_at')],
+            'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $this->idEmpresa($request))->whereNull('deleted_at')],
             'fecha_salida' => ['required', 'date'],
             'dias_vacaciones' => ['nullable', 'numeric', 'min:0', 'max:90'],
             'indemnizacion' => ['nullable', 'boolean'],

@@ -51,7 +51,7 @@ class EmpleadoController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('empleados.index', [
             'empleados' => $this->filtrados($request)->with(['cargo', 'departamento', 'contratoVigente'])->orderBy('primer_apellido')->orderBy('primer_nombre')->paginate(25)->withQueryString(),
@@ -108,10 +108,10 @@ class EmpleadoController extends Controller
         $datos = $this->validar($request);
         $datos['codigo_empleado'] ??= $this->siguienteNumero($request, 'empleado');
         $empleado = Empleado::create($datos + [
-            'id_empresa' => $request->user()->id_empresa,
+            'id_empresa' => $this->idEmpresa($request),
             'estado' => 'ACTIVO',
-            'created_by' => $request->user()->id_usuario,
-            'updated_by' => $request->user()->id_usuario,
+            'created_by' => $this->idUsuario($request),
+            'updated_by' => $this->idUsuario($request),
         ]);
 
         return redirect()->route('empleados.show', $empleado->id_empleado)->with('status', "Empleado {$empleado->nombre_completo} creado. Registra su contrato y salario.");
@@ -131,7 +131,7 @@ class EmpleadoController extends Controller
         $datos = $this->validar($request, $e);
         $datos['codigo_empleado'] ??= $e->codigo_empleado;
         $request->validate(['estado' => ['required', Rule::in(self::ESTADOS_EDITABLES)]]);
-        $e->update($datos + ['estado' => $request->input('estado'), 'updated_by' => $request->user()->id_usuario]);
+        $e->update($datos + ['estado' => $request->input('estado'), 'updated_by' => $this->idUsuario($request)]);
 
         return redirect()->route('empleados.show', $e->id_empleado)->with('status', "Empleado {$e->nombre_completo} actualizado.");
     }
@@ -149,7 +149,7 @@ class EmpleadoController extends Controller
         }
 
         DB::transaction(function () use ($e, $datos, $request) {
-            $e->update($datos + ['estado' => 'BAJA', 'updated_by' => $request->user()->id_usuario]);
+            $e->update($datos + ['estado' => 'BAJA', 'updated_by' => $this->idUsuario($request)]);
             $e->contratos()->where('estado', 'VIGENTE')->update(['estado' => 'RESCINDIDO', 'fecha_fin' => $datos['fecha_baja']]);
             // Deja de ser jefe inmediato de su equipo.
             Empleado::query()->where('id_supervisor', $e->id_empleado)->update(['id_supervisor' => null]);
@@ -164,7 +164,7 @@ class EmpleadoController extends Controller
         if ($e->estado !== 'BAJA') {
             return back()->withErrors(['empleado' => 'Solo se reactivan empleados de baja.']);
         }
-        $e->update(['estado' => 'ACTIVO', 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $request->user()->id_usuario]);
+        $e->update(['estado' => 'ACTIVO', 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "{$e->nombre_completo} reactivado. Registra un contrato nuevo.");
     }
@@ -195,7 +195,7 @@ class EmpleadoController extends Controller
         if ($e->estado === 'BAJA') {
             return back()->withErrors(['contrato' => 'El empleado está de baja: reactívalo antes.']);
         }
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['numero_contrato' => ($n = strtoupper(trim((string) $request->input('numero_contrato')))) === '' ? null : $n]);
         $datos = $request->validateWithBag('contrato', [
             'numero_contrato' => ['nullable', 'string', 'max:50', Rule::unique('contrato_laboral', 'numero_contrato')->where('id_empresa', $idEmpresa)],
@@ -216,12 +216,12 @@ class EmpleadoController extends Controller
             $anterior?->update(['estado' => 'RENOVADO', 'fecha_fin' => $anterior->fecha_fin ?? $datos['fecha_inicio']]);
             $datos['numero_contrato'] ??= $this->siguienteNumero($request, 'contrato');
             ContratoLaboral::create($datos + [
-                'id_empleado' => $e->id_empleado, 'id_empresa' => $idEmpresa, 'estado' => 'VIGENTE', 'created_by' => $request->user()->id_usuario,
+                'id_empleado' => $e->id_empleado, 'id_empresa' => $idEmpresa, 'estado' => 'VIGENTE', 'created_by' => $this->idUsuario($request),
             ]);
             HistorialSalarial::create([
                 'id_empleado' => $e->id_empleado, 'id_cargo' => $e->id_cargo, 'salario_anterior' => $anterior?->salario_base,
                 'salario_nuevo' => $datos['salario_base'], 'moneda' => $datos['moneda'], 'tipo_cambio' => 'CONTRATACION',
-                'fecha_efectiva' => $datos['fecha_inicio'], 'motivo' => $anterior ? 'Nuevo contrato' : 'Contrato inicial', 'created_by' => $request->user()->id_usuario,
+                'fecha_efectiva' => $datos['fecha_inicio'], 'motivo' => $anterior ? 'Nuevo contrato' : 'Contrato inicial', 'created_by' => $this->idUsuario($request),
             ]);
             $e->update(['tipo_contrato' => $datos['tipo']]);
         });
@@ -238,7 +238,7 @@ class EmpleadoController extends Controller
             'salario_nuevo' => ['required', 'numeric', 'min:0.01', 'max:9999999999'],
             'fecha_efectiva' => ['required', 'date'],
             'motivo' => ['required', 'string', 'min:5', 'max:300'],
-            'id_cargo' => ['nullable', 'integer', Rule::exists('cargo', 'id_cargo')->where('id_empresa', $request->user()->id_empresa)->where('activo', true)],
+            'id_cargo' => ['nullable', 'integer', Rule::exists('cargo', 'id_cargo')->where('id_empresa', $this->idEmpresa($request))->where('activo', true)],
         ]);
 
         return DB::transaction(function () use ($e, $datos, $request) {
@@ -252,8 +252,8 @@ class EmpleadoController extends Controller
             HistorialSalarial::create([
                 'id_empleado' => $e->id_empleado, 'id_cargo' => $datos['id_cargo'] ?? $e->id_cargo, 'salario_anterior' => $contrato->salario_base,
                 'salario_nuevo' => $datos['salario_nuevo'], 'moneda' => $contrato->moneda, 'tipo_cambio' => $datos['tipo_cambio'],
-                'fecha_efectiva' => $datos['fecha_efectiva'], 'motivo' => $datos['motivo'], 'aprobado_por' => $request->user()->id_usuario,
-                'created_by' => $request->user()->id_usuario,
+                'fecha_efectiva' => $datos['fecha_efectiva'], 'motivo' => $datos['motivo'], 'aprobado_por' => $this->idUsuario($request),
+                'created_by' => $this->idUsuario($request),
             ]);
             $contrato->update(['salario_base' => $datos['salario_nuevo']]);
             if (! empty($datos['id_cargo'])) {
@@ -290,7 +290,7 @@ class EmpleadoController extends Controller
             throw $ex->errorBag('documento');
         }
         unset($datos['archivo']);
-        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $request->user()->id_usuario]);
+        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "Documento «{$datos['nombre']}» guardado.");
     }
@@ -309,7 +309,7 @@ class EmpleadoController extends Controller
 
     private function formulario(Request $request, Empleado $e): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('empleados.form', [
             'e' => $e,
@@ -356,7 +356,7 @@ class EmpleadoController extends Controller
         [$tabla, $columna, $prefijo] = $que === 'empleado'
             ? ['empleado', 'codigo_empleado', 'EMP-']
             : ['contrato_laboral', 'numero_contrato', 'CL-'.now()->year.'-'];
-        $ultimo = DB::table($tabla)->where('id_empresa', $request->user()->id_empresa)->where($columna, 'like', $prefijo.'%')->pluck($columna)
+        $ultimo = DB::table($tabla)->where('id_empresa', $this->idEmpresa($request))->where($columna, 'like', $prefijo.'%')->pluck($columna)
             ->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 
         return $prefijo.str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT);
@@ -365,7 +365,7 @@ class EmpleadoController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?Empleado $e = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $documento = strtoupper(preg_replace('/[\s\-]+/', '', (string) $request->input('dpi_nit')));
         $request->merge([
             'dpi_nit' => $documento,

@@ -46,7 +46,7 @@ class OrdenCompraController extends Controller
             'ordenes' => $this->filtradas($request)->with(['proveedor', 'bodega'])
                 ->withSum('detalles as pedido', 'cantidad_pedida')->withSum('detalles as recibido', 'cantidad_recibida')
                 ->orderByDesc('fecha_emision')->orderByDesc('id_oc')->paginate(25)->withQueryString(),
-            'proveedores' => Proveedor::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('razon_social')->get(['id_proveedor', 'razon_social']),
+            'proveedores' => Proveedor::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('razon_social')->get(['id_proveedor', 'razon_social']),
             'estados' => self::ESTADOS,
             'filtros' => $request->only(['buscar', 'estado', 'proveedor']),
         ]);
@@ -81,7 +81,7 @@ class OrdenCompraController extends Controller
     {
         return view('ordenes-compra.imprimir', [
             'oc' => $this->cargar($request, $orden),
-            'empresa' => Empresa::find($request->user()->id_empresa),
+            'empresa' => Empresa::find($this->idEmpresa($request)),
             'estados' => self::ESTADOS,
         ]);
     }
@@ -101,10 +101,10 @@ class OrdenCompraController extends Controller
             $encabezado = $datos['encabezado'];
             $encabezado['numero_oc'] ??= $this->siguienteNumero($request);
             $oc = OrdenCompra::create($encabezado + [
-                'id_empresa' => $request->user()->id_empresa,
+                'id_empresa' => $this->idEmpresa($request),
                 'estado' => 'BORRADOR',
                 'subtotal' => 0, 'iva' => 0, 'total' => 0,
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]);
             $this->guardarLineas($oc, $datos['lineas']);
 
@@ -160,7 +160,7 @@ class OrdenCompraController extends Controller
                 ], $sobregiros));
             }
 
-            $oc->update(['estado' => 'ENVIADA', 'aprobado_por' => $request->user()->id_usuario]);
+            $oc->update(['estado' => 'ENVIADA', 'aprobado_por' => $this->idUsuario($request)]);
             $presupuestoService->registrarOrden($oc);
 
             return back()->with('status', "Orden {$oc->numero_oc} aprobada".($sobregiros ? ' pasando el saldo del presupuesto.' : '.'));
@@ -219,7 +219,7 @@ class OrdenCompraController extends Controller
 
     private function formulario(Request $request, OrdenCompra $oc): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $empresa = Empresa::find($idEmpresa);
 
         return view('ordenes-compra.form', [
@@ -255,7 +255,7 @@ class OrdenCompraController extends Controller
     /** @return array{encabezado: array<string, mixed>, lineas: list<array<string, mixed>>} */
     private function validar(Request $request, ?OrdenCompra $oc = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['numero_oc' => ($n = strtoupper(trim((string) $request->input('numero_oc')))) === '' ? null : $n]);
         // Se descartan las filas vacías del formulario.
         $request->merge(['lineas' => array_values(array_filter((array) $request->input('lineas', []), fn ($l) => ! empty($l['id_producto'])))]);

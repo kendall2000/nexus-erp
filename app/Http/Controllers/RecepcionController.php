@@ -32,7 +32,7 @@ class RecepcionController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $buscar = trim((string) $request->query('buscar'));
 
         return view('recepciones.index', [
@@ -51,7 +51,7 @@ class RecepcionController extends Controller
     /** Paso 1: elegir la orden (?oc=). Paso 2: indicar lo que llegó de cada línea. */
     public function create(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $oc = $request->filled('oc')
             ? $this->recibibles($request)->with(['proveedor', 'bodega', 'detalles.producto'])->find($request->integer('oc'))
             : null;
@@ -67,7 +67,7 @@ class RecepcionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['numero_recepcion' => ($n = strtoupper(trim((string) $request->input('numero_recepcion')))) === '' ? null : $n]);
 
         $datos = $request->validate([
@@ -123,7 +123,7 @@ class RecepcionController extends Controller
                 'numero_recepcion' => $datos['numero_recepcion'] ?? $this->siguienteNumero($request),
                 'fecha_recepcion' => $datos['fecha_recepcion'],
                 'notas' => $datos['notas'] ?? null,
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]);
 
             foreach ($recibir as [$linea, $cantidad, $costo]) {
@@ -149,7 +149,7 @@ class RecepcionController extends Controller
                     'referencia_tipo' => 'COMPRA',
                     'referencia_id' => $recepcion->id_recepcion,
                     'observaciones' => "Recepción {$recepcion->numero_recepcion} · OC {$oc->numero_oc}",
-                    'created_by' => $request->user()->id_usuario,
+                    'created_by' => $this->idUsuario($request),
                 ]);
             }
 
@@ -181,7 +181,7 @@ class RecepcionController extends Controller
     {
         return view('recepciones.imprimir', [
             'r' => $this->cargar($request, $recepcion),
-            'empresa' => Empresa::find($request->user()->id_empresa),
+            'empresa' => Empresa::find($this->idEmpresa($request)),
         ]);
     }
 
@@ -193,21 +193,21 @@ class RecepcionController extends Controller
 
     private function cargar(Request $request, int $recepcion): RecepcionMercaderia
     {
-        return RecepcionMercaderia::query()->where('id_empresa', $request->user()->id_empresa)
+        return RecepcionMercaderia::query()->where('id_empresa', $this->idEmpresa($request))
             ->with(['ordenCompra.proveedor', 'bodega', 'creadoPor', 'detalles.producto', 'detalles.lineaOC'])
             ->findOrFail($recepcion);
     }
 
     private function recibibles(Request $request): Builder
     {
-        return OrdenCompra::query()->where('id_empresa', $request->user()->id_empresa)->whereIn('estado', self::RECIBIBLES);
+        return OrdenCompra::query()->where('id_empresa', $this->idEmpresa($request))->whereIn('estado', self::RECIBIBLES);
     }
 
     /** REC-AAAA-0001, consecutivo por empresa y año. */
     private function siguienteNumero(Request $request): string
     {
         $prefijo = 'REC-'.now()->year.'-';
-        $ultimo = RecepcionMercaderia::query()->where('id_empresa', $request->user()->id_empresa)
+        $ultimo = RecepcionMercaderia::query()->where('id_empresa', $this->idEmpresa($request))
             ->where('numero_recepcion', 'like', $prefijo.'%')->pluck('numero_recepcion')
             ->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 

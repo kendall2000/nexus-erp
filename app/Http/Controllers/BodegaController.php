@@ -84,7 +84,7 @@ class BodegaController extends Controller
 
     private function formulario(Request $request, Bodega $bodega): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('bodegas.form', [
             'bodega' => $bodega,
@@ -102,7 +102,7 @@ class BodegaController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:150'],

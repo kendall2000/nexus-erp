@@ -21,7 +21,7 @@ class OrganizacionController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('organizacion.index', [
             'departamentos' => $this->departamentos($request)->with('padre')->withCount(['empleados', 'cargos'])->orderBy('nombre')->get(),
@@ -34,7 +34,7 @@ class OrganizacionController extends Controller
 
     public function guardarDepartamento(Request $request, ?int $departamento = null): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $d = $departamento ? $this->departamentos($request)->findOrFail($departamento) : new DepartamentoOrg(['id_empresa' => $idEmpresa]);
         $request->merge(['codigo' => ($c = strtoupper(trim((string) $request->input('codigo')))) === '' ? null : $c]);
         $datos = $request->validateWithBag('departamento', [
@@ -70,7 +70,7 @@ class OrganizacionController extends Controller
 
     public function guardarCargo(Request $request, ?int $cargo = null): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $c = $cargo ? $this->cargos($request)->findOrFail($cargo) : new Cargo(['id_empresa' => $idEmpresa]);
         $datos = $request->validateWithBag('cargo', [
             'nombre' => ['required', 'string', 'max:150', Rule::unique('cargo', 'nombre')->where('id_empresa', $idEmpresa)->ignore($c->id_cargo, 'id_cargo')],

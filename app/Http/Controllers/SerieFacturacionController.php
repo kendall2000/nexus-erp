@@ -39,7 +39,7 @@ class SerieFacturacionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $serie = SerieFacturacion::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $serie = SerieFacturacion::create($this->validar($request) + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('series-facturacion.index')->with('status', "Serie {$serie->codigo_serie} creada: el siguiente número será {$serie->formatearNumero($serie->ultimo_numero + 1)}.");
     }
@@ -93,7 +93,7 @@ class SerieFacturacionController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?SerieFacturacion $serie = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['codigo_serie' => strtoupper(trim((string) $request->input('codigo_serie')))]);
 
         $datos = $request->validate([

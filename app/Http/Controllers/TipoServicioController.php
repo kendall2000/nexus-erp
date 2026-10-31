@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Clientes\GuardarTipoServicioRequest;
 use App\Models\Clientes\TipoServicio;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
@@ -47,9 +48,9 @@ class TipoServicioController extends Controller
         return $this->formulario($request, new TipoServicio(['id_linea' => $request->integer('linea') ?: null, 'unidad_medida' => 'MES', 'moneda' => 'GTQ', 'activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarTipoServicioRequest $request): RedirectResponse
     {
-        $servicio = TipoServicio::create($this->validar($request));
+        $servicio = TipoServicio::create($request->datosLimpios());
 
         return redirect()->route('tipos-servicio.index')->with('status', "Servicio «{$servicio->nombre}» creado.");
     }
@@ -59,10 +60,10 @@ class TipoServicioController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($servicio));
     }
 
-    public function update(Request $request, int $servicio): RedirectResponse
+    public function update(GuardarTipoServicioRequest $request, int $servicio): RedirectResponse
     {
         $servicio = $this->deMiEmpresa($request)->findOrFail($servicio);
-        $servicio->update($this->validar($request, $servicio));
+        $servicio->update($request->datosLimpios());
 
         return redirect()->route('tipos-servicio.index')->with('status', "Servicio «{$servicio->nombre}» actualizado.");
     }
@@ -89,7 +90,7 @@ class TipoServicioController extends Controller
 
     private function formulario(Request $request, TipoServicio $servicio): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('tipos-servicio.form', [
             'servicio' => $servicio,
@@ -114,7 +115,7 @@ class TipoServicioController extends Controller
     /** Los servicios no tienen id_empresa: son de la empresa por su línea de negocio. */
     private function deMiEmpresa(Request $request): Builder
     {
-        return TipoServicio::query()->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $request->user()->id_empresa));
+        return TipoServicio::query()->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $this->idEmpresa($request)));
     }
 
     private function lineas(Request $request): Builder
@@ -125,7 +126,7 @@ class TipoServicioController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?TipoServicio $servicio = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['unidad_medida' => strtoupper(trim((string) $request->input('unidad_medida')))]);
 
         $datos = $request->validate([

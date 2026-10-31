@@ -122,7 +122,7 @@ class ProveedorController extends Controller
     /** @return array<string, mixed> Solo los campos del formulario (nunca id_empresa). */
     private function validar(Request $request, ?Proveedor $proveedor = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge([
             'razon_social' => trim((string) $request->input('razon_social')),
             'nit' => ($n = strtoupper(preg_replace('/\s+/', '', (string) $request->input('nit')))) === '' ? null : $n,

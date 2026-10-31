@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CRM\GuardarProspectoRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Clientes\ContactoCliente;
 use App\Models\Clientes\Industria;
@@ -84,12 +85,9 @@ class ProspectoController extends Controller
         return $this->formulario($request, new Prospecto(['temperatura' => 'FRIO', 'moneda' => 'GTQ', 'estado' => 'NUEVO']));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarProspectoRequest $request): RedirectResponse
     {
-        $p = Prospecto::create($this->validar($request) + [
-            'id_empresa' => $request->user()->id_empresa, 'estado' => 'NUEVO',
-            'created_by' => $request->user()->id_usuario, 'updated_by' => $request->user()->id_usuario,
-        ]);
+        $p = Prospecto::create($request->datosLimpios() + ['estado' => 'NUEVO'] + $this->selloCreacion($request));
 
         return redirect()->route('prospectos.show', $p->id_prospecto)->with('status', "Prospecto «{$p->nombre_empresa}» registrado.");
     }
@@ -104,15 +102,15 @@ class ProspectoController extends Controller
         return $this->formulario($request, $p);
     }
 
-    public function update(Request $request, int $prospecto): RedirectResponse
+    public function update(GuardarProspectoRequest $request, int $prospecto): RedirectResponse
     {
         $p = $this->deMiEmpresa($request)->findOrFail($prospecto);
         if (! in_array($p->estado, self::ABIERTOS, true)) {
             return redirect()->route('prospectos.show', $p->id_prospecto)->withErrors(['prospecto' => 'Un prospecto convertido o descartado ya no se edita.']);
         }
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $request->validate(['estado' => ['required', Rule::in(self::ABIERTOS)]]);
-        $p->update($datos + ['estado' => $request->input('estado'), 'updated_by' => $request->user()->id_usuario]);
+        $p->update($datos + ['estado' => $request->input('estado')] + $this->selloActualizacion($request));
 
         return redirect()->route('prospectos.show', $p->id_prospecto)->with('status', 'Prospecto actualizado.');
     }
@@ -137,7 +135,7 @@ class ProspectoController extends Controller
 
         DB::transaction(function () use ($p, $datos, $request) {
             SeguimientoProspecto::create($datos + ['id_prospecto' => $p->id_prospecto]);
-            $cambios = ['updated_by' => $request->user()->id_usuario];
+            $cambios = $this->selloActualizacion($request);
             if ($p->estado === 'NUEVO' && $datos['resultado'] !== 'SIN_CONTACTO') {
                 $cambios['estado'] = 'EN_CONTACTO';
             }
@@ -157,7 +155,7 @@ class ProspectoController extends Controller
         if (! in_array($p->estado, self::ABIERTOS, true)) {
             return back()->withErrors(['prospecto' => 'El prospecto ya está cerrado.']);
         }
-        $p->update($datos + ['estado' => 'DESCARTADO', 'updated_by' => $request->user()->id_usuario]);
+        $p->update($datos + ['estado' => 'DESCARTADO', 'updated_by' => $this->idUsuario($request)]);
 
         return back()->with('status', 'Prospecto descartado.');
     }
@@ -182,12 +180,12 @@ class ProspectoController extends Controller
                 'id_empresa' => $p->id_empresa, 'id_pais' => $p->id_pais ?? Pais::query()->where('codigo_iso2', 'GT')->value('id_pais'), 'id_industria' => $p->id_industria,
                 'razon_social' => $p->nombre_empresa, 'tipo_persona' => 'JURIDICA', 'email_principal' => $p->email_contacto, 'telefono_principal' => $p->telefono_contacto,
                 'sitio_web' => $p->sitio_web, 'moneda_facturacion' => $p->moneda ?: 'GTQ', 'dias_credito' => 30, 'activo' => true,
-                'created_by' => $request->user()->id_usuario, 'updated_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request), 'updated_by' => $this->idUsuario($request),
             ]);
             ContactoCliente::create(['id_cliente' => $cliente->id_cliente, 'nombre' => $p->nombre_contacto, 'cargo' => $p->cargo_contacto, 'email' => $p->email_contacto,
                 'telefono' => $p->telefono_contacto, 'whatsapp' => $p->whatsapp_contacto, 'es_contacto_principal' => ! $cliente->contactos()->where('es_contacto_principal', true)->exists(),
                 'recibe_facturas' => false, 'activo' => true]);
-            $p->update(['estado' => 'CONVERTIDO', 'fecha_conversion' => now(), 'id_cliente_generado' => $cliente->id_cliente, 'updated_by' => $request->user()->id_usuario]);
+            $p->update(['estado' => 'CONVERTIDO', 'fecha_conversion' => now(), 'id_cliente_generado' => $cliente->id_cliente, 'updated_by' => $this->idUsuario($request)]);
 
             if (! empty($datos['crear_oportunidad'])) {
                 $etapa = $etapas->firstWhere('id_etapa', (int) $datos['id_etapa']);
@@ -196,7 +194,7 @@ class ProspectoController extends Controller
                     'id_empresa' => $p->id_empresa, 'id_cliente' => $cliente->id_cliente, 'id_prospecto' => $p->id_prospecto, 'id_etapa' => $etapa->id_etapa,
                     'id_responsable' => $datos['id_responsable'], 'nombre' => 'Servicios para '.$p->nombre_empresa, 'descripcion' => $p->interes_servicio,
                     'valor_estimado' => $valor, 'moneda' => $p->moneda ?: 'GTQ', 'probabilidad' => (int) $etapa->probabilidad_cierre,
-                    'valor_ponderado' => round($valor * (int) $etapa->probabilidad_cierre / 100, 4), 'created_by' => $request->user()->id_usuario,
+                    'valor_ponderado' => round($valor * (int) $etapa->probabilidad_cierre / 100, 4), 'created_by' => $this->idUsuario($request),
                 ]);
             }
 
@@ -242,13 +240,13 @@ class ProspectoController extends Controller
 
     private function vendedores(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
     }
 
     /** @return array<string, mixed> */
     private function validar(Request $request): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $web = trim((string) $request->input('sitio_web'));
         $request->merge(['sitio_web' => $web !== '' && ! preg_match('#^https?://#i', $web) ? 'https://'.$web : ($web ?: null)]);
 

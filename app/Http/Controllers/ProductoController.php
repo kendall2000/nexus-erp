@@ -121,7 +121,7 @@ class ProductoController extends Controller
 
     private function formulario(Request $request, Producto $producto): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('productos.form', [
             'producto' => $producto,
@@ -141,14 +141,14 @@ class ProductoController extends Controller
 
     private function categorias(Request $request, bool $soloActivas = false)
     {
-        return CategoriaProducto::query()->where('id_empresa', $request->user()->id_empresa)
+        return CategoriaProducto::query()->where('id_empresa', $this->idEmpresa($request))
             ->when($soloActivas, fn ($q) => $q->where('activo', true))->orderBy('nombre')->get();
     }
 
     /** @return array<string, mixed> Solo los campos del formulario (nunca id_empresa). */
     private function validar(Request $request, ?Producto $producto = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['codigo' => strtoupper(trim((string) $request->input('codigo'))), 'nombre' => trim((string) $request->input('nombre'))]);
 
         $datos = $request->validate([

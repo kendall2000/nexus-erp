@@ -73,7 +73,7 @@ class ClienteController extends Controller
     {
         $c = $this->deMiEmpresa($request)->with(['pais', 'municipio', 'contactos'])->findOrFail($cliente);
 
-        return view('clientes.imprimir', ['c' => $c, 'empresa' => Empresa::find($request->user()->id_empresa)] + $this->cuenta($c));
+        return view('clientes.imprimir', ['c' => $c, 'empresa' => Empresa::find($this->idEmpresa($request))] + $this->cuenta($c));
     }
 
     public function create(Request $request): View
@@ -107,7 +107,7 @@ class ClienteController extends Controller
     public function estado(Request $request, int $cliente): RedirectResponse
     {
         $cliente = $this->deMiEmpresa($request)->findOrFail($cliente);
-        $cliente->update(['activo' => ! $cliente->activo, 'updated_by' => $request->user()->id_usuario]);
+        $cliente->update(['activo' => ! $cliente->activo, 'updated_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "Cliente «{$cliente->razon_social}» ".($cliente->activo ? 'activado.' : 'desactivado.'));
     }
@@ -224,7 +224,7 @@ class ClienteController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?Cliente $cliente = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $web = trim((string) $request->input('sitio_web'));
         $request->merge([
             'nit' => self::normalizarNit($request->input('nit')),

@@ -26,7 +26,7 @@ class MovimientoController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $producto = $request->filled('producto') ? Producto::query()->where('id_empresa', $idEmpresa)->find($request->integer('producto')) : null;
         $bodega = $request->filled('bodega') ? Bodega::query()->where('id_empresa', $idEmpresa)->find($request->integer('bodega')) : null;
         // Con producto y bodega (y sin filtro de tipo) el listado es un kardex: orden cronológico con saldo acumulado.
@@ -64,7 +64,7 @@ class MovimientoController extends Controller
 
     public function create(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $bodegas = Bodega::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get();
         $existencias = StockBodega::query()->whereIn('id_bodega', $bodegas->pluck('id_bodega'))->get(['id_producto', 'id_bodega', 'cantidad_actual', 'costo_promedio'])
             ->mapWithKeys(fn ($s) => ["{$s->id_producto}-{$s->id_bodega}" => ['cantidad' => (float) $s->cantidad_actual, 'costo' => (float) $s->costo_promedio]]);
@@ -81,7 +81,7 @@ class MovimientoController extends Controller
 
     public function store(Request $request, KardexService $kardexService): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $bodegaValida = Rule::exists('bodega', 'id_bodega')->where('id_empresa', $idEmpresa)->where('activo', true);
         $datos = $request->validate([
             'tipo' => ['required', Rule::in(array_keys(Kardex::MANUALES))],
@@ -108,7 +108,7 @@ class MovimientoController extends Controller
             ], ['numero_lote.required' => 'Este producto se controla por lote.', 'fecha_vencimiento.required' => 'Este producto es perecedero: indica el vencimiento.']);
         }
 
-        $movimientos = DB::transaction(fn () => $kardexService->registrarMovimiento($idEmpresa, $request->user()->id_usuario, $producto->moneda ?: 'GTQ', $datos));
+        $movimientos = DB::transaction(fn () => $kardexService->registrarMovimiento($idEmpresa, $this->idUsuario($request), $producto->moneda ?: 'GTQ', $datos));
         $etiqueta = Kardex::MANUALES[$datos['tipo']][0];
 
         return redirect()->route('movimientos.index', ['producto' => $producto->id_producto, 'bodega' => $datos['id_bodega']])

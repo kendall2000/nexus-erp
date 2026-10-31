@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Core\GuardarCentroCostoRequest;
 use App\Models\Core\CentroCosto;
+use App\Services\Core\CoreService;
 use App\Support\ExportarCsv;
 use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,9 +47,9 @@ class CentroCostoController extends Controller
         return view('centros-costo.form', ['centro' => new CentroCosto(['activo' => true])]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarCentroCostoRequest $request): RedirectResponse
     {
-        $centro = CentroCosto::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $centro = CentroCosto::create($request->datosLimpios() + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('centros-costo.index')->with('status', "Centro de costo «{$centro->etiqueta}» creado.");
     }
@@ -57,10 +59,10 @@ class CentroCostoController extends Controller
         return view('centros-costo.form', ['centro' => $this->deMiEmpresa($request)->findOrFail($centro)]);
     }
 
-    public function update(Request $request, int $centro): RedirectResponse
+    public function update(GuardarCentroCostoRequest $request, int $centro): RedirectResponse
     {
         $centro = $this->deMiEmpresa($request)->findOrFail($centro);
-        $centro->update($this->validar($request, $centro));
+        $centro->update($request->datosLimpios());
 
         return redirect()->route('centros-costo.index')->with('status', "Centro de costo «{$centro->etiqueta}» actualizado.");
     }
@@ -73,10 +75,10 @@ class CentroCostoController extends Controller
         return back()->with('status', "Centro de costo «{$centro->etiqueta}» ".($centro->activo ? 'activado.' : 'desactivado.'));
     }
 
-    public function destroy(Request $request, int $centro): RedirectResponse
+    public function destroy(Request $request, int $centro, CoreService $coreService): RedirectResponse
     {
         $centro = $this->deMiEmpresa($request)->findOrFail($centro);
-        if ($uso = Referencias::enUso('id_centro', $centro->id_centro, self::USOS)) {
+        if ($uso = $coreService->verificarReferenciasEnUso('id_centro', $centro->id_centro, self::USOS)) {
             return back()->withErrors(['centro' => "No se puede eliminar «{$centro->etiqueta}»: lo usan {$uso}. Puedes desactivarlo."]);
         }
         $centro->delete();
@@ -105,7 +107,7 @@ class CentroCostoController extends Controller
 
         $datos = $request->validate([
             'codigo' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9][A-Z0-9._-]*$/',
-                Rule::unique('centro_costo', 'codigo')->where('id_empresa', $request->user()->id_empresa)->ignore($centro?->id_centro, 'id_centro')],
+                Rule::unique('centro_costo', 'codigo')->where('id_empresa', $this->idEmpresa($request))->ignore($centro?->id_centro, 'id_centro')],
             'nombre' => ['required', 'string', 'max:150'],
             'descripcion' => ['nullable', 'string', 'max:300'],
         ], [

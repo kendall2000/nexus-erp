@@ -45,7 +45,7 @@ class TicketController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $activos = $this->deMiEmpresa($request)->whereIn('estado', self::ACTIVOS);
 
         return view('tickets.index', [
@@ -83,7 +83,7 @@ class TicketController extends Controller
 
     public function create(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('tickets.form', [
             'clientes' => Cliente::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('razon_social')->get(['id_cliente', 'razon_social']),
@@ -100,7 +100,7 @@ class TicketController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validate([
             'id_cliente' => ['required', 'integer', Rule::exists('cliente', 'id_cliente')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
             'id_contrato' => ['nullable', 'integer', Rule::exists('contrato_servicio', 'id_contrato')->where('id_empresa', $idEmpresa)->where('id_cliente', $request->integer('id_cliente'))],
@@ -136,8 +136,8 @@ class TicketController extends Controller
                 'sla_resolucion_hrs' => $sla?->tiempo_resolucion_hrs,
                 'fecha_limite_respuesta' => $sla ? Sla::vence($apertura, (int) $sla->tiempo_primera_respuesta_hrs, (bool) $sla->aplica_fines_semana) : null,
                 'fecha_limite_resolucion' => $sla ? Sla::vence($apertura, (int) $sla->tiempo_resolucion_hrs, (bool) $sla->aplica_fines_semana) : null,
-                'created_by' => $request->user()->id_usuario,
-                'updated_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
+                'updated_by' => $this->idUsuario($request),
             ]);
         });
 
@@ -159,9 +159,9 @@ class TicketController extends Controller
                 return back()->withErrors(['ticket' => 'El ticket no está abierto: reábrelo para responder.']);
             }
             $interna = (bool) ($datos['es_nota_interna'] ?? false);
-            TicketComentario::create(['id_ticket' => $t->id_ticket, 'id_usuario' => $request->user()->id_usuario, 'es_nota_interna' => $interna, 'contenido' => $datos['contenido']]);
+            TicketComentario::create(['id_ticket' => $t->id_ticket, 'id_usuario' => $this->idUsuario($request), 'es_nota_interna' => $interna, 'contenido' => $datos['contenido']]);
 
-            $cambios = ['updated_by' => $request->user()->id_usuario];
+            $cambios = $this->selloActualizacion($request);
             if (! $interna && ! $t->fecha_primera_respuesta) {
                 $cambios['fecha_primera_respuesta'] = now();
             }
@@ -197,10 +197,10 @@ class TicketController extends Controller
             if ($t->id_asignado_a) {
                 EscalacionTicket::create([
                     'id_ticket' => $t->id_ticket, 'escalado_por' => $t->id_asignado_a, 'escalado_a' => $datos['id_asignado_a'],
-                    'id_usuario' => $request->user()->id_usuario, 'motivo' => $datos['motivo'], 'nivel' => $t->escalaciones()->count() + 1,
+                    'id_usuario' => $this->idUsuario($request), 'motivo' => $datos['motivo'], 'nivel' => $t->escalaciones()->count() + 1,
                 ]);
             }
-            $t->update(['id_asignado_a' => $datos['id_asignado_a'], 'updated_by' => $request->user()->id_usuario]);
+            $t->update(['id_asignado_a' => $datos['id_asignado_a'], 'updated_by' => $this->idUsuario($request)]);
         });
 
         return back()->with('status', 'Ticket asignado a '.Empleado::find($datos['id_asignado_a'])?->nombre_completo.'.');
@@ -219,7 +219,7 @@ class TicketController extends Controller
             if ($t->estado === 'CERRADO') {
                 return back()->withErrors(['ticket' => 'El ticket ya está cerrado.']);
             }
-            $t->update($datos + ['estado' => 'CERRADO', 'fecha_cierre' => now(), 'fecha_resolucion' => $t->fecha_resolucion ?? now(), 'updated_by' => $request->user()->id_usuario]);
+            $t->update($datos + ['estado' => 'CERRADO', 'fecha_cierre' => now(), 'fecha_resolucion' => $t->fecha_resolucion ?? now(), 'updated_by' => $this->idUsuario($request)]);
             if (! empty($datos['calificacion_cliente'])) {
                 EvaluacionSatisfaccion::create([
                     'id_empresa' => $t->id_empresa, 'id_cliente' => $t->id_cliente, 'id_contrato' => $t->id_contrato, 'id_ticket' => $t->id_ticket,
@@ -241,8 +241,8 @@ class TicketController extends Controller
             if (! in_array($t->estado, ['RESUELTO', 'CERRADO'], true)) {
                 return back()->withErrors(['ticket' => 'Solo se reabren tickets resueltos o cerrados.']);
             }
-            TicketComentario::create(['id_ticket' => $t->id_ticket, 'id_usuario' => $request->user()->id_usuario, 'es_nota_interna' => true, 'contenido' => 'Reabierto: '.$datos['motivo']]);
-            $t->update(['estado' => 'REABIERTO', 'fecha_resolucion' => null, 'fecha_cierre' => null, 'updated_by' => $request->user()->id_usuario]);
+            TicketComentario::create(['id_ticket' => $t->id_ticket, 'id_usuario' => $this->idUsuario($request), 'es_nota_interna' => true, 'contenido' => 'Reabierto: '.$datos['motivo']]);
+            $t->update(['estado' => 'REABIERTO', 'fecha_resolucion' => null, 'fecha_cierre' => null, 'updated_by' => $this->idUsuario($request)]);
 
             return back()->with('status', "Ticket {$t->numero_ticket} reabierto.");
         });
@@ -274,13 +274,13 @@ class TicketController extends Controller
 
     private function agentes(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
     }
 
     /** Nombres de los planes de SLA activos (cada plan tiene una fila por prioridad). */
     private function planesSla(Request $request)
     {
-        return SlaConfig::query()->where('id_empresa', $request->user()->id_empresa)->where('activo', true)->orderBy('nombre')->distinct()->pluck('nombre');
+        return SlaConfig::query()->where('id_empresa', $this->idEmpresa($request))->where('activo', true)->orderBy('nombre')->distinct()->pluck('nombre');
     }
 
     /** TK-AAAA-00001, consecutivo por empresa y año. */

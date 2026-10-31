@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Core\GuardarSucursalRequest;
 use App\Models\Core\DivisionGeografica;
 use App\Models\Core\Municipio;
 use App\Models\Core\Pais;
@@ -29,13 +30,13 @@ class SucursalController extends Controller
         return $this->formulario(new Sucursal(['activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarSucursalRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $sucursal = DB::transaction(function () use ($request, $datos) {
             $this->quitarCasaMatrizSiCorresponde($request, $datos);
 
-            return Sucursal::create($datos + ['id_empresa' => $request->user()->id_empresa]);
+            return Sucursal::create($datos + ['id_empresa' => $this->idEmpresa($request)]);
         });
 
         return redirect()->route('sucursales.index')->with('status', "Sucursal «{$sucursal->nombre}» creada.");
@@ -46,10 +47,10 @@ class SucursalController extends Controller
         return $this->formulario($this->deMiEmpresa($request)->findOrFail($sucursal));
     }
 
-    public function update(Request $request, int $sucursal): RedirectResponse
+    public function update(GuardarSucursalRequest $request, int $sucursal): RedirectResponse
     {
         $sucursal = $this->deMiEmpresa($request)->findOrFail($sucursal);
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
 
         if ($sucursal->es_casa_matriz && ! $datos['es_casa_matriz']) {
             return back()->withErrors(['es_casa_matriz' => 'Para quitar la casa matriz, marca otra sucursal como casa matriz.'])->withInput();

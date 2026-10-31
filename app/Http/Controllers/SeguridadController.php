@@ -25,7 +25,7 @@ class SeguridadController extends Controller
 {
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $desde24 = now()->subDay();
         $resumen = $this->deMiEmpresa($request)->where('created_at', '>=', $desde24)
             ->selectRaw("SUM(CASE WHEN accion = 'LOGIN_OK' THEN 1 ELSE 0 END) AS ingresos")
@@ -95,7 +95,7 @@ class SeguridadController extends Controller
         ];
         Bitacora::configuracion($cambios);
         DB::table('ConfiguracionSistema')->update($cambios + [
-            'actualizadoPor' => $request->user()->id_usuario,
+            'actualizadoPor' => $this->idUsuario($request),
             'fechaActualizacion' => now(),
         ]);
         Seguridad::olvidar();
@@ -123,7 +123,7 @@ class SeguridadController extends Controller
         ];
         Bitacora::configuracion($cambios);
         DB::table('ConfiguracionSistema')->update($cambios + [
-            'actualizadoPor' => $request->user()->id_usuario,
+            'actualizadoPor' => $this->idUsuario($request),
             'fechaActualizacion' => now(),
         ]);
         Contrasenas::olvidar();
@@ -133,7 +133,7 @@ class SeguridadController extends Controller
 
     public function roles(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $ids = array_map('intval', (array) $request->input('requiere_2fa', []));
         // Uno por uno para que cada cambio quede en la bitácora (solo se guardan los que cambian).
         foreach (Rol::query()->where('id_empresa', $idEmpresa)->get() as $rol) {
@@ -176,6 +176,6 @@ class SeguridadController extends Controller
     private function soloMiEmpresa(Builder $consulta, Request $request): Builder
     {
         return $consulta->where(fn ($q) => $q->whereNull('id_usuario')
-            ->orWhereIn('id_usuario', Usuario::withTrashed()->where('id_empresa', $request->user()->id_empresa)->select('id_usuario')));
+            ->orWhereIn('id_usuario', Usuario::withTrashed()->where('id_empresa', $this->idEmpresa($request))->select('id_usuario')));
     }
 }

@@ -78,7 +78,7 @@ class OportunidadController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $datos = $this->validar($request);
-        $o = Oportunidad::create($datos + ['id_empresa' => $request->user()->id_empresa, 'created_by' => $request->user()->id_usuario]);
+        $o = Oportunidad::create($datos + ['id_empresa' => $this->idEmpresa($request), 'created_by' => $this->idUsuario($request)]);
 
         return redirect()->route('oportunidades.show', $o->id_oportunidad)->with('status', "Oportunidad «{$o->nombre}» creada.");
     }
@@ -163,7 +163,7 @@ class OportunidadController extends Controller
 
     private function formulario(Request $request, Oportunidad $o): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('oportunidades.form', [
             'o' => $o,
@@ -183,14 +183,14 @@ class OportunidadController extends Controller
 
     private function vendedores(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
     }
 
     /** PR-AAAA-0001 por empresa y año. */
     private function siguientePropuesta(Request $request): string
     {
         $prefijo = 'PR-'.now()->year.'-';
-        $ultimo = Propuesta::query()->whereHas('oportunidad', fn ($q) => $q->where('id_empresa', $request->user()->id_empresa))
+        $ultimo = Propuesta::query()->whereHas('oportunidad', fn ($q) => $q->where('id_empresa', $this->idEmpresa($request)))
             ->where('numero_propuesta', 'like', $prefijo.'%')->pluck('numero_propuesta')->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 
         return $prefijo.str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT);
@@ -199,7 +199,7 @@ class OportunidadController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?Oportunidad $o = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $etapasAbiertas = Crm::etapas($idEmpresa)->where('es_ganada', false)->where('es_perdida', false);
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:200'],

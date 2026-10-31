@@ -135,7 +135,7 @@ class ConfiguracionController extends Controller
 
         Bitacora::configuracion($cambios);
         DB::table('ConfiguracionSistema')->update($cambios + [
-            'actualizadoPor' => $request->user()->id_usuario,
+            'actualizadoPor' => $this->idUsuario($request),
             'fechaActualizacion' => now(),
         ]);
         Seguridad::olvidar(); // la zona horaria se aplica en la siguiente petición

@@ -29,7 +29,7 @@ class CategoriaController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $categoria = CategoriaProducto::create($this->validar($request) + ['id_empresa' => $request->user()->id_empresa]);
+        $categoria = CategoriaProducto::create($this->validar($request) + ['id_empresa' => $this->idEmpresa($request)]);
 
         return redirect()->route('categorias.index')->with('status', "Categoría «{$categoria->nombre}» creada.");
     }
@@ -89,7 +89,7 @@ class CategoriaController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?CategoriaProducto $categoria = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $request->merge(['nombre' => trim((string) $request->input('nombre'))]);
 
         $datos = $request->validate([

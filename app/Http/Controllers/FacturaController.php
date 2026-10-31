@@ -60,7 +60,7 @@ class FacturaController extends Controller
 
     public function index(Request $request): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('facturas.index', [
             'facturas' => $this->filtradas($request)->with('cliente')->orderByDesc('fecha_emision')->orderByDesc('id_factura')->paginate(25)->withQueryString(),
@@ -101,14 +101,14 @@ class FacturaController extends Controller
         $f = $this->cargar($request, $factura);
         abort_if($f->estado === 'BORRADOR', 404);
 
-        return view('facturas.imprimir', ['f' => $f, 'empresa' => Empresa::find($request->user()->id_empresa), 'tipos' => self::TIPOS, 'estados' => self::ESTADOS]);
+        return view('facturas.imprimir', ['f' => $f, 'empresa' => Empresa::find($this->idEmpresa($request)), 'tipos' => self::TIPOS, 'estados' => self::ESTADOS]);
     }
 
     /** Con ?contrato= se prellena con el cliente, la moneda, los servicios y el periodo del mes. */
     public function create(Request $request): View
     {
         $contrato = $request->filled('contrato')
-            ? ContratoServicio::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', 'VIGENTE')->with('detalles.tipoServicio', 'detalles.sitio')->find($request->integer('contrato'))
+            ? ContratoServicio::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', 'VIGENTE')->with('detalles.tipoServicio', 'detalles.sitio')->find($request->integer('contrato'))
             : null;
         $idCliente = $contrato?->id_cliente ?? ($request->filled('cliente') ? $request->integer('cliente') : null);
         $cliente = $idCliente ? $this->clientes($request)->find($idCliente) : null;
@@ -142,7 +142,7 @@ class FacturaController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $datos = $this->validar($request);
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         $factura = DB::transaction(function () use ($request, $datos, $idEmpresa) {
             // Se bloquea la serie: dos usuarios no pueden recibir el mismo número.
@@ -158,7 +158,7 @@ class FacturaController extends Controller
                 'numero_completo' => $serie->formatearNumero($numero),
                 'estado' => 'BORRADOR',
                 'subtotal' => 0, 'base_imponible' => 0, 'iva' => 0, 'total' => 0, 'total_pagado' => 0, 'saldo_pendiente' => 0,
-                'created_by' => $request->user()->id_usuario,
+                'created_by' => $this->idUsuario($request),
             ]);
             $this->guardarLineas($factura, $datos['lineas']);
 
@@ -259,7 +259,7 @@ class FacturaController extends Controller
             $f->update([
                 'estado' => 'ANULADA',
                 'saldo_pendiente' => 0,
-                'anulada_por' => $request->user()->id_usuario,
+                'anulada_por' => $this->idUsuario($request),
                 'fecha_anulacion' => now(),
                 'notas' => trim(($f->notas ? $f->notas."\n" : '').'[Anulada el '.now()->format('d/m/Y').'] '.$datos['motivo']),
             ]);
@@ -290,7 +290,7 @@ class FacturaController extends Controller
             $monto = round((float) $datos['monto'], 4);
             $f->update([
                 'monto_condonado' => round((float) $f->monto_condonado + $monto, 4),
-                'condonado_por' => $request->user()->id_usuario,
+                'condonado_por' => $this->idUsuario($request),
                 'fecha_condonacion' => now(),
                 'notas' => trim(($f->notas ? $f->notas."\n" : '').'[Condonado '.$f->moneda.' '.number_format($monto, 2).' el '.now()->format('d/m/Y').'] '.$datos['motivo']),
             ]);
@@ -381,18 +381,18 @@ class FacturaController extends Controller
 
     private function clientes(Request $request): Builder
     {
-        return Cliente::query()->where('id_empresa', $request->user()->id_empresa)->where('activo', true);
+        return Cliente::query()->where('id_empresa', $this->idEmpresa($request))->where('activo', true);
     }
 
     private function tiposServicio(Request $request): Builder
     {
         return TipoServicio::query()->where('activo', true)
-            ->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $request->user()->id_empresa));
+            ->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $this->idEmpresa($request)));
     }
 
     private function formulario(Request $request, Factura $f): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $empresa = Empresa::find($idEmpresa);
 
         return view('facturas.form', [
@@ -411,7 +411,7 @@ class FacturaController extends Controller
     /** @return array{encabezado: array<string, mixed>, lineas: list<array<string, mixed>>} */
     private function validar(Request $request, ?Factura $f = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         // Se descartan las filas vacías del formulario.
         $request->merge(['lineas' => array_values(array_filter((array) $request->input('lineas', []),
             fn ($l) => trim((string) ($l['descripcion'] ?? '')) !== '' || ! empty($l['id_tipo_servicio'])))]);

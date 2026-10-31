@@ -39,7 +39,7 @@ class NominaController extends Controller
     {
         return view('nomina.index', [
             'periodos' => $this->periodos($request)->withCount('detalles')->orderByDesc('fecha_inicio')->paginate(24),
-            'prestamos' => PrestamoEmpleado::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', 'ACTIVO')->with('empleado')->orderByDesc('fecha_otorgamiento')->get(),
+            'prestamos' => PrestamoEmpleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', 'ACTIVO')->with('empleado')->orderByDesc('fecha_otorgamiento')->get(),
             'empleados' => $this->empleados($request)->get(),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS,
@@ -64,7 +64,7 @@ class NominaController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validate([
             'tipo' => ['required', Rule::in(array_keys(self::TIPOS))],
             'fecha_inicio' => ['required', 'date'],
@@ -79,7 +79,7 @@ class NominaController extends Controller
             throw ValidationException::withMessages(['fecha_inicio' => 'Ya hay un periodo '.strtolower(self::TIPOS[$datos['tipo']]).' que se cruza con esas fechas.']);
         }
         $datos['nombre'] ??= Nomina::nombreSugerido($datos['tipo'], Carbon::parse($datos['fecha_inicio']));
-        $p = PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $request->user()->id_usuario]);
+        $p = PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $this->idUsuario($request)]);
 
         return redirect()->route('nomina.show', $p->id_periodo)->with('status', "Periodo «{$p->nombre}» creado. Procésalo para calcular la nómina.");
     }
@@ -226,7 +226,7 @@ class NominaController extends Controller
 
     public function guardarPrestamo(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $datos = $request->validateWithBag('prestamo', [
             'id_empleado' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->whereNotIn('estado', ['BAJA'])],
             'monto_total' => ['required', 'numeric', 'min:1', 'max:9999999'],
@@ -234,7 +234,7 @@ class NominaController extends Controller
             'fecha_otorgamiento' => ['required', 'date', 'before_or_equal:today'],
             'motivo' => ['nullable', 'string', 'max:300'],
         ], ['cuota_quincenal.lte' => 'La cuota no puede ser mayor que el préstamo.']);
-        PrestamoEmpleado::create($datos + ['id_empresa' => $idEmpresa, 'monto_pendiente' => $datos['monto_total'], 'moneda' => 'GTQ', 'estado' => 'ACTIVO', 'aprobado_por' => $request->user()->id_usuario]);
+        PrestamoEmpleado::create($datos + ['id_empresa' => $idEmpresa, 'monto_pendiente' => $datos['monto_total'], 'moneda' => 'GTQ', 'estado' => 'ACTIVO', 'aprobado_por' => $this->idUsuario($request)]);
 
         return back()->with('status', 'Préstamo registrado: se descontará en las próximas nóminas.');
     }
@@ -265,7 +265,7 @@ class NominaController extends Controller
 
     private function empleados(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', '!=', 'BAJA')->orderBy('primer_nombre');
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', '!=', 'BAJA')->orderBy('primer_nombre');
     }
 
     /** Siguiente quincena después del último periodo quincenal (o la actual). */

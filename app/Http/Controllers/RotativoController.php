@@ -53,7 +53,7 @@ class RotativoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $empleado = fn () => Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->whereNot('estado', 'BAJA');
         $datos = $request->validate([
             'id_rotativo' => ['required', 'integer', $empleado()->where('es_rotativo', true)],
@@ -95,8 +95,8 @@ class RotativoController extends Controller
             }
 
             return CoberturaRotativo::create(array_merge($datos, [
-                'id_empresa' => $request->user()->id_empresa, 'dias' => $dias, 'total' => round($dias * (float) $datos['tarifa_dia'], 4),
-                'estado' => 'VIGENTE', 'created_by' => $request->user()->id_usuario,
+                'id_empresa' => $this->idEmpresa($request), 'dias' => $dias, 'total' => round($dias * (float) $datos['tarifa_dia'], 4),
+                'estado' => 'VIGENTE', 'created_by' => $this->idUsuario($request),
             ]));
         });
 
@@ -117,7 +117,7 @@ class RotativoController extends Controller
             } catch (ValidationException $e) {
                 return back()->withErrors(['cobertura' => $e->validator->errors()->first()]);
             }
-            $c->update(['estado' => 'ANULADA', 'anulada_por' => $request->user()->id_usuario]);
+            $c->update(['estado' => 'ANULADA', 'anulada_por' => $this->idUsuario($request)]);
 
             return back()->with('status', 'Cobertura anulada: recalcula la nómina del periodo si ya estaba procesada.');
         });
@@ -128,7 +128,7 @@ class RotativoController extends Controller
     /** Una nómina cerrada o pagada ya no cambia: no se registran ni anulan coberturas en sus fechas. */
     private function sinNominaCerrada(Request $request, string $desde, string $hasta): void
     {
-        $periodo = PeriodoNomina::query()->where('id_empresa', $request->user()->id_empresa)->whereIn('estado', ['CERRADO', 'PAGADO'])
+        $periodo = PeriodoNomina::query()->where('id_empresa', $this->idEmpresa($request))->whereIn('estado', ['CERRADO', 'PAGADO'])
             ->whereDate('fecha_inicio', '<=', $hasta)->whereDate('fecha_fin', '>=', $desde)->first();
         if ($periodo) {
             throw ValidationException::withMessages(['fecha_inicio' => "Esas fechas tocan una nómina ya cerrada («{$periodo->nombre}»): reábrela o usa otras fechas."]);
@@ -142,7 +142,7 @@ class RotativoController extends Controller
 
     private function empleados(Request $request): Builder
     {
-        return Empleado::query()->where('id_empresa', $request->user()->id_empresa)->where('estado', '!=', 'BAJA')
+        return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->where('estado', '!=', 'BAJA')
             ->orderBy('primer_nombre')->orderBy('primer_apellido');
     }
 

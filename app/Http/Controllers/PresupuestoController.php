@@ -67,7 +67,7 @@ class PresupuestoController extends Controller
                 'porcentaje' => $totalPre > 0 ? round($totalEje / $totalPre * 100, 1) : 0, 'borradores' => $partidas->count() - $vigentes->count()],
             'meses' => $meses,
             'monedas' => $vigentes->pluck('moneda')->unique()->values(),
-            'centros' => CentroCosto::query()->where('id_empresa', $request->user()->id_empresa)->orderBy('codigo')->get(),
+            'centros' => CentroCosto::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('codigo')->get(),
             'estados' => self::ESTADOS,
             'ejecucion' => self::EJECUCION,
             'filtros' => $request->only(['centro', 'estado']),
@@ -108,10 +108,10 @@ class PresupuestoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $p = PresupuestoAnual::create($this->validar($request) + [
-            'id_empresa' => $request->user()->id_empresa,
+            'id_empresa' => $this->idEmpresa($request),
             'estado' => PresupuestoAnual::ESTADO_BORRADOR,
-            'created_by' => $request->user()->id_usuario,
-            'updated_by' => $request->user()->id_usuario,
+            'created_by' => $this->idUsuario($request),
+            'updated_by' => $this->idUsuario($request),
         ]);
 
         return redirect()->route('presupuesto.show', $p->id_presupuesto)->with('status', 'Presupuesto creado en borrador.');
@@ -133,7 +133,7 @@ class PresupuestoController extends Controller
         if (! $p->puedeEditarse()) {
             return redirect()->route('presupuesto.show', $p->id_presupuesto)->withErrors(['presupuesto' => 'Solo se editan presupuestos en borrador.']);
         }
-        $p->update($this->validar($request, $p) + ['updated_by' => $request->user()->id_usuario]);
+        $p->update($this->validar($request, $p) + $this->selloActualizacion($request));
 
         return redirect()->route('presupuesto.show', $p->id_presupuesto)->with('status', 'Presupuesto actualizado.');
     }
@@ -155,7 +155,7 @@ class PresupuestoController extends Controller
             if ((float) $p->total_presupuestado <= 0) {
                 return 'No se puede aprobar un presupuesto en cero.';
             }
-            $p->update(['estado' => PresupuestoAnual::ESTADO_APROBADO, 'aprobado_por' => $request->user()->id_usuario, 'fecha_aprobacion' => now()]);
+            $p->update(['estado' => PresupuestoAnual::ESTADO_APROBADO, 'aprobado_por' => $this->idUsuario($request), 'fecha_aprobacion' => now()]);
 
             return null;
         }, 'aprobado. Desde ahora las órdenes de compra aprobadas lo ejecutan.');
@@ -164,7 +164,7 @@ class PresupuestoController extends Controller
     public function cerrar(Request $request, int $presupuesto): RedirectResponse
     {
         return $this->transicion($request, $presupuesto, PresupuestoAnual::ESTADO_APROBADO, 'cerrar', function (PresupuestoAnual $p) use ($request) {
-            $p->update(['estado' => PresupuestoAnual::ESTADO_CERRADO, 'cerrado_por' => $request->user()->id_usuario, 'fecha_cierre' => now()]);
+            $p->update(['estado' => PresupuestoAnual::ESTADO_CERRADO, 'cerrado_por' => $this->idUsuario($request), 'fecha_cierre' => now()]);
 
             return null;
         }, 'cerrado. Ya no recibe ejecución.');
@@ -187,7 +187,7 @@ class PresupuestoController extends Controller
             'anio_destino' => ['required', 'integer', 'between:2000,2100', 'different:anio_origen'],
             'incremento' => ['nullable', 'numeric', 'min:-100', 'max:1000'],
         ], ['anio_destino.different' => 'El año destino debe ser distinto del de origen.']);
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $factor = 1 + ((float) ($datos['incremento'] ?? 0)) / 100;
 
         [$copiados, $omitidos] = DB::transaction(function () use ($request, $datos, $idEmpresa, $factor) {
@@ -203,7 +203,7 @@ class PresupuestoController extends Controller
                     continue;
                 }
                 $nuevo = ['id_empresa' => $idEmpresa, 'id_centro' => $o->id_centro, 'id_cuenta' => $o->id_cuenta, 'anio' => $datos['anio_destino'],
-                    'moneda' => $o->moneda, 'estado' => PresupuestoAnual::ESTADO_BORRADOR, 'created_by' => $request->user()->id_usuario, 'updated_by' => $request->user()->id_usuario];
+                    'moneda' => $o->moneda, 'estado' => PresupuestoAnual::ESTADO_BORRADOR, 'created_by' => $this->idUsuario($request), 'updated_by' => $this->idUsuario($request)];
                 foreach (PresupuestoAnual::MESES as $m) {
                     $nuevo["pre_{$m}"] = round((float) $o->{"pre_{$m}"} * $factor, 2);
                     $nuevo["eje_{$m}"] = 0;
@@ -259,7 +259,7 @@ class PresupuestoController extends Controller
 
     private function formulario(Request $request, PresupuestoAnual $p): View
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
 
         return view('presupuesto.form', [
             'p' => $p,
@@ -301,7 +301,7 @@ class PresupuestoController extends Controller
     /** @return array<string, mixed> */
     private function validar(Request $request, ?PresupuestoAnual $p = null): array
     {
-        $idEmpresa = $request->user()->id_empresa;
+        $idEmpresa = $this->idEmpresa($request);
         $reglasMeses = [];
         foreach (PresupuestoAnual::MESES as $m) {
             $reglasMeses["pre_{$m}"] = ['nullable', 'numeric', 'min:0', 'max:9999999999'];
