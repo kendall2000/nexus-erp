@@ -98,22 +98,4 @@ class BodegaController extends Controller
     {
         return $this->consultaEmpresa(Bodega::class, $request);
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:150'],
-            'ubicacion' => ['nullable', 'string', 'max:300'],
-            'id_sucursal' => ['nullable', 'integer', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'responsable_id' => ['nullable', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')],
-        ], [
-            'id_sucursal.exists' => 'La sucursal elegida no es válida.',
-            'responsable_id.exists' => 'El responsable elegido no es válido.',
-        ]);
-
-        return $datos + ['id_sucursal' => null, 'responsable_id' => null, 'activo' => $request->boolean('activo')];
-    }
 }

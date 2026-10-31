@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Core\GuardarRolRequest;
 use App\Models\Core\Permiso;
 use App\Models\Core\Rol;
 use App\Support\Bitacora;
@@ -33,9 +34,9 @@ class RolController extends Controller
         return $this->formulario($request, new Rol(['activo' => true]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarRolRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $permisos = $this->permisosElegidos($request);
 
         $rol = DB::transaction(function () use ($request, $datos, $permisos) {
@@ -54,14 +55,14 @@ class RolController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($rol));
     }
 
-    public function update(Request $request, int $rol): RedirectResponse
+    public function update(GuardarRolRequest $request, int $rol): RedirectResponse
     {
         $rol = $this->deMiEmpresa($request)->findOrFail($rol);
         if ($error = $this->noEditable($request, $rol)) {
             return back()->withErrors(['rol' => $error]);
         }
 
-        $datos = $this->validar($request, $rol);
+        $datos = $request->datosLimpios($rol);
         $permisos = $this->permisosElegidos($request);
 
         // Los permisos del rol que quien edita no tiene no aparecen como editables: se conservan.
@@ -138,34 +139,6 @@ class RolController extends Controller
     private function deMiEmpresa(Request $request)
     {
         return $this->consultaEmpresa(Rol::class, $request);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?Rol $rol = null): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-        $request->merge(['nombre' => trim((string) $request->input('nombre'))]);
-
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:100',
-                Rule::unique('rol', 'nombre')->where('id_empresa', $idEmpresa)->ignore($rol?->id_rol, 'id_rol'),
-                // Un nombre de acceso total (Administrador, Superadmin…) da todos los permisos:
-                // solo quien ya tiene acceso total puede crearlo o ponérselo a otro rol.
-                function (string $atributo, mixed $valor, \Closure $fallar) use ($request, $rol) {
-                    if (! $rol?->esAdministrador() && Rol::esNombreDeAccesoTotal((string) $valor) && ! $request->user()->esAdministrador()) {
-                        $fallar('Ese nombre está reservado para los roles con acceso total ('.implode(', ', Rol::ACCESO_TOTAL).').');
-                    }
-                }],
-            'descripcion' => ['nullable', 'string', 'max:300'],
-        ], [
-            'nombre.unique' => 'Ya existe un rol con ese nombre.',
-        ]);
-
-        return $datos + [
-            'requiere_2fa' => $request->boolean('requiere_2fa'),
-            // El Administrador siempre queda activo.
-            'activo' => $rol?->esAdministrador() ? true : $request->boolean('activo'),
-        ];
     }
 
     /** @return list<int> Permisos marcados; quien no es Administrador solo puede dar los que tiene. */

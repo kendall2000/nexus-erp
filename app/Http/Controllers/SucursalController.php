@@ -108,32 +108,6 @@ class SucursalController extends Controller
         return $this->consultaEmpresa(Sucursal::class, $request);
     }
 
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:150'],
-            'direccion' => ['nullable', 'string', 'max:300'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:100'],
-            'id_pais' => ['nullable', 'integer', 'required_with:id_division', Rule::exists('pais', 'id_pais')->where('activo', true)],
-            // El departamento debe ser del país y el municipio del departamento.
-            'id_division' => ['nullable', 'integer', 'required_with:id_municipio',
-                Rule::exists('division_geografica', 'id_division')->where('activo', true)->where('id_pais', (int) $request->input('id_pais'))],
-            'id_municipio' => ['nullable', 'integer',
-                Rule::exists('municipio', 'id_municipio')->where('activo', true)->where('id_division', (int) $request->input('id_division'))],
-        ], [
-            'id_division.exists' => 'El departamento no pertenece al país elegido.',
-            'id_municipio.exists' => 'El municipio no pertenece al departamento elegido.',
-        ]);
-
-        return $datos + [
-            'id_pais' => null, 'id_division' => null, 'id_municipio' => null,
-            'es_casa_matriz' => $request->boolean('es_casa_matriz'),
-            'activo' => $request->boolean('activo'),
-        ];
-    }
-
     private function quitarCasaMatrizSiCorresponde(Request $request, array $datos, ?Sucursal $excepto = null): void
     {
         if ($datos['es_casa_matriz']) {

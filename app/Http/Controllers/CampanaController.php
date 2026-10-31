@@ -141,21 +141,4 @@ class CampanaController extends Controller
     {
         return $this->consultaEmpresa(Campana::class, $request);
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        return $request->validate([
-            'nombre' => ['required', 'string', 'max:200'],
-            'descripcion' => ['nullable', 'string', 'max:5000'],
-            'tipo' => ['required', Rule::in(array_keys(self::TIPOS))],
-            'objetivo' => ['required', Rule::in(array_keys(self::OBJETIVOS))],
-            'id_linea' => ['nullable', 'integer', Rule::exists('linea_negocio', 'id_linea')->where('id_empresa', $this->idEmpresa($request))],
-            'fecha_inicio' => ['required', 'date'],
-            'fecha_fin' => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
-            'presupuesto' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'meta_leads' => ['nullable', 'integer', 'min:0', 'max:65535'],
-        ]);
-    }
 }

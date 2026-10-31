@@ -68,15 +68,4 @@ class LineaNegocioController extends Controller
     {
         return $this->consultaEmpresa(LineaNegocio::class, $request);
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?LineaNegocio $linea = null): array
-    {
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:100', Rule::unique('linea_negocio', 'nombre')->where('id_empresa', $this->idEmpresa($request))->ignore($linea?->id_linea, 'id_linea')],
-            'descripcion' => ['nullable', 'string', 'max:2000'],
-        ], ['nombre.unique' => 'Ya existe una línea con ese nombre.']);
-
-        return $datos + ['descripcion' => null, 'activo' => $request->boolean('activo')];
-    }
 }

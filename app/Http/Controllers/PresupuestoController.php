@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Finanzas\GuardarPresupuestoRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Core\Empresa;
@@ -105,9 +106,9 @@ class PresupuestoController extends Controller
         return $this->formulario($request, new PresupuestoAnual(['anio' => $this->anio($request), 'moneda' => 'GTQ', 'estado' => PresupuestoAnual::ESTADO_BORRADOR]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarPresupuestoRequest $request): RedirectResponse
     {
-        $p = PresupuestoAnual::create($this->validar($request) + [
+        $p = PresupuestoAnual::create($request->datosLimpios() + [
             'id_empresa' => $this->idEmpresa($request),
             'estado' => PresupuestoAnual::ESTADO_BORRADOR,
             'created_by' => $this->idUsuario($request),
@@ -127,13 +128,13 @@ class PresupuestoController extends Controller
         return $this->formulario($request, $p);
     }
 
-    public function update(Request $request, int $presupuesto): RedirectResponse
+    public function update(GuardarPresupuestoRequest $request, int $presupuesto): RedirectResponse
     {
         $p = $this->deMiEmpresa($request)->findOrFail($presupuesto);
         if (! $p->puedeEditarse()) {
             return redirect()->route('presupuesto.show', $p->id_presupuesto)->withErrors(['presupuesto' => 'Solo se editan presupuestos en borrador.']);
         }
-        $p->update($this->validar($request, $p) + $this->selloActualizacion($request));
+        $p->update($request->datosLimpios($p) + $this->selloActualizacion($request));
 
         return redirect()->route('presupuesto.show', $p->id_presupuesto)->with('status', 'Presupuesto actualizado.');
     }
@@ -296,37 +297,5 @@ class PresupuestoController extends Controller
             ->merge([(int) now()->year, (int) now()->year + 1, $anio])->unique()->sortDesc()->values()->all();
 
         return $anios;
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?PresupuestoAnual $p = null): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-        $reglasMeses = [];
-        foreach (PresupuestoAnual::MESES as $m) {
-            $reglasMeses["pre_{$m}"] = ['nullable', 'numeric', 'min:0', 'max:9999999999'];
-        }
-
-        $datos = $request->validate([
-            'id_centro' => ['required', 'integer', Rule::exists('centro_costo', 'id_centro')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'id_cuenta' => ['required', 'integer', Rule::exists('cuenta_contable', 'id_cuenta')->where('id_empresa', $idEmpresa)->where('activo', true)
-                ->where('permite_movimiento', true)->whereIn('tipo', self::TIPOS_CUENTA)],
-            'anio' => ['required', 'integer', 'between:2000,2100'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-        ] + $reglasMeses, [
-            'id_centro.exists' => 'El centro de costo no es válido o está inactivo.',
-            'id_cuenta.exists' => 'La cuenta debe ser de movimiento, activa y de ingreso, gasto o costo.',
-        ]);
-
-        $duplicado = $this->deMiEmpresa($request)->where('id_centro', $datos['id_centro'])->where('id_cuenta', $datos['id_cuenta'])
-            ->where('anio', $datos['anio'])->when($p, fn ($q) => $q->whereKeyNot($p->id_presupuesto))->exists();
-        if ($duplicado) {
-            throw ValidationException::withMessages(['id_cuenta' => 'Ya hay un presupuesto de ese centro y cuenta para '.$datos['anio'].'.']);
-        }
-        foreach (PresupuestoAnual::MESES as $m) {
-            $datos["pre_{$m}"] = round((float) ($datos["pre_{$m}"] ?? 0), 2);
-        }
-
-        return $datos;
     }
 }

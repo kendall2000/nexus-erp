@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CRM\GuardarOportunidadRequest;
 use App\Models\Clientes\Cliente;
 use App\Models\Core\LineaNegocio;
 use App\Models\CRM\Oportunidad;
@@ -75,9 +76,9 @@ class OportunidadController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuardarOportunidadRequest $request): RedirectResponse
     {
-        $datos = $this->validar($request);
+        $datos = $request->datosLimpios();
         $o = Oportunidad::create($datos + ['id_empresa' => $this->idEmpresa($request), 'created_by' => $this->idUsuario($request)]);
 
         return redirect()->route('oportunidades.show', $o->id_oportunidad)->with('status', "Oportunidad «{$o->nombre}» creada.");
@@ -88,10 +89,10 @@ class OportunidadController extends Controller
         return $this->formulario($request, $this->deMiEmpresa($request)->findOrFail($oportunidad));
     }
 
-    public function update(Request $request, int $oportunidad): RedirectResponse
+    public function update(GuardarOportunidadRequest $request, int $oportunidad): RedirectResponse
     {
         $o = $this->deMiEmpresa($request)->findOrFail($oportunidad);
-        $o->update($this->validar($request, $o));
+        $o->update($request->datosLimpios($o));
 
         return redirect()->route('oportunidades.show', $o->id_oportunidad)->with('status', 'Oportunidad actualizada.');
     }
@@ -194,36 +195,5 @@ class OportunidadController extends Controller
             ->where('numero_propuesta', 'like', $prefijo.'%')->pluck('numero_propuesta')->map(fn ($n) => (int) substr($n, strlen($prefijo)))->max() ?? 0;
 
         return $prefijo.str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT);
-    }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?Oportunidad $o = null): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-        $etapasAbiertas = Crm::etapas($idEmpresa)->where('es_ganada', false)->where('es_perdida', false);
-        $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:200'],
-            'descripcion' => ['nullable', 'string', 'max:5000'],
-            'id_cliente' => ['nullable', 'required_without:id_prospecto', 'integer', Rule::exists('cliente', 'id_cliente')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
-            'id_prospecto' => ['nullable', 'integer', Rule::exists('prospecto', 'id_prospecto')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
-            'id_etapa' => [$o ? 'nullable' : 'required', 'integer', Rule::in($etapasAbiertas->pluck('id_etapa')->all())],
-            'id_responsable' => ['required', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
-            'id_linea' => ['nullable', 'integer', Rule::exists('linea_negocio', 'id_linea')->where('id_empresa', $idEmpresa)],
-            'valor_estimado' => ['required', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'probabilidad' => ['nullable', 'integer', 'between:0,100'],
-            'fecha_cierre_estimada' => ['nullable', 'date'],
-            'competidores' => ['nullable', 'string', 'max:300'],
-        ], ['id_cliente.required_without' => 'Elige un cliente o un prospecto.', 'id_etapa.in' => 'Elige una etapa abierta.']);
-
-        // La etapa solo se elige al crear (después se mueve en el embudo).
-        if ($o) {
-            unset($datos['id_etapa']);
-        }
-        $etapa = $etapasAbiertas->firstWhere('id_etapa', (int) ($datos['id_etapa'] ?? $o?->id_etapa));
-        $datos['probabilidad'] = (int) ($datos['probabilidad'] ?? $etapa?->probabilidad_cierre ?? $o?->probabilidad ?? 50);
-        $datos['valor_ponderado'] = round((float) $datos['valor_estimado'] * $datos['probabilidad'] / 100, 4);
-
-        return $datos;
     }
 }

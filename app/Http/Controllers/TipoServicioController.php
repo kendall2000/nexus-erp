@@ -122,28 +122,4 @@ class TipoServicioController extends Controller
     {
         return $this->consultaEmpresa(LineaNegocio::class, $request);
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?TipoServicio $servicio = null): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-        $request->merge(['unidad_medida' => strtoupper(trim((string) $request->input('unidad_medida')))]);
-
-        $datos = $request->validate([
-            'id_linea' => ['required', 'integer', Rule::exists('linea_negocio', 'id_linea')->where('id_empresa', $idEmpresa)->where('activo', true)],
-            'nombre' => ['required', 'string', 'max:150', Rule::unique('tipo_servicio', 'nombre')->where('id_linea', $request->integer('id_linea'))->ignore($servicio?->id_tipo_servicio, 'id_tipo_servicio')],
-            'descripcion' => ['nullable', 'string', 'max:2000'],
-            'unidad_medida' => ['required', 'string', 'max:50'],
-            'precio_base' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'id_cuenta_ingreso' => ['nullable', 'integer', Rule::exists('cuenta_contable', 'id_cuenta')->where('id_empresa', $idEmpresa)->where('permite_movimiento', true)->where('tipo', 'INGRESO')],
-            'id_centro_default' => ['nullable', 'integer', Rule::exists('centro_costo', 'id_centro')->where('id_empresa', $idEmpresa)],
-        ], [
-            'id_linea.exists' => 'La línea de negocio no es válida o está inactiva.',
-            'nombre.unique' => 'Esa línea ya tiene un servicio con ese nombre.',
-            'id_cuenta_ingreso.exists' => 'La cuenta debe ser de ingreso y de movimiento.',
-        ]);
-
-        return $datos + ['descripcion' => null, 'precio_base' => null, 'id_cuenta_ingreso' => null, 'id_centro_default' => null, 'activo' => $request->boolean('activo')];
-    }
 }

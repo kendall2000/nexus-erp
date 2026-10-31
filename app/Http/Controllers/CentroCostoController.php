@@ -99,22 +99,4 @@ class CentroCostoController extends Controller
     {
         return $this->consultaEmpresa(CentroCosto::class, $request);
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?CentroCosto $centro = null): array
-    {
-        $request->merge(['codigo' => strtoupper(trim((string) $request->input('codigo')))]);
-
-        $datos = $request->validate([
-            'codigo' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9][A-Z0-9._-]*$/',
-                Rule::unique('centro_costo', 'codigo')->where('id_empresa', $this->idEmpresa($request))->ignore($centro?->id_centro, 'id_centro')],
-            'nombre' => ['required', 'string', 'max:150'],
-            'descripcion' => ['nullable', 'string', 'max:300'],
-        ], [
-            'codigo.unique' => 'Ya existe un centro de costo con ese código.',
-            'codigo.regex' => 'El código solo puede tener letras, números, punto, guion y guion bajo.',
-        ]);
-
-        return $datos + ['descripcion' => null, 'activo' => $request->boolean('activo')];
-    }
 }

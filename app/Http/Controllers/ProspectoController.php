@@ -242,36 +242,4 @@ class ProspectoController extends Controller
     {
         return Empleado::query()->where('id_empresa', $this->idEmpresa($request))->whereNotIn('estado', ['BAJA', 'INACTIVO'])->orderBy('primer_nombre');
     }
-
-    /** @return array<string, mixed> */
-    private function validar(Request $request): array
-    {
-        $idEmpresa = $this->idEmpresa($request);
-        $web = trim((string) $request->input('sitio_web'));
-        $request->merge(['sitio_web' => $web !== '' && ! preg_match('#^https?://#i', $web) ? 'https://'.$web : ($web ?: null)]);
-
-        $datos = $request->validate([
-            'nombre_empresa' => ['required', 'string', 'max:250'],
-            'nombre_contacto' => ['required', 'string', 'max:200'],
-            'cargo_contacto' => ['nullable', 'string', 'max:150'],
-            'email_contacto' => ['required', 'email', 'max:150'],
-            'telefono_contacto' => ['nullable', 'string', 'max:20'],
-            'whatsapp_contacto' => ['nullable', 'string', 'max:20'],
-            'sitio_web' => ['nullable', 'url:http,https', 'max:200'],
-            'empleados_estimados' => ['nullable', 'string', 'max:20'],
-            'id_fuente' => ['nullable', 'integer', Rule::exists('fuente_lead', 'id_fuente')->where('activo', true)],
-            'id_asignado_a' => ['nullable', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
-            'id_pais' => ['nullable', 'integer', 'exists:pais,id_pais'],
-            'id_industria' => ['nullable', 'integer', 'exists:industria,id_industria'],
-            'temperatura' => ['required', Rule::in(array_keys(self::TEMPERATURAS))],
-            'puntuacion_lead' => ['nullable', 'integer', 'between:0,100'],
-            'interes_servicio' => ['nullable', 'string', 'max:5000'],
-            'presupuesto_estimado' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
-            'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
-            'notas' => ['nullable', 'string', 'max:5000'],
-        ], ['sitio_web.url' => 'El sitio web no es una dirección válida.', 'id_asignado_a.exists' => 'El vendedor no es válido.']);
-        $datos['puntuacion_lead'] = (int) ($datos['puntuacion_lead'] ?? 0);
-
-        return $datos;
-    }
 }
