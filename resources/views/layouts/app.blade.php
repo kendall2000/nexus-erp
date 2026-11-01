@@ -9,14 +9,24 @@
     $usuario = auth()->user();
     $avatar = $usuario->avatar_url ?: \App\Support\Sistema::config()->imgAvatarDefault;
     $gruposMenu = \App\Support\MenuLateral::para($usuario);
-    $itemsBusqueda = $gruposMenu->flatMap(function ($g) {
-        return $g['items']->flatMap(function ($item) use ($g) {
-            if ($item['hijos']->isNotEmpty()) {
-                return $item['hijos']->map(fn ($h) => ['nombre' => $h['nombre'], 'grupo' => $item['nombre'], 'icono' => $item['icono'] ?? 'folder', 'ruta' => $h['ruta']]);
+    $extraerItems = function ($items, $grupoNombre) use (&$extraerItems) {
+        $resultado = collect();
+        foreach ($items as $item) {
+            $hijos = $item['hijos'] ?? collect();
+            if ($hijos->isNotEmpty()) {
+                $resultado = $resultado->concat($extraerItems($hijos, $item['nombre'] ?? $grupoNombre));
+            } elseif (!empty($item['ruta'])) {
+                $resultado->push([
+                    'nombre' => $item['nombre'],
+                    'grupo' => $grupoNombre,
+                    'icono' => $item['icono'] ?? 'circle',
+                    'ruta' => $item['ruta']
+                ]);
             }
-            return [['nombre' => $item['nombre'], 'grupo' => $g['nombre'], 'icono' => $item['icono'] ?? 'circle', 'ruta' => $item['ruta']]];
-        });
-    });
+        }
+        return $resultado;
+    };
+    $itemsBusqueda = $gruposMenu->flatMap(fn ($g) => $extraerItems($g['items'], $g['nombre']));
     try {
         $notificaciones = \App\Models\Core\Notificacion::porUsuario($usuario->id_usuario)->recientes(8)->get();
         $noLeidasCount = \App\Models\Core\Notificacion::porUsuario($usuario->id_usuario)->noLeidas()->count();
