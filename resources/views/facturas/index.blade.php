@@ -222,7 +222,7 @@
                                                     <span class="fas fa-eye me-2"></span>Ver detalle
                                                 </a>
                                                 @if ($yo->puede('facturas.imprimir'))
-                                                    <a class="dropdown-item" href="{{ route('facturas.pdf', $f->id_factura) }}" target="_blank">
+                                                    <a class="dropdown-item" href="{{ route('facturas.imprimir', $f->id_factura) }}" target="_blank">
                                                         <span class="fas fa-file-pdf me-2"></span>Imprimir PDF
                                                     </a>
                                                 @endif
