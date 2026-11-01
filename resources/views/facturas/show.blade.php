@@ -13,207 +13,189 @@
         $dinero = fn ($n) => number_format((float) $n, 2);
     @endphp
 
-    <x-page-header
-        :titulo="$tipo.' '.$f->numero_completo"
-        icono="fas fa-file-invoice-dollar"
-        :migas="[
-            ['label' => 'Facturación', 'url' => route('facturas.index')],
-            ['label' => $f->numero_completo],
-        ]"
-    >
-        <x-slot:insignia>
-            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
-            @if ($vencida)
-                <span class="badge badge-phoenix badge-phoenix-danger fs--1 align-middle ms-1">Vencida hace {{ (int) $f->fecha_vencimiento->diffInDays(today()) }} días</span>
-            @endif
-        </x-slot:insignia>
-        <x-slot:subtituloSlot>
-            <p class="text-700 mb-0">
-                @if ($f->cliente && $yo->puede('clientes.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('clientes.show', $f->id_cliente) }}">{{ $f->cliente->razon_social }}</a>@else{{ $f->cliente?->razon_social }}@endif
-                · emitida el {{ $f->fecha_emision?->format('d/m/Y') }} · vence el {{ $f->fecha_vencimiento?->format('d/m/Y') }}
-            </p>
-        </x-slot:subtituloSlot>
-        <x-slot:acciones>
-            @if ($conSaldo && $puedeCobrar)
-                <a class="btn btn-success" href="{{ route('pagos.create', ['factura' => $f->id_factura]) }}"><span class="fas fa-hand-holding-usd me-2"></span>Registrar cobro</a>
-            @endif
-            @if ($conSaldo && $yo->puede('facturas.condonar'))
-                <button class="btn btn-phoenix-warning" type="button" data-bs-toggle="collapse" data-bs-target="#condonar" aria-expanded="{{ $errors->has('monto') ? 'true' : 'false' }}">Condonar</button>
-            @endif
-            @if ($f->estado !== 'BORRADOR' && $yo->puede('facturas.imprimir'))
-                <a class="btn btn-phoenix-secondary" href="{{ route('facturas.imprimir', $f->id_factura) }}" target="_blank" rel="noopener"><span class="fas fa-print me-2"></span>Imprimir</a>
-            @endif
-            @if ($f->estado === 'BORRADOR' && $yo->puede('facturas.editar'))
-                <a class="btn btn-phoenix-secondary" href="{{ route('facturas.edit', $f->id_factura) }}"><span class="fas fa-pen me-2"></span>Editar</a>
-                <form method="POST" action="{{ route('facturas.emitir', $f->id_factura) }}" onsubmit="return confirm(@js('¿Emitir '.$tipo.' '.$f->numero_completo.' por '.$f->moneda.' '.$dinero($f->total).'? Ya no se podrá editar.'))">
-                    @csrf
-                    @method('PATCH')
-                    <button class="btn btn-success" type="submit"><span class="fas fa-check me-2"></span>Emitir</button>
-                </form>
-            @endif
-            @if ($f->estado === 'EMITIDA' && $yo->puede('facturas.editar'))
-                <form method="POST" action="{{ route('facturas.enviar', $f->id_factura) }}">
-                    @csrf
-                    @method('PATCH')
-                    <button class="btn btn-phoenix-primary" type="submit"><span class="fas fa-paper-plane me-2"></span>Marcar como enviada</button>
-                </form>
-            @endif
-            @if ($anulable && $yo->puede('facturas.anular'))
-                <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#anular" aria-expanded="{{ $errors->has('motivo') && ! old('monto') ? 'true' : 'false' }}">Anular</button>
-            @endif
-            @if ($eliminable && $yo->puede('facturas.editar'))
-                <form method="POST" action="{{ route('facturas.destroy', $f->id_factura) }}" onsubmit="return confirm(@js('¿Eliminar el borrador '.$f->numero_completo.'? Su número quedará libre.'))">
-                    @csrf
-                    @method('DELETE')
-                    <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar borrador"><span class="fas fa-trash"></span></button>
-                </form>
-            @endif
-        </x-slot:acciones>
-    </x-page-header>
+    <nav class="mb-2" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('facturas.index') }}">Facturación</a></li>
+            <li class="breadcrumb-item active">{{ $f->numero_completo }}</li>
+        </ol>
+    </nav>
 
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Total Facturado" :valor="$f->moneda.' '.$dinero($f->total)" icono="fas fa-file-invoice" color="primary" :subtexto="count($f->detalles).' línea(s) de detalle'" />
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Total Cobrado" :valor="$f->moneda.' '.$dinero($f->total_pagado)" icono="fas fa-check-circle" color="success" :subtexto="$f->pagos->where('estado', 'APLICADO')->count().' cobro(s) aplicado(s)'" />
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Saldo Pendiente" :valor="$f->estado === 'BORRADOR' ? '—' : $f->moneda.' '.$dinero($f->saldo_pendiente)" icono="fas fa-clock" :color="$vencida ? 'danger' : 'warning'" :subtexto="$vencida ? 'Vencida el '.$f->fecha_vencimiento?->format('d/m/Y') : 'Vence el '.($f->fecha_vencimiento?->format('d/m/Y') ?? '—')" />
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="IVA Calculado" :valor="$f->moneda.' '.$dinero($f->iva)" icono="fas fa-percentage" color="info" :subtexto="'Base: '.$f->moneda.' '.$dinero($f->base_imponible)" />
-        </div>
-    </div>
-
-    @if ($anulable && $yo->puede('facturas.anular'))
-        <div class="collapse {{ $errors->has('motivo') && ! old('monto') ? 'show' : '' }} mb-4" id="anular">
-            <div class="card border border-danger shadow-none"><div class="card-body">
-                <form method="POST" action="{{ route('facturas.anular', $f->id_factura) }}" class="row g-2 align-items-start">
-                    @csrf
-                    @method('PATCH')
-                    <div class="col-md-9">
-                        <input class="form-control @error('motivo') is-invalid @enderror" name="motivo" value="{{ old('motivo') }}" maxlength="300" placeholder="Motivo de la anulación" required />
-                        @error('motivo')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        @if ($f->estado !== 'BORRADOR')<div class="form-text">Se revertirá lo que sumó al presupuesto.</div>@endif
-                    </div>
-                    <div class="col-md-3"><button class="btn btn-danger w-100" type="submit">Confirmar anulación</button></div>
-                </form>
-            </div></div>
-        </div>
-    @endif
-
-    @if ($conSaldo && $yo->puede('facturas.condonar'))
-        <div class="collapse {{ $errors->has('monto') || ($errors->has('motivo') && old('monto')) ? 'show' : '' }} mb-4" id="condonar">
-            <div class="card border border-warning shadow-none"><div class="card-body">
-                <form method="POST" action="{{ route('facturas.condonar', $f->id_factura) }}" class="row g-2 align-items-start">
-                    @csrf
-                    @method('PATCH')
-                    <div class="col-md-3">
-                        <input class="form-control @error('monto') is-invalid @enderror" name="monto" type="number" step="0.01" min="0.01" max="{{ round((float) $f->saldo_pendiente, 2) }}" value="{{ old('monto', round((float) $f->saldo_pendiente, 2)) }}" required title="Monto a condonar" />
-                        @error('monto')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
-                        <input class="form-control" name="motivo" value="{{ old('motivo') }}" maxlength="300" placeholder="Motivo (ej.: acuerdo comercial, incobrable)" required />
-                    </div>
-                    <div class="col-md-3"><button class="btn btn-warning w-100" type="submit" onclick="return confirm('El monto condonado ya no se cobrará. ¿Continuar?')">Condonar saldo</button></div>
-                </form>
-            </div></div>
-        </div>
-    @endif
-
-    @if ($f->tipo === 'NOTA_CREDITO')
-        <div class="alert alert-soft-info border-0 fs--1 mb-4"><span class="fas fa-info-circle me-2"></span>Una nota de crédito no genera saldo por cobrar y al emitirse resta del presupuesto de ingresos.</div>
-    @endif
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-8">
-            <div class="card border border-200 shadow-none h-100">
-                <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
-                    <h5 class="mb-0 text-1100"><span class="fas fa-list-ul text-primary me-2"></span>Detalle de conceptos</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm Phoenix-table fs--1 mb-0 align-middle">
-                            <thead class="bg-100">
-                                <tr>
-                                    <th class="ps-4">Descripción</th>
-                                    <th class="text-end">Cantidad</th>
-                                    <th class="text-end">Precio</th>
-                                    <th class="text-end">Descuento</th>
-                                    <th class="text-end">Importe</th>
-                                    <th class="pe-4">Centro / cuenta</th>
-                                </tr>
-                            </thead>
-                            <tbody class="list">
-                            @foreach ($f->detalles as $d)
-                                <tr>
-                                    <td class="ps-4">
-                                        <span class="fw-semi-bold text-1000">{{ $d->descripcion }}</span>
-                                        @if (! $d->es_afecto_iva)<span class="badge badge-phoenix badge-phoenix-secondary ms-1">Exento</span>@endif
-                                        @if ($d->tipoServicio && $d->tipoServicio->nombre !== $d->descripcion)<span class="d-block text-600 fs--2">{{ $d->tipoServicio->nombre }}</span>@endif
-                                    </td>
-                                    <td class="text-end">{{ rtrim(rtrim(number_format((float) $d->cantidad, 2), '0'), '.') }}</td>
-                                    <td class="text-end">{{ $dinero($d->precio_unitario) }}</td>
-                                    <td class="text-end">{{ (float) $d->descuento ? $dinero($d->descuento) : '—' }}</td>
-                                    <td class="text-end fw-semi-bold text-1000">{{ $dinero($d->subtotal) }}</td>
-                                    <td class="fs--2 text-700 pe-4">
-                                        {{ $d->centroCosto?->nombre ?? ($d->tipoServicio?->centroDefault?->nombre ? $d->tipoServicio->centroDefault->nombre.' (servicio)' : '—') }}<br>
-                                        {{ $d->cuentaContable?->nombre ?? ($d->tipoServicio?->cuentaIngreso?->nombre ? $d->tipoServicio->cuentaIngreso->nombre.' (servicio)' : '—') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                            </tbody>
-                            <tfoot class="fw-semi-bold bg-100">
-                            <tr><td colspan="4" class="text-end">Subtotal</td><td class="text-end">{{ $dinero($f->subtotal) }}</td><td></td></tr>
-                            @if ((float) $f->descuento)<tr><td colspan="4" class="text-end">Descuento</td><td class="text-end">−{{ $dinero($f->descuento) }}</td><td></td></tr>@endif
-                            <tr><td colspan="4" class="text-end">Base imponible</td><td class="text-end">{{ $dinero($f->base_imponible) }}</td><td></td></tr>
-                            <tr><td colspan="4" class="text-end">IVA</td><td class="text-end">{{ $dinero($f->iva) }}</td><td></td></tr>
-                            <tr class="fs-0"><td colspan="4" class="text-end text-1100">Total</td><td class="text-end text-nowrap text-1100">{{ $f->moneda }} {{ $dinero($f->total) }}</td><td></td></tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="card border border-200 shadow-none mb-4">
-                <div class="card-body fs--1">
-                    <h5 class="mb-3 text-1100"><span class="fas fa-wallet text-success me-2"></span>Cobro</h5>
-                    <dl class="row mb-0">
-                        <dt class="col-6 text-700">Total</dt><dd class="col-6 text-end">{{ $f->moneda }} {{ $dinero($f->total) }}</dd>
-                        <dt class="col-6 text-700">Pagado</dt><dd class="col-6 text-end">{{ $dinero($f->total_pagado) }}</dd>
-                        @if ((float) $f->monto_condonado > 0)
-                            <dt class="col-6 text-700">Condonado</dt><dd class="col-6 text-end" title="{{ $f->condonadoPor?->nombre_completo }} · {{ $f->fecha_condonacion?->format('d/m/Y') }}">{{ $dinero($f->monto_condonado) }}</dd>
-                        @endif
-                        <dt class="col-6 text-700">Saldo</dt><dd class="col-6 text-end fw-bold {{ $vencida ? 'text-danger' : '' }}">{{ $f->estado === 'BORRADOR' ? '—' : $dinero($f->saldo_pendiente) }}</dd>
-                    </dl>
-                    @if ($f->pagos->isNotEmpty())
-                        <h6 class="mt-3 mb-2 text-900">Pagos</h6>
-                        @foreach ($f->pagos as $p)
-                            <div class="d-flex justify-content-between border-bottom border-200 py-1 {{ $p->estado !== 'APLICADO' ? 'text-500' : '' }}">
-                                <span>
-                                    @if ($yo->puede('pagos.ver'))<a class="fw-semi-bold text-decoration-none" href="{{ route('pagos.show', $p->id_pago) }}">{{ $p->fecha_pago?->format('d/m/Y') }}</a>@else{{ $p->fecha_pago?->format('d/m/Y') }}@endif
-                                    · {{ \App\Models\Finanzas\Pago::FORMAS[$p->forma_pago] ?? $p->forma_pago }} <span class="text-600">{{ $p->referencia }}</span>
-                                    @if ($p->estado !== 'APLICADO')<span class="badge badge-phoenix badge-phoenix-{{ \App\Models\Finanzas\Pago::ESTADOS[$p->estado][1] }}">{{ \App\Models\Finanzas\Pago::ESTADOS[$p->estado][0] }}</span>@endif
-                                </span>
-                                <span class="fw-semi-bold {{ $p->estado !== 'APLICADO' ? 'text-decoration-line-through' : '' }}">{{ $dinero($p->monto) }}</span>
-                            </div>
-                        @endforeach
+    <div class="mb-9">
+        {{-- Encabezado idéntico a apps/e-commerce/landing/invoice.html --}}
+        <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
+            <div>
+                <h2 class="mb-1 text-1100">{{ $tipo }} #{{ $f->numero_completo }}</h2>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1">{{ $nombreEstado }}</span>
+                    @if ($vencida)
+                        <span class="badge badge-phoenix badge-phoenix-danger fs--1">Vencida hace {{ (int) $f->fecha_vencimiento->diffInDays(today()) }} días</span>
                     @endif
                 </div>
             </div>
-            <div class="card border border-200 shadow-none">
-                <div class="card-body fs--1">
-                    <h5 class="mb-3 text-1100"><span class="fas fa-info-circle text-primary me-2"></span>Detalles</h5>
-                    <dl class="row mb-0">
-                        <dt class="col-5 text-700">NIT cliente</dt><dd class="col-7">{{ $f->cliente?->nit ?? '—' }}</dd>
-                        <dt class="col-5 text-700">Serie</dt><dd class="col-7">{{ $f->serie?->codigo_serie }} · n.º {{ $f->numero_factura }}</dd>
-                        @if ($f->periodo_servicio_inicio)<dt class="col-5 text-700">Periodo</dt><dd class="col-7">{{ $f->periodo_servicio_inicio->format('d/m/Y') }} – {{ $f->periodo_servicio_fin?->format('d/m/Y') }}</dd>@endif
-                        @if ($f->estado === 'ANULADA')<dt class="col-5 text-700">Anulada por</dt><dd class="col-7">{{ $f->anuladaPor?->nombre_completo ?? '—' }}<br><span class="text-600">{{ $f->fecha_anulacion?->format('d/m/Y H:i') }}</span></dd>@endif
-                        @if ($f->notas)<dt class="col-5 text-700">Notas</dt><dd class="col-7" style="white-space: pre-line">{{ $f->notas }}</dd>@endif
-                    </dl>
+            <div class="d-flex flex-wrap gap-2">
+                @if ($conSaldo && $puedeCobrar)
+                    <a class="btn btn-success" href="{{ route('pagos.create', ['factura' => $f->id_factura]) }}">
+                        <span class="fas fa-hand-holding-usd me-2"></span>Registrar cobro
+                    </a>
+                @endif
+                @if ($f->estado !== 'BORRADOR' && $yo->puede('facturas.imprimir'))
+                    <a class="btn btn-phoenix-secondary" href="{{ route('facturas.imprimir', $f->id_factura) }}" target="_blank" rel="noopener">
+                        <span class="fa-solid fa-print me-2"></span>Imprimir factura
+                    </a>
+                @endif
+                @if ($f->estado === 'BORRADOR' && $yo->puede('facturas.editar'))
+                    <a class="btn btn-phoenix-primary" href="{{ route('facturas.edit', $f->id_factura) }}">
+                        <span class="fas fa-edit me-2"></span>Editar borrador
+                    </a>
+                    <form method="POST" action="{{ route('facturas.emitir', $f->id_factura) }}" class="d-inline" onsubmit="return confirm(@js('¿Emitir '.$tipo.' '.$f->numero_completo.' por '.$f->moneda.' '.$dinero($f->total).'? Ya no se podrá editar.'))">
+                        @csrf
+                        @method('PATCH')
+                        <button class="btn btn-primary" type="submit"><span class="fas fa-check me-2"></span>Emitir</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+
+        {{-- Barra de Resumen Rápido estilo Phoenix Invoice --}}
+        <div class="bg-100 p-4 mb-4 rounded-3 border border-200">
+            <div class="row g-4">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <h6 class="text-700 fs--2 text-uppercase mb-1">Número de Factura</h6>
+                    <h5 class="mb-0 text-1100 fw-bold">#{{ $f->numero_completo }}</h5>
+                    <span class="fs--2 text-600">Serie {{ $f->serie?->codigo_serie }} · N.º {{ $f->numero_factura }}</span>
                 </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <h6 class="text-700 fs--2 text-uppercase mb-1">Fecha de Emisión</h6>
+                    <h5 class="mb-0 text-1100 fw-bold">{{ $f->fecha_emision?->format('d/m/Y') }}</h5>
+                    <span class="fs--2 text-600">Vencimiento: {{ $f->fecha_vencimiento?->format('d/m/Y') }}</span>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <h6 class="text-700 fs--2 text-uppercase mb-1">Cliente Facturado</h6>
+                    <h5 class="mb-0 text-1100 fw-bold text-truncate">{{ $f->cliente?->razon_social ?? 'Consumidor Final' }}</h5>
+                    <span class="fs--2 text-600">NIT: {{ $f->cliente?->nit ?? 'C/F' }}</span>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <h6 class="text-700 fs--2 text-uppercase mb-1">Saldo Pendiente</h6>
+                    <h3 class="mb-0 fw-bolder {{ (float) $f->saldo_pendiente > 0 ? 'text-danger' : 'text-success' }}">
+                        {{ $f->moneda }} {{ $f->estado === 'BORRADOR' ? '—' : $dinero($f->saldo_pendiente) }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-5">
+            {{-- Columna Principal: Detalle de Líneas de Venta (8 columnas) --}}
+            <div class="col-12 col-xl-8">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-white border-bottom border-200 py-3 px-4">
+                        <h5 class="mb-0 text-1100 fw-bold">Artículos & Servicios Facturados</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive scrollbar">
+                            <table class="table table-sm fs--1 mb-0 align-middle">
+                                <thead class="bg-100">
+                                    <tr>
+                                        <th class="ps-4 text-700" style="width: 50px;">#</th>
+                                        <th class="text-700">DESCRIPCIÓN</th>
+                                        <th class="text-end text-700" style="width: 100px;">CANT.</th>
+                                        <th class="text-end text-700" style="width: 130px;">P. UNITARIO</th>
+                                        <th class="text-end pe-4 text-700" style="width: 140px;">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($f->detalles as $i => $d)
+                                        <tr>
+                                            <td class="ps-4 py-3 text-700">{{ $i + 1 }}</td>
+                                            <td>
+                                                <h6 class="mb-0 text-1100 fw-semi-bold">{{ $d->descripcion }}</h6>
+                                                @if ($d->producto)
+                                                    <span class="fs--2 text-600">SKU: {{ $d->producto->codigo }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end text-900">{{ (float) $d->cantidad }}</td>
+                                            <td class="text-end text-700">{{ $dinero($d->precio_unitario) }}</td>
+                                            <td class="text-end pe-4 fw-bold text-1000">{{ $dinero($d->subtotal) }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center text-600 py-4">Sin líneas registradas.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Resumen de Totales y Liquidación estilo Phoenix --}}
+                <div class="row justify-content-end mb-4">
+                    <div class="col-12 col-md-6 col-lg-5">
+                        <div class="card border border-200 shadow-none">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between mb-2 fs--1">
+                                    <span class="text-700">Subtotal:</span>
+                                    <span class="fw-semi-bold text-900">{{ $dinero($f->subtotal) }}</span>
+                                </div>
+                                @if ((float) $f->descuento > 0)
+                                    <div class="d-flex justify-content-between mb-2 fs--1 text-danger">
+                                        <span>Descuento aplicado:</span>
+                                        <span class="fw-semi-bold">−{{ $dinero($f->descuento) }}</span>
+                                    </div>
+                                @endif
+                                <div class="d-flex justify-content-between mb-2 fs--1">
+                                    <span class="text-700">IVA (12%):</span>
+                                    <span class="fw-semi-bold text-900">{{ $dinero($f->iva) }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between border-top border-200 pt-2 fs-0">
+                                    <span class="fw-bold text-1100">Total a Pagar:</span>
+                                    <span class="fw-bolder text-primary">{{ $f->moneda }} {{ $dinero($f->total) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Columna Lateral: Estado de Cobros y Pagos (4 columnas) --}}
+            <div class="col-12 col-xl-4">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3 text-1100"><span class="fas fa-wallet text-success me-2"></span>Historial de Cobros</h5>
+                        <div class="d-flex justify-content-between mb-2 fs--1">
+                            <span class="text-700">Total Cobrado:</span>
+                            <span class="fw-bold text-success">{{ $f->moneda }} {{ $dinero($f->total_pagado) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 fs--1">
+                            <span class="text-700">Saldo Pendiente:</span>
+                            <span class="fw-bold {{ (float) $f->saldo_pendiente > 0 ? 'text-danger' : 'text-700' }}">{{ $f->moneda }} {{ $dinero($f->saldo_pendiente) }}</span>
+                        </div>
+
+                        @if ($f->pagos->isNotEmpty())
+                            <h6 class="text-700 fs--2 text-uppercase mb-2">Comprobantes de Pago</h6>
+                            @foreach ($f->pagos as $p)
+                                <div class="border-top border-200 pt-2 pb-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-semi-bold text-1000 fs--1">{{ $p->fecha_pago?->format('d/m/Y') }}</span>
+                                        <span class="fw-bold text-success fs--1">{{ $f->moneda }} {{ $dinero($p->monto) }}</span>
+                                    </div>
+                                    <p class="fs--2 text-600 mb-0">{{ \App\Models\Finanzas\Pago::FORMAS[$p->forma_pago] ?? $p->forma_pago }} · Ref: {{ $p->referencia }}</p>
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="text-600 fs--2 mb-0">No se registran pagos recibidos para esta factura.</p>
+                        @endif
+                    </div>
+                </div>
+
+                @if ($f->notas)
+                    <div class="card border border-200 shadow-none">
+                        <div class="card-body">
+                            <h6 class="text-700 fs--2 text-uppercase mb-2">Notas y Observaciones</h6>
+                            <p class="fs--1 text-800 mb-0" style="white-space: pre-line;">{{ $f->notas }}</p>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

@@ -9,221 +9,264 @@
         $iniciales = mb_strtoupper(mb_substr($c->razon_social, 0, 2));
     @endphp
 
-    <x-page-header
-        :titulo="$c->razon_social"
-        :subtitulo="($c->nombre_comercial && $c->nombre_comercial !== $c->razon_social ? $c->nombre_comercial.' · ' : '').'NIT '.($c->nit ?? '—')"
-        :breadcrumbs="['Clientes' => route('clientes.index'), $c->razon_social => null]"
-    >
-        <x-slot:badge>
-            <span class="badge badge-phoenix badge-phoenix-{{ $c->activo ? 'success' : 'danger' }} fs--1 align-middle ms-2">
-                {{ $c->activo ? 'Activo' : 'Inactivo' }}
-            </span>
-        </x-slot:badge>
+    <nav class="mb-2" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('clientes.index') }}">Clientes</a></li>
+            <li class="breadcrumb-item active">{{ $c->razon_social }}</li>
+        </ol>
+    </nav>
 
-        @if ($yo->puede('clientes.imprimir'))
-            <a class="btn btn-phoenix-secondary" href="{{ route('clientes.imprimir', $c->id_cliente) }}" target="_blank" rel="noopener">
-                <span class="fas fa-print me-2"></span>Estado de cuenta
-            </a>
-        @endif
-        @if ($puedeEditar)
-            <a class="btn btn-phoenix-secondary" href="{{ route('clientes.edit', $c->id_cliente) }}">
-                <span class="fas fa-pen me-2"></span>Editar
-            </a>
-            <form method="POST" action="{{ route('clientes.estado', $c->id_cliente) }}">
-                @csrf
-                @method('PATCH')
-                <button class="btn btn-phoenix-{{ $c->activo ? 'danger' : 'success' }}" type="submit">
-                    {{ $c->activo ? 'Desactivar' : 'Activar' }}
-                </button>
-            </form>
-        @endif
-        @if ($yo->puede('clientes.eliminar'))
-            <form method="POST" action="{{ route('clientes.destroy', $c->id_cliente) }}" onsubmit="return confirm(@js('¿Eliminar el cliente '.$c->razon_social.'?'))">
-                @csrf
-                @method('DELETE')
-                <button class="btn btn-phoenix-danger px-3" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
-            </form>
-        @endif
-    </x-page-header>
-
-    <div class="row g-3 mb-4">
-        <div class="col-sm-4">
-            <x-stat-card
-                etiqueta="Saldo por cobrar"
-                :valor="$moneda.' '.number_format($saldo, 2)"
-                :subtexto="$excede ? 'Supera el límite de crédito' : 'Cartera activa'"
-                icono="fas fa-file-invoice-dollar"
-                :color="$excede ? 'danger' : 'primary'"
-                :alerta="$excede"
-            />
-        </div>
-        <div class="col-sm-4">
-            <x-stat-card
-                etiqueta="Vencido"
-                :valor="$moneda.' '.number_format($vencido, 2)"
-                :subtexto="$vencido > 0 ? 'Facturas con plazo vencido' : 'Al día'"
-                icono="fas fa-clock"
-                :color="$vencido > 0 ? 'warning' : 'success'"
-            />
-        </div>
-        <div class="col-sm-4">
-            <x-stat-card
-                etiqueta="Crédito"
-                :valor="$c->dias_credito.' días'"
-                :subtexto="$c->limite_credito !== null ? 'Límite '.$moneda.' '.number_format((float) $c->limite_credito, 2).' · disponible '.number_format(max(0, (float) $c->limite_credito - $saldo), 2) : 'Sin límite'"
-                icono="fas fa-shield-alt"
-                color="info"
-            />
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-5">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center border-bottom border-dashed border-300 pb-3 mb-3">
-                        <div class="avatar avatar-2xl me-3">
-                            <div class="avatar-name rounded-circle bg-soft-primary text-primary">
-                                <span>{{ $iniciales }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h5 class="mb-1 text-1100">Datos fiscales y perfil</h5>
-                            <span class="badge badge-phoenix badge-phoenix-secondary">
-                                {{ $c->tipo_persona === 'NATURAL' ? 'Persona natural' : 'Persona jurídica' }}
-                            </span>
-                        </div>
-                    </div>
-                    <dl class="row mb-0 fs--1 gy-2">
-                        <dt class="col-5 text-700 fw-semi-bold">Tipo</dt>
-                        <dd class="col-7 mb-0 text-900">{{ $c->tipo_persona === 'NATURAL' ? 'Persona natural' : 'Persona jurídica' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Industria</dt>
-                        <dd class="col-7 mb-0 text-900">{{ $c->industria?->nombre ?? '—' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Segmento</dt>
-                        <dd class="col-7 mb-0 text-900">{{ \App\Http\Controllers\ClienteController::SEGMENTOS[$c->segmento] ?? '—' }}{{ $c->categoria ? ' · categoría '.$c->categoria : '' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Correo</dt>
-                        <dd class="col-7 mb-0">@if ($c->email_principal)<a href="mailto:{{ $c->email_principal }}">{{ $c->email_principal }}</a>@else — @endif</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Teléfono</dt>
-                        <dd class="col-7 mb-0 text-900">{{ $c->telefono_principal ?? '—' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Sitio web</dt>
-                        <dd class="col-7 mb-0 text-break">@if ($c->sitio_web)<a href="{{ $c->sitio_web }}" target="_blank" rel="noopener noreferrer">{{ $c->sitio_web }}</a>@else — @endif</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Ubicación</dt>
-                        <dd class="col-7 mb-0 text-900">{{ collect([$c->municipio?->nombre, $c->municipio?->division?->nombre, $c->pais?->nombre])->filter()->implode(', ') ?: '—' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Dirección fiscal</dt>
-                        <dd class="col-7 mb-0 text-900">{{ $c->direccion_fiscal ?? '—' }}</dd>
-
-                        <dt class="col-5 text-700 fw-semi-bold">Moneda</dt>
-                        <dd class="col-7 mb-0 fw-bold text-900">{{ $moneda }}</dd>
-                    </dl>
+    <div class="mb-9">
+        {{-- Encabezado idéntico a apps/e-commerce/admin/customer-details.html --}}
+        <div class="row align-items-center justify-content-between g-3 mb-4">
+            <div class="col-auto">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0 text-1100">{{ $c->razon_social }}</h2>
+                    <span class="badge badge-phoenix fs--1 badge-phoenix-{{ $c->activo ? 'success' : 'danger' }}">
+                        {{ $c->activo ? 'Cliente Activo' : 'Cliente Inactivo' }}
+                    </span>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-7">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0 text-1100"><span class="fas fa-address-book text-primary me-2 fs-0"></span>Contactos</h5>
-                        <span class="badge badge-phoenix badge-phoenix-secondary">{{ $c->contactos->count() }}</span>
-                    </div>
-                    @if ($errors->contacto->any())
-                        <div class="alert alert-soft-danger fs--1">{{ $errors->contacto->first() }}</div>
-                    @endif
-                    @forelse ($c->contactos as $ct)
-                        <div class="border-bottom border-200 py-2 fs--1">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
-                                <div>
-                                    <span class="fw-bold text-1000">{{ $ct->nombre }}</span>
-                                    @if ($ct->es_contacto_principal)<span class="badge badge-phoenix badge-phoenix-primary ms-1">Principal</span>@endif
-                                    @if ($ct->recibe_facturas)<span class="badge badge-phoenix badge-phoenix-info ms-1">Recibe facturas</span>@endif
-                                    <div class="text-700 mt-1">{{ collect([$ct->cargo, $ct->email, $ct->telefono, $ct->whatsapp ? 'WhatsApp '.$ct->whatsapp : null])->filter()->implode(' · ') }}</div>
-                                </div>
-                                @if ($puedeEditar)
-                                    <form method="POST" action="{{ route('clientes.contactos.destroy', [$c->id_cliente, $ct->id_contacto]) }}" onsubmit="return confirm(@js('¿Eliminar el contacto '.$ct->nombre.'?'))">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-link text-danger btn-sm p-0" type="submit" title="Eliminar contacto"><span class="fas fa-trash"></span></button>
-                                    </form>
-                                @endif
-                            </div>
-                            @if ($puedeEditar)
-                                <details class="mt-1" @if ($errors->contacto->any() && (int) old('id_contacto') === $ct->id_contacto) open @endif>
-                                    <summary class="text-primary fw-semi-bold" style="cursor: pointer">Editar</summary>
-                                    @include('clientes.contacto', ['contacto' => $ct, 'accion' => route('clientes.contactos.update', [$c->id_cliente, $ct->id_contacto])])
-                                </details>
-                            @endif
-                        </div>
-                    @empty
-                        <p class="text-700 fs--1">Sin contactos.</p>
-                    @endforelse
-                    @if ($puedeEditar)
-                        <details class="mt-3" @if ($errors->contacto->any() && ! old('id_contacto')) open @endif>
-                            <summary class="btn btn-phoenix-primary btn-sm"><span class="fas fa-plus me-1"></span>Agregar contacto</summary>
-                            @include('clientes.contacto', ['contacto' => new \App\Models\Clientes\ContactoCliente(), 'accion' => route('clientes.contactos.store', $c->id_cliente)])
-                        </details>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 text-1100"><span class="fas fa-file-invoice text-primary me-2 fs-0"></span>Facturas con saldo</h5>
-                @if ($yo->puede('facturas.crear'))
-                    <a class="btn btn-phoenix-primary btn-sm" href="{{ route('facturas.create', ['cliente' => $c->id_cliente]) }}">
-                        <span class="fas fa-plus me-1"></span>Emitir factura
-                    </a>
+                @if ($c->nombre_comercial && $c->nombre_comercial !== $c->razon_social)
+                    <p class="text-700 fs--1 mb-0 mt-1">{{ $c->nombre_comercial }} · NIT: {{ $c->nit ?? 'C/F' }}</p>
                 @endif
             </div>
-            @if ($facturas->isEmpty())
-                <p class="text-700 fs--1 mb-0">El cliente no tiene saldo pendiente.</p>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-sm fs--1 mb-0 align-middle">
-                        <thead>
-                            <tr>
-                                <th class="text-uppercase text-700">Factura</th>
-                                <th class="text-uppercase text-700">Emisión</th>
-                                <th class="text-uppercase text-700">Vence</th>
-                                <th class="text-end text-uppercase text-700">Total</th>
-                                <th class="text-end text-uppercase text-700">Pagado</th>
-                                <th class="text-end text-uppercase text-700">Saldo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach ($facturas as $f)
-                            @php $vencida = $f->fecha_vencimiento?->isPast(); @endphp
-                            <tr>
-                                <td class="fw-bold">
-                                    @if ($yo->puede('facturas.ver'))
-                                        <a href="{{ route('facturas.show', $f->id_factura) }}">{{ $f->numero_completo }}</a>
-                                    @else
-                                        {{ $f->numero_completo }}
-                                    @endif
-                                </td>
-                                <td>{{ $f->fecha_emision?->format('d/m/Y') }}</td>
-                                <td class="{{ $vencida ? 'text-danger fw-semi-bold' : '' }}">
-                                    {{ $f->fecha_vencimiento?->format('d/m/Y') }}
-                                    @if ($vencida) <span class="badge badge-phoenix badge-phoenix-danger fs--2 ms-1">{{ (int) $f->fecha_vencimiento->diffInDays(now()) }} días</span>@endif
-                                </td>
-                                <td class="text-end">{{ number_format((float) $f->total, 2) }}</td>
-                                <td class="text-end">{{ number_format((float) $f->total_pagado, 2) }}</td>
-                                <td class="text-end fw-bold text-1000">{{ $f->moneda }} {{ number_format((float) $f->saldo_pendiente, 2) }}</td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
+            <div class="col-auto">
+                <div class="d-flex flex-wrap gap-2">
+                    @if ($yo->puede('clientes.imprimir'))
+                        <a class="btn btn-phoenix-secondary" href="{{ route('clientes.imprimir', $c->id_cliente) }}" target="_blank" rel="noopener">
+                            <span class="fas fa-print me-2"></span>Estado de cuenta
+                        </a>
+                    @endif
+                    @if ($puedeEditar)
+                        <a class="btn btn-phoenix-primary" href="{{ route('clientes.edit', $c->id_cliente) }}">
+                            <span class="fas fa-edit me-2"></span>Editar
+                        </a>
+                        <form method="POST" action="{{ route('clientes.estado', $c->id_cliente) }}" class="d-inline">
+                            @csrf
+                            @method('PATCH')
+                            <button class="btn btn-phoenix-{{ $c->activo ? 'warning' : 'success' }}" type="submit">
+                                <span class="fas {{ $c->activo ? 'fa-ban' : 'fa-check' }} me-2"></span>{{ $c->activo ? 'Desactivar' : 'Activar' }}
+                            </button>
+                        </form>
+                    @endif
+                    @if ($yo->puede('facturas.crear'))
+                        <a class="btn btn-primary" href="{{ route('facturas.create', ['cliente' => $c->id_cliente]) }}">
+                            <span class="fas fa-file-invoice-dollar me-2"></span>Emitir factura
+                        </a>
+                    @endif
                 </div>
-            @endif
+            </div>
+        </div>
+
+        {{-- Métricas Rápidas de Crédito y Cartera estilo Phoenix --}}
+        <div class="row g-3 mb-5">
+            <div class="col-12 col-sm-6 col-xl-4">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Saldo Pendiente de Cobro</h6>
+                                <h3 class="{{ $excede ? 'text-danger' : 'text-primary' }} mb-0 fw-bolder">{{ $moneda }} {{ number_format($saldo, 2) }}</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">{{ $excede ? 'Supera el límite autorizado' : 'Cartera al día' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-{{ $excede ? 'danger' : 'primary' }}-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-file-invoice-dollar text-{{ $excede ? 'danger' : 'primary' }} fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Saldo Vencido</h6>
+                                <h3 class="{{ $vencido > 0 ? 'text-danger' : 'text-success' }} mb-0 fw-bolder">{{ $moneda }} {{ number_format($vencido, 2) }}</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">{{ $vencido > 0 ? 'Excedió la fecha límite' : 'Sin facturas atrasadas' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-{{ $vencido > 0 ? 'danger' : 'success' }}-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-clock text-{{ $vencido > 0 ? 'danger' : 'success' }} fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Límite de Crédito</h6>
+                                <h3 class="text-info mb-0 fw-bolder">{{ $c->dias_credito }} días</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">{{ $c->limite_credito !== null ? 'Tope: '.$moneda.' '.number_format((float) $c->limite_credito, 2) : 'Sin restricción de límite' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-info-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-shield-alt text-info fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Disposición 2 columnas estilo apps/e-commerce/admin/customer-details.html --}}
+        <div class="row g-5">
+            {{-- Columna Lateral: Perfil y Datos de Contacto (4 columnas) --}}
+            <div class="col-12 col-xxl-4">
+                <div class="row g-4">
+                    {{-- Tarjeta de Perfil --}}
+                    <div class="col-12">
+                        <div class="card border border-200 shadow-none">
+                            <div class="card-body pb-3">
+                                <div class="row align-items-center g-3 mb-4 text-center text-sm-start">
+                                    <div class="col-12 col-sm-auto">
+                                        <div class="avatar avatar-4xl">
+                                            <div class="avatar-name rounded-circle bg-primary-100 text-primary-600 fs-2 fw-bolder">
+                                                <span>{{ $iniciales }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-sm-auto flex-1">
+                                        <h4 class="mb-1 text-1100">{{ $c->razon_social }}</h4>
+                                        <p class="text-700 fs--1 mb-1">NIT: <span class="fw-bold text-900">{{ $c->nit ?? 'C/F' }}</span></p>
+                                        <span class="badge badge-tag">{{ $c->tipo_persona === 'NATURAL' ? 'Persona Natural' : 'Persona Jurídica' }}</span>
+                                    </div>
+                                </div>
+                                <div class="border-top border-dashed border-200 pt-3">
+                                    <div class="d-flex justify-content-between mb-2 fs--1">
+                                        <span class="text-700">Segmento:</span>
+                                        <span class="fw-semi-bold text-900">{{ $c->segmento ?? 'General' }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2 fs--1">
+                                        <span class="text-700">Categoría:</span>
+                                        <span class="fw-semi-bold text-900">{{ $c->categoria ? 'Cat. '.$c->categoria : 'Estándar' }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2 fs--1">
+                                        <span class="text-700">Moneda facturación:</span>
+                                        <span class="fw-semi-bold text-900">{{ $c->moneda_facturacion }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Tarjeta de Ubicación y Comunicación --}}
+                    <div class="col-12">
+                        <div class="card border border-200 shadow-none">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3 text-1100">Ubicación & Contacto Principal</h5>
+                                <div class="mb-3">
+                                    <h6 class="text-700 fs--2 mb-1 text-uppercase">Dirección de Entrega / Fiscal</h6>
+                                    <p class="text-900 fs--1 mb-0">{{ $c->direccion_fiscal ?? 'Sin dirección registrada' }}</p>
+                                    @if ($c->municipio || $c->departamento)
+                                        <p class="text-600 fs--2 mb-0">{{ $c->municipio?->nombre }}{{ $c->municipio && $c->departamento ? ', ' : '' }}{{ $c->departamento?->nombre }}</p>
+                                    @endif
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-700 fs--2 mb-1 text-uppercase">Correo Electrónico</h6>
+                                    @if ($c->email_principal)
+                                        <a class="fs--1 text-primary fw-semi-bold" href="mailto:{{ $c->email_principal }}">{{ $c->email_principal }}</a>
+                                    @else
+                                        <span class="text-500 fs--1">—</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <h6 class="text-700 fs--2 mb-1 text-uppercase">Teléfono</h6>
+                                    @if ($c->telefono_principal)
+                                        <a class="fs--1 text-900 fw-semi-bold" href="tel:{{ $c->telefono_principal }}">{{ $c->telefono_principal }}</a>
+                                    @else
+                                        <span class="text-500 fs--1">—</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Contactos adicionales --}}
+                    <div class="col-12">
+                        <div class="card border border-200 shadow-none">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0 text-1100">Contactos Registrados</h5>
+                                </div>
+                                @forelse ($c->contactos as $ct)
+                                    <div class="border-bottom border-dashed border-200 pb-2 mb-2">
+                                        <h6 class="mb-0 text-1000 fw-bold">{{ $ct->nombre }}</h6>
+                                        <p class="fs--2 text-600 mb-1">{{ $ct->puesto ?? 'Contacto' }} · {{ $ct->telefono ?? $ct->email }}</p>
+                                    </div>
+                                @empty
+                                    <p class="text-600 fs--1 mb-0">No hay contactos secundarios registrados.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Columna Principal: Facturas y Transacciones (8 columnas) --}}
+            <div class="col-12 col-xxl-8">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header border-bottom border-200 py-3 px-4 bg-white d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 text-1100 fw-bold">Facturas Pendientes de Cobro</h5>
+                            <p class="mb-0 fs--2 text-600">Documentos que componen el saldo actual del cliente</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        @if ($facturas->isEmpty())
+                            <div class="text-center py-5">
+                                <span class="fas fa-check-circle text-success fs-3 d-block mb-2"></span>
+                                <p class="text-700 mb-0 fw-semi-bold">El cliente no tiene facturas pendientes. Cuenta al día.</p>
+                            </div>
+                        @else
+                            <div class="table-responsive scrollbar">
+                                <table class="table table-sm fs--1 mb-0 align-middle">
+                                    <thead class="bg-100">
+                                        <tr>
+                                            <th class="ps-4 text-700">FACTURA</th>
+                                            <th class="text-700">EMISIÓN</th>
+                                            <th class="text-700">VENCE</th>
+                                            <th class="text-end text-700">TOTAL</th>
+                                            <th class="text-end text-700">PAGADO</th>
+                                            <th class="text-end pe-4 text-700">SALDO PENDIENTE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="list">
+                                        @foreach ($facturas as $f)
+                                            @php $vencida = $f->fecha_vencimiento?->isPast(); @endphp
+                                            <tr class="hover-actions-trigger position-static">
+                                                <td class="ps-4 py-3 fw-bold text-nowrap">
+                                                    @if ($yo->puede('facturas.ver'))
+                                                        <a class="text-primary" href="{{ route('facturas.show', $f->id_factura) }}">
+                                                            #{{ $f->numero_completo }}
+                                                        </a>
+                                                    @else
+                                                        #{{ $f->numero_completo }}
+                                                    @endif
+                                                </td>
+                                                <td class="text-700">{{ $f->fecha_emision?->format('d/m/Y') }}</td>
+                                                <td class="{{ $vencida ? 'text-danger fw-bold' : 'text-700' }}">
+                                                    {{ $f->fecha_vencimiento?->format('d/m/Y') }}
+                                                    @if ($vencida)
+                                                        <span class="badge badge-phoenix badge-phoenix-danger fs--2 ms-1">Vencida</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end text-900">{{ number_format((float) $f->total, 2) }}</td>
+                                                <td class="text-end text-success fw-semi-bold">{{ number_format((float) $f->total_pagado, 2) }}</td>
+                                                <td class="text-end pe-4 fw-bold text-1000 fs-0">
+                                                    {{ $f->moneda }} {{ number_format((float) $f->saldo_pendiente, 2) }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
