@@ -8,264 +8,236 @@
         $cv = $e->contratoVigente;
         $dinero = fn ($n) => number_format((float) $n, 2);
         $deBaja = $e->estado === 'BAJA';
+        $iniciales = mb_strtoupper(mb_substr($e->nombres ?: $e->nombre_completo, 0, 1).mb_substr($e->apellidos ?: '', 0, 1));
     @endphp
 
-    <x-page-header
-        :titulo="$e->nombre_completo"
-        icono="fas fa-user-tie"
-        :migas="[
-            ['label' => 'Empleados', 'url' => route('empleados.index')],
-            ['label' => $e->nombre_completo],
-        ]"
-    >
-        <x-slot:insignia>
-            <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1 align-middle">{{ $nombreEstado }}</span>
-            @if ($e->es_rotativo)
-                <span class="badge badge-phoenix badge-phoenix-info fs--1 align-middle ms-1">Rotativo · {{ $dinero($e->tarifa_dia) }} / día</span>
-            @endif
-        </x-slot:insignia>
-        <x-slot:subtituloSlot>
-            <p class="text-700 mb-0">{{ $e->codigo_empleado }} · {{ $e->cargo?->nombre ?? 'Sin cargo' }}{{ $e->departamento ? ' · '.$e->departamento->nombre : '' }}
-                · ingresó el {{ $e->fecha_ingreso?->format('d/m/Y') }} ({{ $e->antiguedad_anios }} años)</p>
-        </x-slot:subtituloSlot>
-        <x-slot:acciones>
-            @if ($puedeEditar && ! $deBaja)
-                <a class="btn btn-phoenix-secondary" href="{{ route('empleados.edit', $e->id_empleado) }}"><span class="fas fa-pen me-2"></span>Editar</a>
-                <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#baja">Dar de baja</button>
-            @endif
-            @if ($puedeEditar && $deBaja)
-                <form method="POST" action="{{ route('empleados.reactivar', $e->id_empleado) }}">
-                    @csrf
-                    @method('PATCH')
-                    <button class="btn btn-phoenix-success" type="submit">Reactivar</button>
-                </form>
-            @endif
-            @if ($yo->puede('empleados.eliminar'))
-                <form method="POST" action="{{ route('empleados.destroy', $e->id_empleado) }}" onsubmit="return confirm(@js('¿Eliminar a '.$e->nombre_completo.'? Solo se permite si nunca estuvo en nómina ni asistencia.'))">
-                    @csrf
-                    @method('DELETE')
-                    <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
-                </form>
-            @endif
-        </x-slot:acciones>
-    </x-page-header>
+    <nav class="mb-2" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('empleados.index') }}">Empleados</a></li>
+            <li class="breadcrumb-item active">{{ $e->nombre_completo }}</li>
+        </ol>
+    </nav>
 
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Salario Base" :valor="$cv ? $cv->moneda.' '.$dinero($cv->salario_base) : 'Sin contrato'" icono="fas fa-money-check-alt" color="primary" :subtexto="$cv ? $cv->numero_contrato.' · '.($tipos[$cv->tipo] ?? $cv->tipo) : 'Pendiente de registro'" />
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Antigüedad" :valor="$e->antiguedad_anios.' años'" icono="fas fa-calendar-check" color="info" :subtexto="'Ingreso: '.($e->fecha_ingreso?->format('d/m/Y') ?? '—')" />
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            @if ($vacaciones)
-                <x-stat-card etiqueta="Vacaciones disponibles" :valor="rtrim(rtrim(number_format($vacaciones['disponible'], 2), '0'), '.').' días'" icono="fas fa-umbrella-beach" color="warning"
-                    :subtexto="'Devengado '.rtrim(rtrim(number_format($vacaciones['devengado'], 2), '0'), '.').' · gozados '.rtrim(rtrim(number_format($vacaciones['gozados'], 2), '0'), '.').($vacaciones['pendientes'] > 0 ? ' · en aprobación '.rtrim(rtrim(number_format($vacaciones['pendientes'], 2), '0'), '.') : '')" />
-            @else
-                <x-stat-card etiqueta="Vacaciones disponibles" valor="—" icono="fas fa-umbrella-beach" color="warning" subtexto="Colaborador de baja" />
-            @endif
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Expediente Digital" :valor="$documentos->count().' documento(s)'" icono="fas fa-folder-open" color="success" :subtexto="'Sucursal: '.($e->sucursal?->nombre ?? '—')" />
-        </div>
-    </div>
-
-    @if ($cadena->isNotEmpty())
-        <nav class="mb-3 fs--1" aria-label="Cadena de mando">
-            <span class="text-600 me-1"><span class="fas fa-sitemap me-1"></span>Reporta a:</span>
-            @foreach ($cadena as $jefe)
-                <a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.show', $jefe->id_empleado) }}">{{ $jefe->nombre_completo }}</a>@if ($jefe->cargo)<span class="text-600"> ({{ $jefe->cargo->nombre }})</span>@endif
-                @if (! $loop->last)<span class="fas fa-chevron-right fs--2 text-400 mx-2"></span>@endif
-            @endforeach
-        </nav>
-    @endif
-
-    @if ($venceContrato !== null && $venceContrato <= 30 && ! $deBaja)
-        <div class="alert alert-soft-{{ $venceContrato < 0 ? 'danger' : 'warning' }} fs--1 py-2">
-            <span class="fas fa-file-contract me-2"></span>{{ $venceContrato < 0 ? 'El contrato venció hace '.abs($venceContrato).' días.' : 'El contrato vence en '.$venceContrato.' días ('.$cv->fecha_fin->format('d/m/Y').').' }} Registra una renovación si continúa.
-        </div>
-    @endif
-
-    @if ($rango && ! $rango['dentro'])
-        <div class="alert alert-soft-warning fs--1 py-2">
-            <span class="fas fa-exclamation-triangle me-2"></span>El salario está fuera del rango del cargo «{{ $e->cargo->nombre }}»:
-            {{ $rango['min'] !== null ? $dinero($rango['min']) : '—' }} – {{ $rango['max'] !== null ? $dinero($rango['max']) : '—' }}.
-        </div>
-    @endif
-
-    @if ($puedeEditar && ! $deBaja)
-        <div class="collapse {{ $errors->has('fecha_baja') || $errors->has('motivo_baja') ? 'show' : '' }} mb-4" id="baja">
-            <div class="card border border-danger shadow-none"><div class="card-body">
-                <p class="fs--1 mb-2">La baja cierra el contrato vigente. El registro se conserva para nóminas e historial.</p>
-                <form method="POST" action="{{ route('empleados.baja', $e->id_empleado) }}" class="row g-2 align-items-start">
-                    @csrf
-                    @method('PATCH')
-                    <div class="col-md-3">
-                        <input class="form-control @error('fecha_baja') is-invalid @enderror" type="date" name="fecha_baja" value="{{ old('fecha_baja', now()->format('Y-m-d')) }}" required />
-                        @error('fecha_baja')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    <div class="mb-9">
+        {{-- Encabezado idéntico a apps/social/profile.html --}}
+        <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="avatar avatar-4xl">
+                    <div class="avatar-name rounded-circle {{ $deBaja ? 'bg-200 text-600' : 'bg-primary-100 text-primary-600' }} fs-2 fw-bolder">
+                        <span>{{ $iniciales }}</span>
                     </div>
-                    <div class="col-md-6">
-                        <input class="form-control @error('motivo_baja') is-invalid @enderror" name="motivo_baja" value="{{ old('motivo_baja') }}" maxlength="300" placeholder="Motivo (renuncia, despido, fin de contrato…)" required />
-                        @error('motivo_baja')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h2 class="mb-0 text-1100">{{ $e->nombre_completo }}</h2>
+                        <span class="badge badge-phoenix badge-phoenix-{{ $color }} fs--1">{{ $nombreEstado }}</span>
                     </div>
-                    <div class="col-md-3"><button class="btn btn-danger w-100" type="submit">Confirmar baja</button></div>
-                </form>
-            </div></div>
-        </div>
-    @endif
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-5">
-            <div class="card border border-200 shadow-none h-100">
-                <div class="card-body fs--1">
-                    <h5 class="mb-3 text-1100"><span class="fas fa-id-card text-primary me-2"></span>Datos</h5>
-                    <dl class="row mb-0">
-                        <dt class="col-5 text-700">Documento</dt><dd class="col-7">{{ $e->tipo_doc_id }} {{ $e->dpi_nit }}</dd>
-                        <dt class="col-5 text-700">NIT / IGSS</dt><dd class="col-7">{{ $e->nit_personal ?? '—' }} / {{ $e->igss_afiliacion ?? '—' }}</dd>
-                        <dt class="col-5 text-700">Nacimiento</dt><dd class="col-7">{{ $e->fecha_nacimiento ? $e->fecha_nacimiento->format('d/m/Y').' ('.$e->edad.' años)' : '—' }}</dd>
-                        <dt class="col-5 text-700">Correo</dt><dd class="col-7 text-break">{{ $e->email_corporativo ?? $e->email_personal ?? '—' }}</dd>
-                        <dt class="col-5 text-700">Teléfono</dt><dd class="col-7">{{ $e->telefono_personal ?? '—' }}</dd>
-                        <dt class="col-5 text-700">Emergencia</dt><dd class="col-7">{{ $e->contacto_emergencia ?? '—' }} {{ $e->telefono_emergencia }}</dd>
-                        <dt class="col-5 text-700">Dirección</dt><dd class="col-7">{{ collect([$e->direccion, $e->municipio?->nombre, $e->municipio?->division?->nombre])->filter()->implode(', ') ?: '—' }}</dd>
-                        <dt class="col-5 text-700">Sucursal</dt><dd class="col-7">{{ $e->sucursal?->nombre ?? '—' }}</dd>
-                        <dt class="col-5 text-700">Jefe inmediato</dt>
-                        <dd class="col-7">@if ($e->supervisor)<a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.show', $e->id_supervisor) }}">{{ $e->supervisor->nombre_completo }}</a>@else — @endif</dd>
-                        @if ($e->subordinados->isNotEmpty())
-                            <dt class="col-5 text-700">A su cargo</dt>
-                            <dd class="col-7">@foreach ($e->subordinados as $s)<a class="d-block text-decoration-none" href="{{ route('empleados.show', $s->id_empleado) }}">{{ $s->nombre_completo }}</a>@endforeach</dd>
+                    <p class="text-700 fs--1 mb-0 mt-1">
+                        Código: <strong class="text-900">{{ $e->codigo_empleado }}</strong> · {{ $e->cargo?->nombre ?? 'Sin cargo asignado' }}
+                        @if ($e->departamento)
+                            · <span class="badge badge-tag">{{ $e->departamento->nombre }}</span>
                         @endif
-                        @if ($deBaja)
-                            <dt class="col-5 text-700">Baja</dt><dd class="col-7">{{ $e->fecha_baja?->format('d/m/Y') }} · {{ $e->motivo_baja }}</dd>
-                        @endif
-                    </dl>
+                    </p>
                 </div>
             </div>
-        </div>
-
-        <div class="col-lg-7">
-            <div class="card border border-200 shadow-none h-100">
-                <div class="card-body fs--1">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="mb-0 text-1100"><span class="fas fa-file-signature text-primary me-2"></span>Contrato y salario</h5>
-                        @if ($puedeEditar && ! $deBaja)
-                            <div class="d-flex gap-2">
-                                @if ($cv)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#salario">Cambiar salario</button>@endif
-                                <button class="btn btn-phoenix-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#contrato">{{ $cv ? 'Nuevo contrato' : 'Registrar contrato' }}</button>
-                            </div>
-                        @endif
-                    </div>
-
-                    @if ($cv)
-                        <dl class="row mb-3">
-                            <dt class="col-5 text-700">Salario base</dt><dd class="col-7 fs-0 fw-bold">{{ $cv->moneda }} {{ $dinero($cv->salario_base) }}
-                                @if ($rango)<span class="badge badge-phoenix badge-phoenix-{{ $rango['dentro'] ? 'success' : 'warning' }} fs--2 align-middle ms-1">{{ $rango['dentro'] ? 'En rango del cargo' : 'Fuera de rango' }}</span>@endif</dd>
-                            @if ($rango)<dt class="col-5 text-700">Rango del cargo</dt><dd class="col-7">{{ $rango['min'] !== null ? $dinero($rango['min']) : '—' }} – {{ $rango['max'] !== null ? $dinero($rango['max']) : '—' }}</dd>@endif
-                            <dt class="col-5 text-700">Contrato</dt><dd class="col-7">{{ $cv->numero_contrato }} · {{ $tipos[$cv->tipo] ?? $cv->tipo }}</dd>
-                            <dt class="col-5 text-700">Vigencia</dt><dd class="col-7">{{ $cv->fecha_inicio?->format('d/m/Y') }} – {{ $cv->fecha_fin?->format('d/m/Y') ?? 'indefinido' }}</dd>
-                            <dt class="col-5 text-700">Jornada</dt><dd class="col-7">{{ $jornadas[$cv->jornada] ?? $cv->jornada }} · {{ $cv->horas_semana }} h/semana</dd>
-                        </dl>
-                    @else
-                        <p class="text-warning"><span class="fas fa-exclamation-triangle me-1"></span>Sin contrato vigente: no entrará en la nómina.</p>
-                    @endif
-
-                    @if ($puedeEditar && ! $deBaja)
-                        <div class="collapse {{ $errors->salario->any() ? 'show' : '' }}" id="salario">
-                            <form method="POST" action="{{ route('empleados.salario', $e->id_empleado) }}" class="row g-2 border rounded p-2 mb-3">
-                                @csrf
-                                @if ($errors->salario->any())<div class="col-12 text-danger">{{ $errors->salario->first() }}</div>@endif
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="tipo_cambio">@foreach ($cambios as $c => $n)<option value="{{ $c }}" @selected(old('tipo_cambio') === $c)>{{ $n }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><input class="form-control form-control-sm" name="salario_nuevo" type="number" step="0.01" min="0.01" value="{{ old('salario_nuevo') }}" placeholder="Salario nuevo" required /></div>
-                                <div class="col-md-4"><input class="form-control form-control-sm" name="fecha_efectiva" type="date" value="{{ old('fecha_efectiva', now()->format('Y-m-d')) }}" required /></div>
-                                <div class="col-md-8"><input class="form-control form-control-sm" name="motivo" value="{{ old('motivo') }}" maxlength="300" placeholder="Motivo" required /></div>
-                                <div class="col-md-4"><button class="btn btn-primary btn-sm w-100" type="submit">Guardar</button></div>
-                            </form>
-                        </div>
-                        <div class="collapse {{ $errors->contrato->any() ? 'show' : '' }}" id="contrato">
-                            <form method="POST" action="{{ route('empleados.contrato', $e->id_empleado) }}" class="row g-2 border rounded p-2 mb-3">
-                                @csrf
-                                @if ($errors->contrato->any())<div class="col-12 text-danger">{{ $errors->contrato->first() }}</div>@endif
-                                @if ($cv)<div class="col-12 text-700">El contrato actual quedará como renovado.</div>@endif
-                                <div class="col-md-4"><input class="form-control form-control-sm text-uppercase" name="numero_contrato" value="{{ old('numero_contrato') }}" maxlength="50" placeholder="{{ $siguienteContrato }}" title="Número (vacío = automático)" /></div>
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="tipo">@foreach ($tipos as $c => $n)<option value="{{ $c }}" @selected(old('tipo', $e->tipo_contrato) === $c)>{{ $n }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="jornada">@foreach ($jornadas as $c => $n)<option value="{{ $c }}" @selected(old('jornada') === $c)>{{ $n }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><label class="fs--2 text-600">Inicio</label><input class="form-control form-control-sm" name="fecha_inicio" type="date" value="{{ old('fecha_inicio', ($cv ? now() : $e->fecha_ingreso)?->format('Y-m-d')) }}" required /></div>
-                                <div class="col-md-4"><label class="fs--2 text-600">Fin (si aplica)</label><input class="form-control form-control-sm" name="fecha_fin" type="date" value="{{ old('fecha_fin') }}" /></div>
-                                <div class="col-md-4"><label class="fs--2 text-600">Horas por semana</label><input class="form-control form-control-sm" name="horas_semana" type="number" min="1" max="72" value="{{ old('horas_semana', 44) }}" required /></div>
-                                <div class="col-md-5"><input class="form-control form-control-sm" name="salario_base" type="number" step="0.01" min="0.01" value="{{ old('salario_base', $cv?->salario_base ? (float) $cv->salario_base : '') }}" placeholder="Salario base mensual" required /></div>
-                                <div class="col-md-3"><select class="form-select form-select-sm" name="moneda">@foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected(old('moneda', $cv->moneda ?? 'GTQ') === $m->codigo)>{{ $m->codigo }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><button class="btn btn-primary btn-sm w-100" type="submit">Guardar contrato</button></div>
-                            </form>
-                        </div>
-                    @endif
-
-                    <h6 class="mt-2 text-900">Historial salarial</h6>
-                    @forelse ($historial as $h)
-                        <div class="d-flex justify-content-between border-bottom border-200 py-1">
-                            <span>{{ $h->fecha_efectiva?->format('d/m/Y') }} · {{ \App\Http\Controllers\EmpleadoController::CAMBIOS_SALARIO[$h->tipo_cambio] ?? ucfirst(strtolower($h->tipo_cambio)) }}
-                                <span class="text-600">{{ $h->motivo }}{{ $h->cargo ? ' · '.$h->cargo->nombre : '' }}</span></span>
-                            <span class="text-nowrap">{{ $h->salario_anterior !== null ? $dinero($h->salario_anterior).' → ' : '' }}<strong>{{ $h->moneda }} {{ $dinero($h->salario_nuevo) }}</strong></span>
-                        </div>
-                    @empty
-                        <p class="text-700 mb-0">Sin movimientos.</p>
-                    @endforelse
-
-                    @if ($contratos->count() > 1 || ($contratos->count() === 1 && ! $cv))
-                        <h6 class="mt-3 text-900">Contratos anteriores</h6>
-                        @foreach ($contratos->where('estado', '!=', 'VIGENTE') as $c)
-                            <div class="d-flex justify-content-between border-bottom border-200 py-1 text-700">
-                                <span>{{ $c->numero_contrato }} · {{ $tipos[$c->tipo] ?? $c->tipo }} · {{ ucfirst(strtolower($c->estado)) }}</span>
-                                <span>{{ $c->fecha_inicio?->format('d/m/Y') }} – {{ $c->fecha_fin?->format('d/m/Y') ?? '…' }}</span>
-                            </div>
-                        @endforeach
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card border border-200 shadow-none mb-4">
-        <div class="card-body fs--1">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 text-1100"><span class="fas fa-folder-open text-primary me-2"></span>Documentos del expediente</h5>
-                @if ($puedeEditar && $contaboListo)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#documento">Subir documento</button>@endif
-            </div>
-            @if ($puedeEditar && ! $contaboListo)<p class="text-warning">La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).</p>@endif
-            @if ($puedeEditar && $contaboListo)
-                <div class="collapse {{ $errors->documento->any() ? 'show' : '' }}" id="documento">
-                    <form method="POST" action="{{ route('empleados.documentos.store', $e->id_empleado) }}" enctype="multipart/form-data" class="row g-2 border rounded p-2 mb-3">
+            <div class="d-flex flex-wrap gap-2">
+                @if ($puedeEditar && !$deBaja)
+                    <a class="btn btn-phoenix-primary" href="{{ route('empleados.edit', $e->id_empleado) }}">
+                        <span class="fas fa-edit me-2"></span>Editar ficha
+                    </a>
+                @endif
+                @if ($puedeEditar && $deBaja)
+                    <form method="POST" action="{{ route('empleados.reactivar', $e->id_empleado) }}" class="d-inline">
                         @csrf
-                        @if ($errors->documento->any())<div class="col-12 text-danger">{{ $errors->documento->first() }}</div>@endif
-                        <div class="col-md-3"><label class="fs--2 text-600">Tipo</label><select class="form-select form-select-sm" name="tipo_documento">@foreach ($tiposDocumento as $c => $n)<option value="{{ $c }}" @selected(old('tipo_documento') === $c)>{{ $n }}</option>@endforeach</select></div>
-                        <div class="col-md-4"><label class="fs--2 text-600">Nombre (vacío = el del archivo)</label><input class="form-control form-control-sm" name="nombre" value="{{ old('nombre') }}" maxlength="200" /></div>
-                        <div class="col-md-5"><label class="fs--2 text-600">Archivo (PDF, imagen o Word, hasta 10 MB)</label><input class="form-control form-control-sm" name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" required /></div>
-                        <div class="col-md-3"><label class="fs--2 text-600">Emisión</label><input class="form-control form-control-sm" name="fecha_emision" type="date" value="{{ old('fecha_emision') }}" /></div>
-                        <div class="col-md-3"><label class="fs--2 text-600">Vencimiento (si aplica)</label><input class="form-control form-control-sm" name="fecha_vencimiento" type="date" value="{{ old('fecha_vencimiento') }}" /></div>
-                        <div class="col-md-4"><label class="fs--2 text-600">Observaciones</label><input class="form-control form-control-sm" name="observaciones" value="{{ old('observaciones') }}" maxlength="1000" /></div>
-                        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary btn-sm w-100" type="submit">Subir</button></div>
+                        @method('PATCH')
+                        <button class="btn btn-success" type="submit"><span class="fas fa-check me-2"></span>Reactivar empleado</button>
                     </form>
-                </div>
-            @endif
-            @forelse ($documentos as $d)
-                @php $vence = $d->fecha_vencimiento ? (int) round(today()->diffInDays($d->fecha_vencimiento, false)) : null; @endphp
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom border-200 py-2">
-                    <div>
-                        <span class="badge badge-phoenix badge-phoenix-secondary me-1">{{ $tiposDocumento[$d->tipo_documento] ?? $d->tipo_documento }}</span>
-                        <a class="fw-semi-bold text-decoration-none" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
-                        @if ($vence !== null && $vence < 0)<span class="badge badge-phoenix badge-phoenix-danger ms-1">Vencido</span>
-                        @elseif ($vence !== null && $vence <= 30)<span class="badge badge-phoenix badge-phoenix-warning ms-1">Vence en {{ $vence }} días</span>@endif
-                        <span class="d-block text-600">{{ collect([$d->fecha_emision ? 'Emitido el '.$d->fecha_emision->format('d/m/Y') : null, $d->fecha_vencimiento ? 'vence el '.$d->fecha_vencimiento->format('d/m/Y') : null, $d->observaciones, 'subido el '.$d->created_at?->format('d/m/Y')])->filter()->implode(' · ') }}</span>
+                @endif
+            </div>
+        </div>
+
+        {{-- Tarjetas KPI de Estado Laboral estilo Phoenix --}}
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Salario Base Actual</h6>
+                                <h3 class="text-primary mb-0 fw-bolder">{{ $cv ? $cv->moneda.' '.$dinero($cv->salario_base) : 'Sin contrato' }}</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">{{ $cv ? 'Contrato: '.$cv->numero_contrato : 'Pendiente de registrar' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-primary-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-money-check-alt text-primary fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
                     </div>
-                    @if ($puedeEditar)
-                        <form method="POST" action="{{ route('empleados.documentos.destroy', [$e->id_empleado, $d->id_doc]) }}" onsubmit="return confirm(@js('¿Eliminar el documento «'.$d->nombre.'»?'))">
-                            @csrf
-                            @method('DELETE')
-                            <button class="btn btn-link btn-sm text-danger p-0" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
-                        </form>
-                    @endif
                 </div>
-            @empty
-                <p class="text-700 mb-0">Sin documentos.</p>
-            @endforelse
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Tiempo en Empresa</h6>
+                                <h3 class="text-info mb-0 fw-bolder">{{ $e->antiguedad_anios }} años</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">Ingreso: {{ $e->fecha_ingreso?->format('d/m/Y') ?? '—' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-info-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-calendar-check text-info fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Vacaciones Disponibles</h6>
+                                <h3 class="text-warning mb-0 fw-bolder">{{ $vacaciones ? rtrim(rtrim(number_format($vacaciones['disponible'], 2), '0'), '.').' días' : '—' }}</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">{{ $vacaciones ? 'Gozados: '.rtrim(rtrim(number_format($vacaciones['gozados'], 2), '0'), '.') : 'De baja' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-warning-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-umbrella-beach text-warning fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border border-200">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Documentos Digitales</h6>
+                                <h3 class="text-success mb-0 fw-bolder">{{ $documentos->count() }} subidos</h3>
+                                <p class="fs--2 text-600 mb-0 mt-1">Sucursal: {{ $e->sucursal?->nombre ?? 'Principal' }}</p>
+                            </div>
+                            <div class="d-flex align-items-center icon-wrapper-sm shadow-success-100" style="transform: rotate(-7.45deg);">
+                                <span class="fas fa-folder-open text-success fs-1 z-index-1 ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-5">
+            {{-- Columna Lateral: Información Personal y Contacto (4 columnas) --}}
+            <div class="col-12 col-xl-4">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3 text-1100">Información del Colaborador</h5>
+                        <div class="border-top border-200 pt-3">
+                            <div class="mb-3">
+                                <h6 class="text-700 fs--2 text-uppercase mb-1">DPI / Documento</h6>
+                                <p class="text-900 fs--1 mb-0 fw-semi-bold">{{ $e->dpi ?: 'No registrado' }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-700 fs--2 text-uppercase mb-1">NIT / Afiliación IGSS</h6>
+                                <p class="text-900 fs--1 mb-0">NIT: {{ $e->nit ?: '—' }} · IGSS: {{ $e->numero_afiliacion_igss ?: '—' }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-700 fs--2 text-uppercase mb-1">Correo Institucional / Personal</h6>
+                                <p class="text-900 fs--1 mb-0">{{ $e->email_corporativo ?: $e->email_personal ?: 'Sin correo' }}</p>
+                            </div>
+                            <div>
+                                <h6 class="text-700 fs--2 text-uppercase mb-1">Teléfono</h6>
+                                <p class="text-900 fs--1 mb-0">{{ $e->telefono ?: 'Sin teléfono' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Cadena de mando / Jefe --}}
+                @if ($cadena->isNotEmpty())
+                    <div class="card border border-200 shadow-none mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3 text-1100"><span class="fas fa-sitemap text-primary me-2"></span>Línea de Mando</h5>
+                            @foreach ($cadena as $jefe)
+                                <div class="d-flex align-items-center gap-2 py-2 border-bottom border-200">
+                                    <div class="avatar avatar-m">
+                                        <div class="avatar-name rounded-circle bg-soft-primary text-primary fs--1">
+                                            <span>{{ mb_strtoupper(mb_substr($jefe->nombres ?: $jefe->nombre_completo, 0, 1)) }}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <a class="fw-bold text-1100 fs--1" href="{{ route('empleados.show', $jefe->id_empleado) }}">{{ $jefe->nombre_completo }}</a>
+                                        <span class="d-block fs--2 text-600">{{ $jefe->cargo?->nombre ?? 'Jefe Inmediato' }}</span>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Columna Principal: Documentos y Expediente (8 columnas) --}}
+            <div class="col-12 col-xl-8">
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 text-1100 fw-bold">Expediente Digital & Documentos Adjuntos</h5>
+                            <p class="mb-0 fs--2 text-600">Contratos, constancias, certificaciones y DPI digitalizado</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive scrollbar">
+                            <table class="table table-sm fs--1 mb-0 align-middle">
+                                <thead class="bg-100">
+                                    <tr>
+                                        <th class="ps-4 text-700">DOCUMENTO</th>
+                                        <th class="text-700">TIPO</th>
+                                        <th class="text-700">FECHA EMISIÓN</th>
+                                        <th class="text-700">VENCE</th>
+                                        <th class="text-end pe-4 text-700">ACCIÓN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($documentos as $d)
+                                        @php $vence = $d->fecha_vencimiento ? (int) round(today()->diffInDays($d->fecha_vencimiento, false)) : null; @endphp
+                                        <tr>
+                                            <td class="ps-4 py-3">
+                                                <a class="fw-bold text-primary" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">
+                                                    {{ $d->nombre }}
+                                                </a>
+                                                @if ($d->observaciones)
+                                                    <span class="d-block fs--2 text-600">{{ $d->observaciones }}</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-tag">{{ $tiposDocumento[$d->tipo_documento] ?? $d->tipo_documento }}</span>
+                                            </td>
+                                            <td class="text-700">{{ $d->fecha_emision?->format('d/m/Y') ?? '—' }}</td>
+                                            <td>
+                                                @if ($vence !== null && $vence < 0)
+                                                    <span class="badge badge-phoenix badge-phoenix-danger fs--2">Vencido</span>
+                                                @elseif ($vence !== null && $vence <= 30)
+                                                    <span class="badge badge-phoenix badge-phoenix-warning fs--2">Vence en {{ $vence }}d</span>
+                                                @else
+                                                    <span class="text-700">{{ $d->fecha_vencimiento?->format('d/m/Y') ?? 'Sin vencimiento' }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <a class="btn btn-phoenix-secondary btn-sm" href="{{ $d->url_archivo }}" target="_blank">
+                                                    <span class="fas fa-download me-1"></span>Ver
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center text-600 py-4">No hay documentos cargados en el expediente.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection

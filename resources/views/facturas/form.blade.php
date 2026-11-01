@@ -12,15 +12,13 @@
         }
     @endphp
 
-    <x-page-header
-        :titulo="$f->exists ? 'Editar '.($tipos[$f->tipo] ?? '').' '.$f->numero_completo : 'Nueva factura'"
-        icono="fas fa-file-invoice-dollar"
-        subtitulo="Emite documentos tributarios, notas de crédito o recibos asociados a clientes y contratos."
-        :migas="[
-            ['label' => 'Facturación', 'url' => route('facturas.index')],
-            ['label' => $f->exists ? $f->numero_completo : 'Nueva'],
-        ]"
-    />
+    <nav class="mb-2" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('facturas.index') }}">Facturación</a></li>
+            <li class="breadcrumb-item active">{{ $f->exists ? 'Editar '.$f->numero_completo : 'Nueva Factura' }}</li>
+        </ol>
+    </nav>
 
     <form method="POST" action="{{ $f->exists ? route('facturas.update', $f->id_factura) : route('facturas.store') }}" class="mb-9">
         @csrf
@@ -28,110 +26,151 @@
             @method('PUT')
         @endif
         <input type="hidden" name="id_contrato" value="{{ old('id_contrato', $f->id_contrato) }}" />
+
+        {{-- Encabezado idéntico a apps/e-commerce/admin/add-product.html --}}
+        <div class="row g-3 flex-between-end mb-5">
+            <div class="col-auto">
+                <h2 class="mb-2">{{ $f->exists ? 'Editar Documento: '.$f->numero_completo : 'Crear Nueva Factura de Venta' }}</h2>
+                <h5 class="text-700 fw-semi-bold">Emisión de documentos comerciales, afectación de inventario y ejecución presupuestaria</h5>
+            </div>
+            <div class="col-auto">
+                <a class="btn btn-phoenix-secondary me-2 mb-2 mb-sm-0" href="{{ $f->exists ? route('facturas.show', $f->id_factura) : route('facturas.index') }}">Descartar</a>
+                <button class="btn btn-primary mb-2 mb-sm-0" type="submit">
+                    <span class="fas fa-save me-2"></span>{{ $f->exists ? 'Actualizar borrador' : 'Guardar borrador de factura' }}
+                </button>
+            </div>
+        </div>
+
         @if (old('id_contrato', $f->id_contrato))
-            <div class="alert alert-soft-info border-0 fs--1 mb-4"><span class="fas fa-file-contract me-2"></span>Factura del contrato {{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}: revisa el periodo y los montos antes de guardar.</div>
-            @error('id_contrato')<div class="alert alert-soft-danger border-0 fs--1">{{ $message }}</div>@enderror
+            <div class="alert alert-subtle-info border-0 fs--1 mb-4">
+                <span class="fas fa-file-contract me-2"></span>Factura vinculada al contrato <strong>{{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}</strong>.
+            </div>
         @endif
 
+        {{-- Datos del Comprobante (Card superior) --}}
         <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
-                <h5 class="mb-0 text-1100"><span class="fas fa-file-alt text-primary me-2"></span>Encabezado del documento</h5>
+            <div class="card-header bg-white border-bottom border-200 py-3 px-4">
+                <h5 class="mb-0 text-1100 fw-bold"><span class="fas fa-file-invoice text-primary me-2"></span>Encabezado del Documento Fiscal</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label" for="id_serie">Serie / tipo</label>
+                        <label class="form-label" for="id_serie">Serie y Tipo</label>
                         @if ($f->exists)
                             <input class="form-control" value="{{ $f->serie?->codigo_serie }} — {{ $tipos[$f->tipo] ?? $f->tipo }}" disabled />
-                            <div class="form-text">La serie y el número ya están asignados.</div>
                         @else
                             <select class="form-select @error('id_serie') is-invalid @enderror" id="id_serie" name="id_serie" required>
-                                <option value="">Selecciona…</option>
-                                @foreach ($series as $s)<option value="{{ $s->id_serie }}" @selected((int) old('id_serie', $series->firstWhere('tipo', 'FACTURA')?->id_serie) === $s->id_serie)>{{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (sigue {{ $s->formatearNumero($s->ultimo_numero + 1) }})</option>@endforeach
+                                <option value="">Selecciona serie…</option>
+                                @foreach ($series as $s)
+                                    <option value="{{ $s->id_serie }}" @selected((int) old('id_serie', $series->firstWhere('tipo', 'FACTURA')?->id_serie) === $s->id_serie)>
+                                        {{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (correlativo: {{ $s->formatearNumero($s->ultimo_numero + 1) }})
+                                    </option>
+                                @endforeach
                             </select>
                             @error('id_serie')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @endif
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label" for="id_cliente">Cliente</label>
+                        <label class="form-label" for="id_cliente">Cliente Facturado</label>
                         <select class="form-select @error('id_cliente') is-invalid @enderror" id="id_cliente" name="id_cliente" required>
-                            <option value="">Selecciona…</option>
-                            @foreach ($clientes as $c)<option value="{{ $c->id_cliente }}" data-moneda="{{ $c->moneda_facturacion }}" data-dias="{{ $c->dias_credito }}" @selected((int) $v('id_cliente') === $c->id_cliente)>{{ $c->razon_social }}{{ $c->nit ? ' · NIT '.$c->nit : '' }}</option>@endforeach
+                            <option value="">Selecciona cliente…</option>
+                            @foreach ($clientes as $c)
+                                <option value="{{ $c->id_cliente }}" data-moneda="{{ $c->moneda_facturacion }}" data-dias="{{ $c->dias_credito }}" @selected((int) $v('id_cliente') === $c->id_cliente)>
+                                    {{ $c->razon_social }}{{ $c->nit ? ' · NIT '.$c->nit : '' }}
+                                </option>
+                            @endforeach
                         </select>
                         @error('id_cliente')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" for="moneda">Moneda</label>
                         <select class="form-select" id="moneda" name="moneda" required>
-                            @foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>@endforeach
+                            @foreach ($monedas as $m)
+                                <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label" for="fecha_emision">Emisión</label>
-                        <input class="form-control" id="fecha_emision" name="fecha_emision" type="date" value="{{ $fecha('fecha_emision') }}" required />
+                        <label class="form-label" for="fecha_emision">Fecha Emisión</label>
+                        <input class="form-control" id="fecha_emision" name="fecha_emision" type="date" value="{{ $fecha('fecha_emision') ?: today()->toDateString() }}" required />
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="fecha_vencimiento">Vencimiento</label>
-                        <input class="form-control @error('fecha_vencimiento') is-invalid @enderror" id="fecha_vencimiento" name="fecha_vencimiento" type="date" value="{{ $fecha('fecha_vencimiento') }}" required />
-                        @error('fecha_vencimiento')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="col-md-3">
+                        <label class="form-label" for="fecha_vencimiento">Fecha Vencimiento</label>
+                        <input class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" type="date" value="{{ $fecha('fecha_vencimiento') ?: today()->toDateString() }}" required />
                     </div>
-                    <div class="col-md-2"><label class="form-label" for="periodo_servicio_inicio">Periodo desde</label><input class="form-control" id="periodo_servicio_inicio" name="periodo_servicio_inicio" type="date" value="{{ $fecha('periodo_servicio_inicio') }}" /></div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="periodo_servicio_fin">Periodo hasta</label>
-                        <input class="form-control @error('periodo_servicio_fin') is-invalid @enderror" id="periodo_servicio_fin" name="periodo_servicio_fin" type="date" value="{{ $fecha('periodo_servicio_fin') }}" />
-                        @error('periodo_servicio_fin')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="col-md-9">
+                        <label class="form-label" for="notas">Observaciones o Notas al Pie de Factura</label>
+                        <input class="form-control" id="notas" name="notas" value="{{ $v('notas') }}" maxlength="1000" placeholder="Condiciones de entrega, pago en cheque, etc..." />
                     </div>
-                    <div class="col-md-6"><label class="form-label" for="notas">Notas</label><input class="form-control" id="notas" name="notas" value="{{ $v('notas') }}" maxlength="2000" /></div>
                 </div>
             </div>
         </div>
 
+        {{-- Detalle de Líneas de Factura estilo Phoenix --}}
         <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-1100"><span class="fas fa-list-ul text-primary me-2"></span>Detalle</h5>
-                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea"><span class="fas fa-plus me-1"></span>Agregar línea</button>
+            <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-1100 fw-bold">Partidas & Conceptos Facturados</h5>
+                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea">
+                    <span class="fas fa-plus me-1"></span>Agregar línea
+                </button>
             </div>
-            <div class="card-body">
-                @error('lineas')<div class="alert alert-soft-danger fs--1">{{ $message }}</div>@enderror
-                <div class="table-responsive">
-                    <table class="table table-sm fs--1 align-middle mb-0" id="tabla-lineas">
-                        <thead>
-                        <tr>
-                            <th style="min-width: 16rem">Servicio / descripción</th>
-                            <th style="width: 6rem" class="text-end">Cantidad</th>
-                            <th style="width: 8rem" class="text-end">Precio</th>
-                            <th style="width: 7rem" class="text-end">Descuento</th>
-                            <th style="width: 3rem" class="text-center" title="Afecta a IVA">IVA</th>
-                            <th style="min-width: 11rem">Centro / cuenta (presupuesto)</th>
-                            <th style="width: 8rem" class="text-end">Importe</th>
-                            <th style="width: 2rem"></th>
-                        </tr>
+            <div class="card-body p-0">
+                <div class="table-responsive scrollbar">
+                    <table class="table table-sm fs--1 mb-0 align-middle" id="tabla-lineas">
+                        <thead class="bg-100">
+                            <tr>
+                                <th class="ps-4 text-700" style="min-width: 200px;">SERVICIO / CONCEPTO</th>
+                                <th class="text-700" style="min-width: 250px;">DESCRIPCIÓN</th>
+                                <th class="text-end text-700" style="width: 100px;">CANT.</th>
+                                <th class="text-end text-700" style="width: 130px;">PRECIO UNIT.</th>
+                                <th class="text-end text-700" style="width: 120px;">DESCUENTO</th>
+                                <th class="text-center text-700" style="width: 80px;">IVA</th>
+                                <th class="text-end text-700" style="width: 140px;">SUBTOTAL</th>
+                                <th class="text-center pe-4 text-700" style="width: 60px;"></th>
+                            </tr>
                         </thead>
                         <tbody>
-                        @foreach ($lineas as $i => $l)
-                            @include('facturas.linea', ['i' => $i, 'l' => $l])
-                        @endforeach
+                            @foreach ($lineas as $i => $l)
+                                @include('facturas.linea', ['i' => $i, 'l' => $l])
+                            @endforeach
                         </tbody>
-                        <tfoot class="fw-semi-bold">
-                        <tr><td colspan="6" class="text-end">Subtotal</td><td class="text-end" id="t-subtotal">0.00</td><td></td></tr>
-                        <tr>
-                            <td colspan="6" class="text-end align-middle">Descuento global</td>
-                            <td><input class="form-control form-control-sm text-end @error('descuento') is-invalid @enderror" id="descuento" name="descuento" type="number" step="0.01" min="0" value="{{ (float) $v('descuento') }}" /></td><td></td>
-                        </tr>
-                        <tr><td colspan="6" class="text-end">IVA ({{ rtrim(rtrim(number_format($fiscal['tasa'] * 100, 2), '0'), '.') }} %{{ $fiscal['incluido'] ? ', incluido en precios' : '' }})</td><td class="text-end" id="t-iva">0.00</td><td></td></tr>
-                        <tr class="fs-0"><td colspan="6" class="text-end">Total</td><td class="text-end" id="t-total">0.00</td><td></td></tr>
-                        </tfoot>
                     </table>
                 </div>
-                @error('descuento')<div class="text-danger fs--1 text-end">{{ $message }}</div>@enderror
-                @foreach ($errors->get('lineas.*') as $mensajes)<div class="text-danger fs--1">{{ $mensajes[0] }}</div>@endforeach
+            </div>
+        </div>
+
+        {{-- Descuentos Globales y Totales estilo Phoenix --}}
+        <div class="row justify-content-end mb-4">
+            <div class="col-12 col-md-6 col-lg-5">
+                <div class="card border border-200 shadow-none">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fs--1" for="descuento">Descuento Global Adicional (Monto)</label>
+                            <input class="form-control form-control-sm text-end" id="descuento" name="descuento" type="number" step="0.01" min="0" value="{{ (float) $v('descuento') ?: '' }}" placeholder="0.00" />
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 fs--1">
+                            <span class="text-700">Subtotal Neto:</span>
+                            <span class="fw-semi-bold text-900" id="t-subtotal">0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 fs--1">
+                            <span class="text-700">IVA (12%):</span>
+                            <span class="fw-semi-bold text-900" id="t-iva">0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-top border-200 pt-3 fs-1">
+                            <span class="fw-bold text-1100">Total Liquidado:</span>
+                            <span class="fw-bolder text-primary" id="t-total">0.00</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <template id="plantilla-linea">@include('facturas.linea', ['i' => '__I__', 'l' => []])</template>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar borrador</button>
+            <button class="btn btn-primary" type="submit">
+                <span class="fas fa-save me-2"></span>Guardar documento
+            </button>
             <a class="btn btn-phoenix-secondary" href="{{ $f->exists ? route('facturas.show', $f->id_factura) : route('facturas.index') }}">Cancelar</a>
         </div>
     </form>
@@ -147,13 +186,18 @@
             var numero = function (v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; };
             var dinero = function (n) { return n.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2}); };
 
-            // Mismo cálculo que Factura::recalcularTotales: el descuento global se reparte antes del IVA.
             function recalcular() {
                 var afecto = 0, exento = 0;
                 cuerpo.querySelectorAll('tr').forEach(function (fila) {
-                    var importe = Math.max(0, numero(fila.querySelector('.cantidad').value) * numero(fila.querySelector('.precio').value) - numero(fila.querySelector('.descuento').value));
-                    fila.querySelector('.importe').textContent = dinero(importe);
-                    if (fila.querySelector('.afecto').checked) afecto += importe; else exento += importe;
+                    var cantInput = fila.querySelector('.cantidad');
+                    var precioInput = fila.querySelector('.precio');
+                    var descInput = fila.querySelector('.descuento');
+                    if (!cantInput || !precioInput) return;
+                    var importe = Math.max(0, numero(cantInput.value) * numero(precioInput.value) - (descInput ? numero(descInput.value) : 0));
+                    var impEl = fila.querySelector('.importe');
+                    if (impEl) impEl.textContent = dinero(importe);
+                    var afectoEl = fila.querySelector('.afecto');
+                    if (afectoEl && afectoEl.checked) afecto += importe; else exento += importe;
                 });
                 var subtotal = afecto + exento;
                 var descuento = Math.min(numero(document.getElementById('descuento').value), subtotal);
@@ -187,7 +231,6 @@
                 cuerpo.insertAdjacentHTML('beforeend', document.getElementById('plantilla-linea').innerHTML.replace(/__I__/g, siguiente++));
                 recalcular();
             });
-            // Moneda y vencimiento siguen al cliente (días de crédito).
             document.getElementById('id_cliente').addEventListener('change', function () {
                 var o = this.selectedOptions[0];
                 if (!o || !o.dataset.moneda) return;
