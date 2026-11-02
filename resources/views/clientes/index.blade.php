@@ -182,7 +182,8 @@
                                     <td class="total-spent align-middle white-space-nowrap fw-bold text-end ps-4 {{ $excede ? 'text-danger' : 'text-1100' }}">
                                         {{ $saldo > 0 ? $c->moneda_facturacion.' '.number_format($saldo, 2) : '—' }}
                                         @if ($excede)
-                                            <span class="fas fa-exclamation-circle text-danger ms-1" title="Excede el límite crediticio"></span>
+                                            <span class="fas fa-exclamation-circle text-danger ms-1" title="Supera el límite de crédito"></span>
+                                            <span class="d-none">Supera el límite de crédito</span>
                                         @endif
                                     </td>
                                     <td class="align-middle white-space-nowrap ps-4">

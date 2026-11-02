@@ -39,6 +39,11 @@
                         <span class="fas fa-hand-holding-usd me-2"></span>Registrar cobro
                     </a>
                 @endif
+                @if ($conSaldo && $yo->puede('facturas.condonar'))
+                    <button class="btn btn-phoenix-warning" type="button" data-bs-toggle="collapse" data-bs-target="#condonar" aria-expanded="{{ $errors->has('monto') ? 'true' : 'false' }}">
+                        <span class="fas fa-handshake-slash me-2"></span>Condonar
+                    </button>
+                @endif
                 @if ($f->estado !== 'BORRADOR' && $yo->puede('facturas.imprimir'))
                     <a class="btn btn-phoenix-secondary" href="{{ route('facturas.imprimir', $f->id_factura) }}" target="_blank" rel="noopener">
                         <span class="fa-solid fa-print me-2"></span>Imprimir factura
@@ -48,12 +53,32 @@
                     <a class="btn btn-phoenix-primary" href="{{ route('facturas.edit', $f->id_factura) }}">
                         <span class="fas fa-edit me-2"></span>Editar borrador
                     </a>
-                    <form method="POST" action="{{ route('facturas.emitir', $f->id_factura) }}" class="d-inline" onsubmit="return confirm(@js('¿Emitir '.$tipo.' '.$f->numero_completo.' por '.$f->moneda.' '.$dinero($f->total).'? Ya no se podrá editar.'))">
+                    <form method="POST" action="{{ route('facturas.emitir', $f->id_factura) }}" class="d-inline">
                         @csrf
                         @method('PATCH')
-                        <button class="btn btn-primary" type="submit"><span class="fas fa-check me-2"></span>Emitir</button>
+                        <button class="btn btn-primary" type="button"
+                                data-confirm-phoenix="¿Emitir {{ $tipo }} {{ $f->numero_completo }} por {{ $f->moneda }} {{ $dinero($f->total) }}? Ya no se podrá editar."
+                                data-confirm-titulo="Emitir comprobante fiscal"
+                                data-confirm-boton="Confirmar emisión">
+                            <span class="fas fa-check me-2"></span>Emitir
+                        </button>
                     </form>
                 @endif
+                @if ($anulable && $yo->puede('facturas.anular'))
+                    <form method="POST" action="{{ route('facturas.anular', $f->id_factura) }}" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button class="btn btn-phoenix-danger" type="button"
+                                data-confirm-phoenix="¿Anular la factura {{ $f->numero_completo }}? Esta acción revertirá el saldo y la ejecución de presupuesto."
+                                data-confirm-titulo="Confirmar anulación de factura"
+                                data-confirm-boton="Sí, anular documento">
+                            <span class="fas fa-ban me-2"></span>Anular factura
+                        </button>
+                    </form>
+                @endif
+                <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="factura" data-auditoria-id="{{ $f->id_factura }}">
+                    <span class="fas fa-history me-2"></span>Bitácora
+                </button>
             </div>
         </div>
 

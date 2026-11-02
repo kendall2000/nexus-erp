@@ -327,6 +327,56 @@
     <div class="content">
         @include('partials.alertas')
         @yield('contenido')
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" id="nexus-toast-container" style="z-index: 1095;"></div>
+
+        {{-- Drawer Offcanvas Lateral para Historial Rápido de Auditoría (Bitácora) --}}
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAuditoria" aria-labelledby="offcanvasAuditoriaLabel" style="width: 480px;">
+            <div class="offcanvas-header border-bottom border-200 bg-body-emphasis py-3 px-4">
+                <div class="d-flex align-items-center">
+                    <span class="fas fa-history text-primary me-2 fs-0"></span>
+                    <div>
+                        <h5 class="offcanvas-title mb-0 text-1000" id="offcanvasAuditoriaLabel">Historial de Auditoría</h5>
+                        <p class="fs--2 text-600 mb-0" id="auditoriaSubtitulo">Cargando bitácora...</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-4" id="auditoriaCuerpo">
+                <div class="text-center py-5" id="auditoriaCargando">
+                    <div class="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
+                    <p class="text-600 fs--1 mb-0">Consultando registros inmutables...</p>
+                </div>
+                <div id="auditoriaContenido" class="d-none"></div>
+            </div>
+        </div>
+
+        {{-- Modal de Confirmación Universal Phoenix para Acciones Críticas/Destructivas --}}
+        <div class="modal fade" id="modalConfirmacionPhoenix" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border border-200 shadow-lg">
+                    <div class="modal-header border-bottom border-200 py-3 px-4 bg-body-emphasis">
+                        <div class="d-flex align-items-center">
+                            <span class="fas fa-exclamation-triangle text-danger me-2 fs-0" id="confirmModalIcono"></span>
+                            <h5 class="modal-title mb-0 text-1000" id="confirmModalTitulo">Confirmar acción</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="text-800 fs-0 mb-0" id="confirmModalMensaje">¿Estás seguro de continuar con esta operación?</p>
+                        <div class="alert alert-soft-warning fs--2 mt-3 mb-0" id="confirmModalAlerta">
+                            <span class="fas fa-info-circle me-1"></span>Esta acción quedará registrada en la bitácora de auditoría.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-200 py-2 px-4 bg-body-emphasis">
+                        <button type="button" class="btn btn-phoenix-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger btn-sm" id="confirmModalBotonEjecutar">
+                            <span class="fas fa-check me-1"></span>Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="footer position-absolute">
             <div class="row g-0 justify-content-between align-items-center h-100">
                 <div class="col-12 col-sm-auto text-center">

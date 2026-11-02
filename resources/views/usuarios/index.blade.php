@@ -197,10 +197,13 @@
                                                                 {{ $u->activo ? 'Desactivar acceso' : 'Activar acceso' }}
                                                             </button>
                                                         </form>
-                                                        <form method="POST" action="{{ route('usuarios.sesiones', $u->id_usuario) }}" onsubmit="return confirm(@js('¿Cerrar todas las sesiones de '.$u->username.'?'))">
+                                                        <form method="POST" action="{{ route('usuarios.sesiones', $u->id_usuario) }}">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button class="dropdown-item text-warning" type="submit">
+                                                            <button class="dropdown-item text-warning" type="button"
+                                                                    data-confirm-phoenix="¿Cerrar todas las sesiones activas del usuario {{ $u->username }}?"
+                                                                    data-confirm-titulo="Cerrar sesiones"
+                                                                    data-confirm-boton="Sí, cerrar sesiones">
                                                                 <span class="fas fa-sign-out-alt me-2"></span>Cerrar sesiones
                                                             </button>
                                                         </form>
@@ -208,10 +211,13 @@
                                                 @endif
                                                 @if ($puedeEliminar && $u->id_usuario !== auth()->id() && $yo->puedeGestionar($u))
                                                     <div class="dropdown-divider"></div>
-                                                    <form method="POST" action="{{ route('usuarios.destroy', $u->id_usuario) }}" onsubmit="return confirm(@js('¿Eliminar al usuario '.$u->username.'?'))">
+                                                    <form method="POST" action="{{ route('usuarios.destroy', $u->id_usuario) }}">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button class="dropdown-item text-danger" type="submit">
+                                                        <button class="dropdown-item text-danger" type="button"
+                                                                data-confirm-phoenix="¿Eliminar definitivamente al usuario {{ $u->username }}?"
+                                                                data-confirm-titulo="Eliminar usuario"
+                                                                data-confirm-boton="Sí, eliminar usuario">
                                                             <span class="fas fa-trash me-2"></span>Eliminar
                                                         </button>
                                                     </form>

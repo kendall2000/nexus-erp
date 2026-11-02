@@ -43,9 +43,17 @@
                     <form method="POST" action="{{ route('ordenes-compra.aprobar', $oc->id_oc) }}" class="d-inline">
                         @csrf
                         @method('PATCH')
-                        <button class="btn btn-success" type="submit"><span class="fas fa-check me-2"></span>Aprobar orden</button>
+                        <button class="btn btn-success" type="button"
+                                data-confirm-phoenix="¿Aprobar la orden de compra #{{ $oc->numero_oc }} por {{ $oc->moneda }} {{ $dinero($oc->total) }}?"
+                                data-confirm-titulo="Aprobar Orden de Compra"
+                                data-confirm-boton="Sí, aprobar">
+                            <span class="fas fa-check me-2"></span>Aprobar orden
+                        </button>
                     </form>
                 @endif
+                <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="orden_compra" data-auditoria-id="{{ $oc->id_oc }}">
+                    <span class="fas fa-history me-2"></span>Bitácora
+                </button>
             </div>
         </div>
 

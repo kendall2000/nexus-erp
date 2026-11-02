@@ -97,54 +97,71 @@
             </div>
         </div>
 
-        {{-- Partidas de Productos estilo Phoenix --}}
-        <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-1100 fw-bold">Artículos & Materiales Solicitados</h5>
-                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea">
-                    <span class="fas fa-plus me-1"></span>Agregar producto
-                </button>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive scrollbar">
-                    <table class="table table-sm fs--1 mb-0 align-middle" id="tabla-lineas">
-                        <thead class="bg-100">
-                            <tr>
-                                <th class="ps-4 text-700" style="min-width: 250px;">PRODUCTO</th>
-                                <th class="text-700" style="min-width: 200px;">DETALLE ADICIONAL</th>
-                                <th class="text-end text-700" style="width: 100px;">CANT.</th>
-                                <th class="text-end text-700" style="width: 130px;">PRECIO COMPRA</th>
-                                <th class="text-end text-700" style="width: 110px;">DESCUENTO</th>
-                                <th class="text-end text-700" style="width: 140px;">SUBTOTAL</th>
-                                <th class="text-center pe-4 text-700" style="width: 60px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($lineas as $i => $l)
-                                @include('ordenes-compra.linea', ['i' => $i, 'l' => $l])
-                            @endforeach
-                        </tbody>
-                    </table>
+        {{-- Partidas de Productos montado en Vue 3 con fallback --}}
+        <div data-vue-component="OrdenCompraLineas" data-vue-props="{{ json_encode([
+            'initialLineas' => $lineas,
+            'productos' => $productos->map(fn ($p) => [
+                'id_producto' => $p->id_producto,
+                'codigo' => $p->codigo,
+                'nombre' => $p->nombre,
+                'unidad_medida' => $p->unidad_medida,
+                'precio_compra' => $p->precio_compra,
+                'id_centro_default' => $p->id_centro_default,
+                'id_cuenta_gasto' => $p->id_cuenta_gasto
+            ]),
+            'centros' => $centros->map(fn ($c) => ['id_centro' => $c->id_centro, 'codigo' => $c->codigo, 'nombre' => $c->nombre]),
+            'cuentas' => $cuentas->map(fn ($c) => ['id_cuenta' => $c->id_cuenta, 'codigo' => $c->codigo, 'nombre' => $c->nombre]),
+            'fiscal' => $fiscal
+        ]) }}">
+            {{-- Fallback estático en caso de pruebas sin JS o renderizado inicial --}}
+            <div class="card border border-200 shadow-none mb-4">
+                <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-1100 fw-bold">Artículos & Materiales Solicitados</h5>
+                    <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea">
+                        <span class="fas fa-plus me-1"></span>Agregar producto
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive scrollbar">
+                        <table class="table table-sm fs--1 mb-0 align-middle" id="tabla-lineas">
+                            <thead class="bg-100">
+                                <tr>
+                                    <th class="ps-4 text-700" style="min-width: 250px;">PRODUCTO</th>
+                                    <th class="text-700" style="min-width: 200px;">DETALLE ADICIONAL</th>
+                                    <th class="text-end text-700" style="width: 100px;">CANT.</th>
+                                    <th class="text-end text-700" style="width: 130px;">PRECIO COMPRA</th>
+                                    <th class="text-end text-700" style="width: 110px;">DESCUENTO</th>
+                                    <th class="text-end text-700" style="width: 140px;">SUBTOTAL</th>
+                                    <th class="text-center pe-4 text-700" style="width: 60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($lineas as $i => $l)
+                                    @include('ordenes-compra.linea', ['i' => $i, 'l' => $l])
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Totales de Compra estilo Phoenix --}}
-        <div class="row justify-content-end mb-4">
-            <div class="col-12 col-md-6 col-lg-5">
-                <div class="card border border-200 shadow-none">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between mb-2 fs--1">
-                            <span class="text-700">Subtotal Neto:</span>
-                            <span class="fw-semi-bold text-900" id="t-subtotal">0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2 fs--1">
-                            <span class="text-700">IVA Estimado:</span>
-                            <span class="fw-semi-bold text-900" id="t-iva">0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between border-top border-200 pt-3 fs-1">
-                            <span class="fw-bold text-1100">Total de la Orden:</span>
-                            <span class="fw-bolder text-primary" id="t-total">0.00</span>
+            {{-- Totales de Compra estilo Phoenix --}}
+            <div class="row justify-content-end mb-4">
+                <div class="col-12 col-md-6 col-lg-5">
+                    <div class="card border border-200 shadow-none">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between mb-2 fs--1">
+                                <span class="text-700">Subtotal Neto:</span>
+                                <span class="fw-semi-bold text-900" id="t-subtotal">0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 fs--1">
+                                <span class="text-700">IVA Estimado:</span>
+                                <span class="fw-semi-bold text-900" id="t-iva">0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-top border-200 pt-3 fs-1">
+                                <span class="fw-bold text-1100">Total de la Orden:</span>
+                                <span class="fw-bolder text-primary" id="t-total">0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>

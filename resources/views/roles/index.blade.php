@@ -214,10 +214,13 @@
                                     </a>
                                     @if ($puedeEliminar && ! $rol->esProtegido() && $rol->usuarios_count === 0)
                                         <div class="dropdown-divider"></div>
-                                        <form method="POST" action="{{ route('roles.destroy', $rol->id_rol) }}" onsubmit="return confirm(@js('¿Eliminar definitivamente el rol '.$rol->nombre.'?'))">
+                                        <form method="POST" action="{{ route('roles.destroy', $rol->id_rol) }}">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="dropdown-item text-danger" type="submit">
+                                            <button class="dropdown-item text-danger" type="button"
+                                                    data-confirm-phoenix="¿Eliminar definitivamente el rol {{ $rol->nombre }}? Esta acción es irreversible."
+                                                    data-confirm-titulo="Eliminar Rol de Usuario"
+                                                    data-confirm-boton="Sí, eliminar rol">
                                                 <i class="fas fa-trash me-2"></i>Eliminar Rol
                                             </button>
                                         </form>

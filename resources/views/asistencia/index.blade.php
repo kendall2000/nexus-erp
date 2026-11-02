@@ -173,7 +173,7 @@
                                         <tbody class="list">
                                             @foreach ($empleados as $e)
                                                 @php
-                                                    $as = $asistencias->get($e->id_empleado);
+                                                    $as = $registros->get($e->id_empleado);
                                                     $bloqueado = $as?->origen === 'SOLICITUD';
                                                 @endphp
                                                 <tr class="hover-actions-trigger position-static">
@@ -188,10 +188,10 @@
                                                             <span class="badge badge-phoenix badge-phoenix-info fs--2">{{ $as->estado }}</span>
                                                             <span class="fs--2 text-600 d-block mt-1">Por solicitud aprobada</span>
                                                         @else
-                                                            <select class="form-select form-select-sm" name="filas[{{ $e->id_empleado }}][estado]">
-                                                                <option value="">Sin registro</option>
-                                                                @foreach ($estadosAsistencia as $cod => [$nom])
-                                                                    <option value="{{ $cod }}" @selected($as?->estado === $cod)>{{ $nom }}</option>
+                                                            <select class="form-select form-select-sm" name="asistencia[{{ $e->id_empleado }}][estado]">
+                                                                <option value="">Sin registrar</option>
+                                                                @foreach ($estados as $cod => [$nom])
+                                                                    <option value="{{ $cod }}" @selected(old("asistencia.{$e->id_empleado}.estado", $as?->estado) === $cod)>{{ $nom }}</option>
                                                                 @endforeach
                                                             </select>
                                                         @endif
