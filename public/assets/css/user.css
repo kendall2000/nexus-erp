@@ -1,9 +1,16 @@
 /*-----------------------------------------------
-|   Phoenix buttons
+|   Phoenix custom fixes and enhancements
 -----------------------------------------------*/
-/* -------------------------------------------------------------------------- */
-/*                                Phoenix button                              */
-/* -------------------------------------------------------------------------- */
-/* prettier-ignore */
-/* ----------------------------- Phoenix-buttons ---------------------------- */
-/*# sourceMappingURL=user.css.map */
+.avatar .avatar-name {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.avatar .avatar-name > span {
+  position: static !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+}
+
