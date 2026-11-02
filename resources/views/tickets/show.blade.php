@@ -148,7 +148,7 @@
                         <h5 class="mb-0 text-1100 fw-bold">Historial de Respuestas & Seguimiento</h5>
                     </div>
                     <div class="card-body p-4">
-                        @forelse ($t->mensajes as $m)
+                        @forelse ($comentarios as $m)
                             <div class="d-flex gap-3 mb-4 {{ $m->es_interno ? 'bg-soft-warning p-3 rounded-3' : '' }}">
                                 <div class="avatar avatar-m">
                                     <div class="avatar-name rounded-circle {{ $m->es_interno ? 'bg-warning text-white' : 'bg-primary-100 text-primary-600' }} fs--1 fw-bold">
@@ -173,16 +173,16 @@
                         @endforelse
 
                         {{-- Formulario para responder al ticket --}}
-                        @if ($abierto && $yo->puede('tickets.responder'))
+                        @if ($abierto && $yo->puede('tickets.editar'))
                             <div class="border-top border-200 pt-4 mt-3">
-                                <form method="POST" action="{{ route('tickets.mensajes.store', $t->id_ticket) }}">
+                                <form method="POST" action="{{ route('tickets.responder', $t->id_ticket) }}">
                                     @csrf
                                     <h6 class="mb-2 text-1000">Agregar Respuesta o Nota de Seguimiento</h6>
-                                    <textarea class="form-control mb-3" name="mensaje" rows="4" placeholder="Escribe tu respuesta para el cliente o nota interna..." required></textarea>
+                                    <textarea class="form-control mb-3" name="contenido" rows="4" placeholder="Escribe tu respuesta para el cliente o nota interna..." required></textarea>
                                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="es_interno" name="es_interno" value="1" />
-                                            <label class="form-check-label fs--1 text-700" for="es_interno">Marcar como nota interna (invisible para el cliente)</label>
+                                            <input class="form-check-input" type="checkbox" id="es_nota_interna" name="es_nota_interna" value="1" />
+                                            <label class="form-check-label fs--1 text-700" for="es_nota_interna">Marcar como nota interna (invisible para el cliente)</label>
                                         </div>
                                         <button class="btn btn-primary" type="submit">
                                             <span class="fas fa-paper-plane me-2"></span>Enviar respuesta

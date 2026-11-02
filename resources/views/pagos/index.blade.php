@@ -77,7 +77,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h6 class="text-700 text-uppercase fs--2 mb-1 fw-bold">Por Acreditar en Banco</h6>
+                            <h6 class="text-700 text-uppercase fs--2 mb-1 fw-bold">Por acreditar en banco</h6>
                             <h3 class="fw-bolder mb-1 {{ $porAcreditar ? 'text-warning' : 'text-1000' }}">{{ $porAcreditar }}</h3>
                             @if ($porAcreditar)
                                 <a class="fs--1 fw-semi-bold text-warning text-decoration-none" href="{{ route('pagos.index', ['sin_acreditar' => 1]) }}">

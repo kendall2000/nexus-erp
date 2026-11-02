@@ -127,6 +127,9 @@
                         </div>
                     @endif
                 </form>
+                @unless ($esKardex)
+                    <p class="fs--1 text-700 mt-2 mb-0"><span class="fas fa-info-circle me-1"></span>Elige un producto y una bodega para ver el kardex con su saldo acumulado.</p>
+                @endunless
             </div>
 
             {{-- Tabla con estructura visual exacta de Phoenix --}}
@@ -153,7 +156,7 @@
                         <tbody class="list" id="kardex-table-body">
                             @if ($esKardex)
                                 <tr class="bg-100">
-                                    <td colspan="2" class="ps-3 py-2 fw-semi-bold text-700">Saldo Anterior Acumulado</td>
+                                    <td colspan="2" class="ps-3 py-2 fw-semi-bold text-700">Saldo anterior</td>
                                     <td colspan="2"></td>
                                     <td class="text-end fw-bold text-1000 ps-4 fs-0">{{ $cantidad($saldo) }}</td>
                                     <td colspan="2"></td>

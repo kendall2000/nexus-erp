@@ -128,10 +128,10 @@
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="text-700 fs--1 mb-0 fw-semi-bold">Ejecución Global</h6>
                             <span class="badge badge-phoenix badge-phoenix-{{ $resumen['porcentaje'] > 100 ? 'danger' : ($resumen['porcentaje'] >= 90 ? 'warning' : 'primary') }} fs--2">
-                                {{ $resumen['porcentaje'] }}%
+                                {{ $resumen['porcentaje'] }} %
                             </span>
                         </div>
-                        <h3 class="text-1100 mb-2 fw-bolder">{{ $resumen['porcentaje'] }}%</h3>
+                        <h3 class="text-1100 mb-2 fw-bolder">{{ $resumen['porcentaje'] }} %</h3>
                         <div class="progress" style="height: 6px;">
                             <div class="progress-bar rounded-pill bg-{{ $resumen['porcentaje'] > 100 ? 'danger' : ($resumen['porcentaje'] >= 90 ? 'warning' : 'success') }}" style="width: {{ min(100, $resumen['porcentaje']) }}%"></div>
                         </div>

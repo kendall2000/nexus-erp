@@ -44,6 +44,45 @@ class BitacoraController extends Controller
         ]);
     }
 
+    /** Historial rápido en JSON para el drawer lateral de auditoría. */
+    public function rapido(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $tabla = (string) $request->query('tabla');
+        $registro = (string) $request->query('registro');
+
+        if (!$tabla || !$registro) {
+            return response()->json(['items' => []]);
+        }
+
+        $cambios = $this->deMiEmpresa($request)
+            ->where('tabla_afectada', $tabla)
+            ->where('id_registro', $registro)
+            ->with('usuario')
+            ->orderByDesc('id_cambio')
+            ->limit(20)
+            ->get();
+
+        $items = $cambios->map(function ($c) {
+            $campos = Bitacora::campos($c);
+            return [
+                'id_cambio' => $c->id_cambio,
+                'accion' => $c->accion,
+                'accion_nombre' => Bitacora::ACCIONES[$c->accion][0] ?? $c->accion,
+                'color' => Bitacora::ACCIONES[$c->accion][1] ?? 'secondary',
+                'usuario' => $c->usuario?->nombre_completo ?? 'Sistema',
+                'fecha' => $c->created_at?->format('d/m/Y H:i:s') ?? '—',
+                'ip' => $c->ip_address,
+                'campos' => $campos,
+            ];
+        });
+
+        return response()->json([
+            'tabla' => Bitacora::tabla($tabla),
+            'registro' => $registro,
+            'items' => $items,
+        ]);
+    }
+
     public function exportar(Request $request): StreamedResponse
     {
         $cambios = $this->filtrados($request)->with('usuario')->orderByDesc('id_cambio')->lazyById(500, 'id_cambio');

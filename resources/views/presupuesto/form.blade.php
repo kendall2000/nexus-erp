@@ -13,77 +13,135 @@
         ]"
     />
 
-    <form method="POST" action="{{ $p->exists ? route('presupuesto.update', $p->id_presupuesto) : route('presupuesto.store') }}" class="mb-9" style="max-width: 60rem">
+    <form method="POST" action="{{ $p->exists ? route('presupuesto.update', $p->id_presupuesto) : route('presupuesto.store') }}" class="mb-9">
         @csrf
         @if ($p->exists)
             @method('PUT')
         @endif
 
-        <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-100 border-bottom border-200 py-3 px-4">
-                <h5 class="mb-0 text-1100"><span class="fas fa-sitemap text-primary me-2"></span>Partida contable</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-5">
-                        <label class="form-label" for="id_centro">Centro de costo</label>
-                        <select class="form-select @error('id_centro') is-invalid @enderror" id="id_centro" name="id_centro" required>
-                            <option value="">Selecciona…</option>
-                            @foreach ($centros as $c)<option value="{{ $c->id_centro }}" @selected((int) $v('id_centro') === $c->id_centro)>{{ $c->etiqueta }}</option>@endforeach
-                        </select>
-                        @error('id_centro')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-7">
-                        <label class="form-label" for="id_cuenta">Cuenta</label>
-                        <select class="form-select @error('id_cuenta') is-invalid @enderror" id="id_cuenta" name="id_cuenta" required>
-                            <option value="">Selecciona…</option>
-                            @foreach ($cuentas as $c)<option value="{{ $c->id_cuenta }}" @selected((int) $v('id_cuenta') === $c->id_cuenta)>{{ $c->etiqueta }} ({{ strtolower($c->tipo) }})</option>@endforeach
-                        </select>
-                        @error('id_cuenta')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        <div class="form-text">Cuentas de movimiento de ingreso, gasto o costo.</div>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="anio">Año</label>
-                        <input class="form-control @error('anio') is-invalid @enderror" id="anio" name="anio" type="number" min="2000" max="2100" value="{{ $v('anio') }}" required />
-                        @error('anio')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="moneda">Moneda</label>
-                        <select class="form-select" id="moneda" name="moneda" required>
-                            @foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>@endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-100 border-bottom border-200 py-3 px-4 d-flex flex-wrap justify-content-between align-items-end gap-2">
-                <h5 class="mb-0 text-1100"><span class="fas fa-calendar-alt text-primary me-2"></span>Montos por mes</h5>
-                <div class="d-flex gap-2 align-items-end">
-                    <div>
-                        <label class="form-label fs--1 mb-1" for="total-anual">Repartir un total anual</label>
-                        <input class="form-control form-control-sm" id="total-anual" type="number" step="0.01" min="0" placeholder="Ej.: 120000" />
-                    </div>
-                    <button class="btn btn-phoenix-secondary btn-sm" type="button" id="repartir">Repartir en 12 meses</button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    @foreach (\App\Models\Finanzas\PresupuestoAnual::MESES as $mes)
-                        <div class="col-6 col-md-3 col-lg-2">
-                            <label class="form-label fs--1" for="pre_{{ $mes }}">{{ ucfirst($mes) }}</label>
-                            <input class="form-control form-control-sm text-end mes @error('pre_'.$mes) is-invalid @enderror" id="pre_{{ $mes }}" name="pre_{{ $mes }}" type="number" step="0.01" min="0" value="{{ old('pre_'.$mes, $p->exists ? round((float) $p->{'pre_'.$mes}, 2) : '') }}" />
+        <div class="row g-4">
+            {{-- Columna Principal: Parámetros y Montos Mensuales (8 cols) --}}
+            <div class="col-12 col-xl-8">
+                {{-- Partida Contable --}}
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-body-emphasis border-bottom border-200 py-3 px-4">
+                        <div class="d-flex align-items-center">
+                            <span class="fas fa-sitemap text-primary me-2 fs-0"></span>
+                            <h5 class="mb-0 text-1000">Partida contable</h5>
                         </div>
-                    @endforeach
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label" for="id_centro">Centro de costo <span class="text-danger">*</span></label>
+                                <select class="form-select @error('id_centro') is-invalid @enderror" id="id_centro" name="id_centro" required data-choices='{"searchEnabled":true,"itemSelectText":""}'>
+                                    <option value="">Selecciona…</option>
+                                    @foreach ($centros as $c)
+                                        <option value="{{ $c->id_centro }}" @selected((int) $v('id_centro') === $c->id_centro)>{{ $c->etiqueta }}</option>
+                                    @endforeach
+                                </select>
+                                @error('id_centro')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label" for="id_cuenta">Cuenta contable <span class="text-danger">*</span></label>
+                                <select class="form-select @error('id_cuenta') is-invalid @enderror" id="id_cuenta" name="id_cuenta" required data-choices='{"searchEnabled":true,"itemSelectText":""}'>
+                                    <option value="">Selecciona…</option>
+                                    @foreach ($cuentas as $c)
+                                        <option value="{{ $c->id_cuenta }}" @selected((int) $v('id_cuenta') === $c->id_cuenta)>{{ $c->etiqueta }} ({{ strtolower($c->tipo) }})</option>
+                                    @endforeach
+                                </select>
+                                @error('id_cuenta')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <div class="form-text fs--2">Cuentas de movimiento de ingreso, gasto o costo.</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p class="mt-3 mb-0 fw-semi-bold text-1100">Total anual: <span id="total">0.00</span></p>
-            </div>
-        </div>
 
-        <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="submit"><span class="fas fa-save me-2"></span>Guardar en borrador</button>
-            <a class="btn btn-phoenix-secondary" href="{{ $p->exists ? route('presupuesto.show', $p->id_presupuesto) : route('presupuesto.index', ['anio' => $p->anio]) }}">Cancelar</a>
+                {{-- Distribución Mensual --}}
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-body-emphasis border-bottom border-200 py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center">
+                            <span class="fas fa-calendar-alt text-primary me-2 fs-0"></span>
+                            <h5 class="mb-0 text-1000">Montos por mes</h5>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="input-group input-group-sm" style="max-width: 200px;">
+                                <span class="input-group-text">Q</span>
+                                <input class="form-control" id="total-anual" type="number" step="0.01" min="0" placeholder="Total anual" />
+                            </div>
+                            <button class="btn btn-phoenix-primary btn-sm text-nowrap" type="button" id="repartir">
+                                <span class="fas fa-calculator me-1"></span>Repartir en 12 meses
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            @foreach (\App\Models\Finanzas\PresupuestoAnual::MESES as $mes)
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <label class="form-label fs--1 fw-semi-bold text-700" for="pre_{{ $mes }}">{{ ucfirst($mes) }}</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-100 text-600 fs--2">{{ substr(ucfirst($mes), 0, 3) }}</span>
+                                        <input class="form-control text-end mes @error('pre_'.$mes) is-invalid @enderror" id="pre_{{ $mes }}" name="pre_{{ $mes }}" type="number" step="0.01" min="0" value="{{ old('pre_'.$mes, $p->exists ? round((float) $p->{'pre_'.$mes}, 2) : '') }}" placeholder="0.00" />
+                                    </div>
+                                    @error('pre_'.$mes)<div class="text-danger fs--2 mt-1">{{ $message }}</div>@enderror
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Columna Lateral: Control, Ejercicio y Acciones (4 cols) --}}
+            <div class="col-12 col-xl-4">
+                {{-- Periodo y Moneda --}}
+                <div class="card border border-200 shadow-none mb-4">
+                    <div class="card-header bg-body-emphasis border-bottom border-200 py-3 px-4">
+                        <div class="d-flex align-items-center">
+                            <span class="fas fa-coins text-primary me-2 fs-0"></span>
+                            <h5 class="mb-0 text-1000">Ejercicio y Moneda</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="anio">Año presupuestario <span class="text-danger">*</span></label>
+                            <input class="form-control @error('anio') is-invalid @enderror" id="anio" name="anio" type="number" min="2000" max="2100" value="{{ $v('anio') }}" required />
+                            @error('anio')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="moneda">Moneda <span class="text-danger">*</span></label>
+                            <select class="form-select" id="moneda" name="moneda" required>
+                                @foreach ($monedas as $m)
+                                    <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }} — {{ $m->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="border-top border-200 pt-3">
+                            <span class="text-700 fs--1 d-block mb-1">Presupuesto Anual Calculado:</span>
+                            <h3 class="text-primary mb-0"><span class="fs--1 text-600 me-1">Total:</span><span id="total">0.00</span></h3>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Acciones --}}
+                <div class="card border border-200 shadow-none">
+                    <div class="card-header bg-body-emphasis border-bottom border-200 py-3 px-4">
+                        <div class="d-flex align-items-center">
+                            <span class="fas fa-sliders-h text-primary me-2 fs-0"></span>
+                            <h5 class="mb-0 text-1000">Acciones</h5>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" type="submit">
+                                <span class="fas fa-save me-2"></span>Guardar en borrador
+                            </button>
+                            <a class="btn btn-phoenix-secondary" href="{{ $p->exists ? route('presupuesto.show', $p->id_presupuesto) : route('presupuesto.index', ['anio' => $p->anio]) }}">
+                                <span class="fas fa-times me-2"></span>Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
 @endsection

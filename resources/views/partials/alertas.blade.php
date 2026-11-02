@@ -12,10 +12,24 @@
 
 @if ($estado)
     <div class="alert alert-soft-success py-2 fs--1" role="alert">{{ $mensajesEstado[$estado] ?? $estado }}</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.NexusToast) {
+                window.NexusToast.show(@json($mensajesEstado[$estado] ?? $estado), 'success');
+            }
+        });
+    </script>
 @endif
 
 @if (session('aviso'))
     <div class="alert alert-soft-warning py-2 fs--1" role="alert">{{ session('aviso') }}</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.NexusToast) {
+                window.NexusToast.show(@json(session('aviso')), 'warning');
+            }
+        });
+    </script>
 @endif
 
 {{-- Todas las bolsas de errores (Fortify usa «updatePassword» al cambiar la contraseña). --}}

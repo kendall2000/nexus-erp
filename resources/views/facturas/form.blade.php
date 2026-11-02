@@ -43,7 +43,7 @@
 
         @if (old('id_contrato', $f->id_contrato))
             <div class="alert alert-subtle-info border-0 fs--1 mb-4">
-                <span class="fas fa-file-contract me-2"></span>Factura vinculada al contrato <strong>{{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}</strong>.
+                <span class="fas fa-file-contract me-2"></span>Factura del contrato <strong>{{ \App\Models\Clientes\ContratoServicio::find(old('id_contrato', $f->id_contrato))?->numero_contrato }}</strong>.
             </div>
         @endif
 
@@ -63,7 +63,7 @@
                                 <option value="">Selecciona serie…</option>
                                 @foreach ($series as $s)
                                     <option value="{{ $s->id_serie }}" @selected((int) old('id_serie', $series->firstWhere('tipo', 'FACTURA')?->id_serie) === $s->id_serie)>
-                                        {{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (correlativo: {{ $s->formatearNumero($s->ultimo_numero + 1) }})
+                                        {{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (sigue {{ $s->formatearNumero($s->ultimo_numero + 1) }})
                                     </option>
                                 @endforeach
                             </select>
@@ -106,59 +106,74 @@
             </div>
         </div>
 
-        {{-- Detalle de Líneas de Factura estilo Phoenix --}}
-        <div class="card border border-200 shadow-none mb-4">
-            <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-1100 fw-bold">Partidas & Conceptos Facturados</h5>
-                <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea">
-                    <span class="fas fa-plus me-1"></span>Agregar línea
-                </button>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive scrollbar">
-                    <table class="table table-sm fs--1 mb-0 align-middle" id="tabla-lineas">
-                        <thead class="bg-100">
-                            <tr>
-                                <th class="ps-4 text-700" style="min-width: 200px;">SERVICIO / CONCEPTO</th>
-                                <th class="text-700" style="min-width: 250px;">DESCRIPCIÓN</th>
-                                <th class="text-end text-700" style="width: 100px;">CANT.</th>
-                                <th class="text-end text-700" style="width: 130px;">PRECIO UNIT.</th>
-                                <th class="text-end text-700" style="width: 120px;">DESCUENTO</th>
-                                <th class="text-center text-700" style="width: 80px;">IVA</th>
-                                <th class="text-end text-700" style="width: 140px;">SUBTOTAL</th>
-                                <th class="text-center pe-4 text-700" style="width: 60px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($lineas as $i => $l)
-                                @include('facturas.linea', ['i' => $i, 'l' => $l])
-                            @endforeach
-                        </tbody>
-                    </table>
+        {{-- Detalle de Líneas de Factura montado en Vue 3 con fallback --}}
+        <div data-vue-component="FacturaLineas" data-vue-props="{{ json_encode([
+            'initialLineas' => $lineas,
+            'servicios' => $servicios->map(fn ($s) => [
+                'id_tipo_servicio' => $s->id_tipo_servicio,
+                'nombre' => $s->nombre,
+                'precio_base' => $s->precio_base,
+                'linea_negocio' => $s->lineaNegocio ? ['nombre' => $s->lineaNegocio->nombre] : null
+            ]),
+            'centros' => $centros->map(fn ($c) => ['id_centro' => $c->id_centro, 'etiqueta' => $c->etiqueta]),
+            'cuentas' => $cuentas->map(fn ($c) => ['id_cuenta' => $c->id_cuenta, 'etiqueta' => $c->etiqueta]),
+            'fiscal' => $fiscal,
+            'initialDescuento' => (float) $v('descuento') ?: 0
+        ]) }}">
+            {{-- Fallback estático en caso de pruebas sin JS o renderizado inicial --}}
+            <div class="card border border-200 shadow-none mb-4">
+                <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-1100 fw-bold">Partidas & Conceptos Facturados</h5>
+                    <button class="btn btn-phoenix-primary btn-sm" type="button" id="agregar-linea">
+                        <span class="fas fa-plus me-1"></span>Agregar línea
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive scrollbar">
+                        <table class="table table-sm fs--1 mb-0 align-middle" id="tabla-lineas">
+                            <thead class="bg-100">
+                                <tr>
+                                    <th class="ps-4 text-700" style="min-width: 200px;">SERVICIO / CONCEPTO</th>
+                                    <th class="text-700" style="min-width: 250px;">DESCRIPCIÓN</th>
+                                    <th class="text-end text-700" style="width: 100px;">CANT.</th>
+                                    <th class="text-end text-700" style="width: 130px;">PRECIO UNIT.</th>
+                                    <th class="text-end text-700" style="width: 120px;">DESCUENTO</th>
+                                    <th class="text-center text-700" style="width: 80px;">IVA</th>
+                                    <th class="text-end text-700" style="width: 140px;">SUBTOTAL</th>
+                                    <th class="text-center pe-4 text-700" style="width: 60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($lineas as $i => $l)
+                                    @include('facturas.linea', ['i' => $i, 'l' => $l])
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Descuentos Globales y Totales estilo Phoenix --}}
-        <div class="row justify-content-end mb-4">
-            <div class="col-12 col-md-6 col-lg-5">
-                <div class="card border border-200 shadow-none">
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <label class="form-label fs--1" for="descuento">Descuento Global Adicional (Monto)</label>
-                            <input class="form-control form-control-sm text-end" id="descuento" name="descuento" type="number" step="0.01" min="0" value="{{ (float) $v('descuento') ?: '' }}" placeholder="0.00" />
-                        </div>
-                        <div class="d-flex justify-content-between mb-2 fs--1">
-                            <span class="text-700">Subtotal Neto:</span>
-                            <span class="fw-semi-bold text-900" id="t-subtotal">0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2 fs--1">
-                            <span class="text-700">IVA (12%):</span>
-                            <span class="fw-semi-bold text-900" id="t-iva">0.00</span>
-                        </div>
-                        <div class="d-flex justify-content-between border-top border-200 pt-3 fs-1">
-                            <span class="fw-bold text-1100">Total Liquidado:</span>
-                            <span class="fw-bolder text-primary" id="t-total">0.00</span>
+            {{-- Descuentos Globales y Totales estilo Phoenix --}}
+            <div class="row justify-content-end mb-4">
+                <div class="col-12 col-md-6 col-lg-5">
+                    <div class="card border border-200 shadow-none">
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fs--1" for="descuento">Descuento Global Adicional (Monto)</label>
+                                <input class="form-control form-control-sm text-end" id="descuento" name="descuento" type="number" step="0.01" min="0" value="{{ (float) $v('descuento') ?: '' }}" placeholder="0.00" />
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 fs--1">
+                                <span class="text-700">Subtotal Neto:</span>
+                                <span class="fw-semi-bold text-900" id="t-subtotal">0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 fs--1">
+                                <span class="text-700">IVA (12%):</span>
+                                <span class="fw-semi-bold text-900" id="t-iva">0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-top border-200 pt-3 fs-1">
+                                <span class="fw-bold text-1100">Total Liquidado:</span>
+                                <span class="fw-bolder text-primary" id="t-total">0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>

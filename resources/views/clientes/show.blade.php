@@ -55,6 +55,9 @@
                             <span class="fas fa-file-invoice-dollar me-2"></span>Emitir factura
                         </a>
                     @endif
+                    <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="cliente" data-auditoria-id="{{ $c->id_cliente }}">
+                        <span class="fas fa-history me-2"></span>Bitácora
+                    </button>
                 </div>
             </div>
         </div>
@@ -193,8 +196,12 @@
                                 </div>
                                 @forelse ($c->contactos as $ct)
                                     <div class="border-bottom border-dashed border-200 pb-2 mb-2">
-                                        <h6 class="mb-0 text-1000 fw-bold">{{ $ct->nombre }}</h6>
-                                        <p class="fs--2 text-600 mb-1">{{ $ct->puesto ?? 'Contacto' }} · {{ $ct->telefono ?? $ct->email }}</p>
+                                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                                            <h6 class="mb-0 text-1000 fw-bold">{{ $ct->nombre }}</h6>
+                                            @if ($ct->es_contacto_principal)<span class="badge badge-phoenix badge-phoenix-primary fs--2 ms-1">Principal</span>@endif
+                                            @if ($ct->recibe_facturas)<span class="badge badge-phoenix badge-phoenix-info fs--2 ms-1">Recibe facturas</span>@endif
+                                        </div>
+                                        <p class="fs--2 text-600 mb-1 mt-1">{{ collect([$ct->cargo ?? $ct->puesto, $ct->email, $ct->telefono, $ct->whatsapp ? 'WhatsApp '.$ct->whatsapp : null])->filter()->implode(' · ') ?: 'Sin datos de contacto' }}</p>
                                     </div>
                                 @empty
                                     <p class="text-600 fs--1 mb-0">No hay contactos secundarios registrados.</p>

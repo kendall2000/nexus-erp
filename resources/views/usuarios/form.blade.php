@@ -126,7 +126,7 @@
                                 <input type="hidden" name="debe_cambiar_password" value="0" />
                                 <input class="form-check-input" id="debe_cambiar_password" name="debe_cambiar_password" type="checkbox" value="1"
                                     @checked(old('debe_cambiar_password', $usuario->exists ? $usuario->debe_cambiar_password : true)) />
-                                <label class="form-check-label fw-semi-bold text-900" for="debe_cambiar_password">Exigir cambio de contraseña en el próximo inicio de sesión</label>
+                                <label class="form-check-label fw-semi-bold text-900" for="debe_cambiar_password">Pedir que cambie la contraseña al entrar</label>
                                 <div class="form-text fs--2 mt-0">Permite que el usuario defina su propia clave privada y confidencial.</div>
                             </div>
                         @endif
@@ -214,7 +214,7 @@
             <div class="card-header border-bottom border-200 bg-body-emphasis py-3">
                 <div class="d-flex align-items-center">
                     <span class="fas fa-key text-primary me-2 fs-0"></span>
-                    <h5 class="mb-0 text-1000">Matriz de Permisos Específicos Adicionales</h5>
+                    <h5 class="mb-0 text-1000">Permisos extra</h5>
                 </div>
             </div>
             <div class="card-body">
