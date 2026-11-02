@@ -58,7 +58,6 @@ class GuardarOportunidadRequest extends FormRequest
         }
         $etapa = $etapasAbiertas->firstWhere('id_etapa', (int) ($datos['id_etapa'] ?? $o?->id_etapa));
         $datos['probabilidad'] = (int) ($datos['probabilidad'] ?? $etapa?->probabilidad_cierre ?? $o?->probabilidad ?? 50);
-        $datos['valor_ponderado'] = round((float) $datos['valor_estimado'] * $datos['probabilidad'] / 100, 4);
 
         return $datos;
     }

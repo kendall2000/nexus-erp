@@ -534,7 +534,7 @@ trait EsquemaNexus
             $t->decimal('valor_estimado', 15, 4)->default(0);
             $t->string('moneda', 3)->default('GTQ');
             $t->unsignedTinyInteger('probabilidad')->default(50);
-            $t->decimal('valor_ponderado', 15, 4)->nullable();
+            $t->decimal('valor_ponderado', 15, 4)->storedAs('((valor_estimado * probabilidad) / 100)');
             $t->date('fecha_cierre_estimada')->nullable();
             $t->date('fecha_cierre_real')->nullable();
             $t->string('razon_cierre')->nullable();

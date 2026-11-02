@@ -194,7 +194,7 @@ class ProspectoController extends Controller
                     'id_empresa' => $p->id_empresa, 'id_cliente' => $cliente->id_cliente, 'id_prospecto' => $p->id_prospecto, 'id_etapa' => $etapa->id_etapa,
                     'id_responsable' => $datos['id_responsable'], 'nombre' => 'Servicios para '.$p->nombre_empresa, 'descripcion' => $p->interes_servicio,
                     'valor_estimado' => $valor, 'moneda' => $p->moneda ?: 'GTQ', 'probabilidad' => (int) $etapa->probabilidad_cierre,
-                    'valor_ponderado' => round($valor * (int) $etapa->probabilidad_cierre / 100, 4), 'created_by' => $this->idUsuario($request),
+                    'created_by' => $this->idUsuario($request),
                 ]);
             }
 

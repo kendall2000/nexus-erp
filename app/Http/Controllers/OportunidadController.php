@@ -115,7 +115,6 @@ class OportunidadController extends Controller
         $o->update([
             'id_etapa' => $etapa->id_etapa,
             'probabilidad' => $probabilidad,
-            'valor_ponderado' => round((float) $o->valor_estimado * $probabilidad / 100, 4),
             'fecha_cierre_real' => $cerrada ? today() : null,
             'razon_cierre' => $cerrada ? ($datos['razon_cierre'] ?? null) : null,
         ]);
