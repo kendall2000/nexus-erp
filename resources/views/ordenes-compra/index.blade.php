@@ -184,7 +184,7 @@
                                                     <span class="fas fa-eye me-2"></span>Ver detalle
                                                 </a>
                                                 @if ($yo->puede('ordenes_compra.imprimir'))
-                                                    <a class="dropdown-item" href="{{ route('ordenes-compra.pdf', $oc->id_oc) }}" target="_blank">
+                                                    <a class="dropdown-item" href="{{ route('ordenes-compra.imprimir', $oc->id_oc) }}" target="_blank">
                                                         <span class="fas fa-file-pdf me-2"></span>Imprimir PDF
                                                     </a>
                                                 @endif
