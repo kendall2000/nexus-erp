@@ -242,7 +242,7 @@ window.NexusVue.register('FacturaLineas', {
                 </div>
             </div>
 
-            {{-- Resumen y Totales --}}
+            <!-- Resumen y Totales -->
             <div class="row justify-content-end mb-4">
                 <div class="col-12 col-md-6 col-lg-5">
                     <div class="card border border-200 shadow-none">
@@ -510,7 +510,7 @@ window.NexusVue.register('OrdenCompraLineas', {
                 </div>
             </div>
 
-            {{-- Resumen y Totales --}}
+            <!-- Resumen y Totales -->
             <div class="row justify-content-end mb-4">
                 <div class="col-12 col-md-6 col-lg-5">
                     <div class="card border border-200 shadow-none">
