@@ -25,7 +25,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
                         <label class="form-label" for="id_pais">País</label>
-                        <select class="form-select" id="id_pais" name="id_pais">
+                        <select data-choices="data-choices" class="form-select" id="id_pais" name="id_pais">
                             <option value="">—</option>
                             @foreach ($paises as $p)
                                 <option value="{{ $p->id_pais }}" @selected((int) old('id_pais', $sucursal->id_pais) === $p->id_pais)>{{ $p->nombre }}</option>
@@ -34,11 +34,11 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="id_division">Departamento</label>
-                        <select class="form-select" id="id_division" name="id_division" data-valor="{{ old('id_division', $sucursal->id_division) }}"></select>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_division" name="id_division" data-valor="{{ old('id_division', $sucursal->id_division) }}"></select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="id_municipio">Municipio</label>
-                        <select class="form-select" id="id_municipio" name="id_municipio" data-valor="{{ old('id_municipio', $sucursal->id_municipio) }}"></select>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_municipio" name="id_municipio" data-valor="{{ old('id_municipio', $sucursal->id_municipio) }}"></select>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -92,6 +92,8 @@
                     select.appendChild(opcion);
                 });
                 select.disabled = opciones.length === 0;
+                // Con buscador (Choices.js) hay que reconstruirlo para que muestre las opciones nuevas.
+                if (window.NexusSelect) window.NexusSelect.refrescar(select);
             }
             function cargarDivisiones(valor) {
                 llenar(division, divisiones.filter(function (d) { return String(d.id_pais) === pais.value; }), 'id_division', valor);

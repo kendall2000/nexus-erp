@@ -52,6 +52,51 @@
         + ' .choices.choices-boton:hover .choices__inner { background-color: var(--phoenix-btn-hover-bg) !important; }';
     document.head.appendChild(estilo);
 
+    // phoenix.js crea las instancias de Choices sin guardarlas. Esta subclase guarda la
+    // instancia y su configuración en el select para poder reconstruirlo (NexusSelect).
+    var ChoicesOriginal = window.Choices;
+    window.Choices = class extends ChoicesOriginal {
+        constructor(elemento, config) {
+            super(elemento, config);
+            var select = typeof elemento === 'string' ? document.querySelector(elemento) : elemento;
+            if (select) {
+                select._choices = this;
+                select._choicesConfig = config || {};
+            }
+        }
+    };
+
+    function guardarDatos(select) {
+        var datos = {};
+        Array.prototype.forEach.call(select.options, function (opcion) {
+            if (Object.keys(opcion.dataset).length) datos[opcion.value] = Object.assign({}, opcion.dataset);
+        });
+        select._datosOpciones = datos;
+    }
+
+    /**
+     * Para los scripts de las vistas que reconstruyen las <option> de un select con buscador
+     * (p. ej. país → departamento → municipio): después de cambiar las opciones, llamar
+     * NexusSelect.refrescar(select). Si el select no tiene buscador, no hace nada.
+     */
+    window.NexusSelect = {
+        refrescar: function (select) {
+            var instancia = select && select._choices;
+            if (!instancia) return;
+            // destroy() devuelve al select sus opciones iniciales: se guardan las nuevas antes.
+            var opciones = select.innerHTML;
+            var deshabilitado = select.disabled;
+            var config = select._choicesConfig;
+            instancia.destroy();
+            select.innerHTML = opciones;
+            select.disabled = deshabilitado;
+            guardarDatos(select);
+            new window.Choices(select, config);
+            var caja = select.closest('.choices');
+            if (caja && select.classList.contains('is-invalid')) caja.classList.add('is-invalid');
+        }
+    };
+
     function devolverDatos(select) {
         if (!select._datosOpciones) return;
         Array.prototype.forEach.call(select.selectedOptions, function (opcion) {
@@ -69,13 +114,7 @@
 
     // Se registra antes que el de phoenix.js: guarda los data-* antes de que Choices los borre.
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('select[data-choices]').forEach(function (select) {
-            var datos = {};
-            Array.prototype.forEach.call(select.options, function (opcion) {
-                if (Object.keys(opcion.dataset).length) datos[opcion.value] = Object.assign({}, opcion.dataset);
-            });
-            select._datosOpciones = datos;
-        });
+        document.querySelectorAll('select[data-choices]').forEach(guardarDatos);
 
         // Ya iniciado Choices: datos de la opción elegida y errores de validación del servidor.
         setTimeout(function () {

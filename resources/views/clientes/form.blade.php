@@ -118,7 +118,7 @@
                                 <div class="row g-3">
                                     <div class="col-12 col-lg-4">
                                         <label class="form-label" for="id_pais">País</label>
-                                        <select class="form-select" id="id_pais" name="id_pais" required>
+                                        <select data-choices="data-choices" class="form-select" id="id_pais" name="id_pais" required>
                                             @foreach ($paises as $p)
                                                 <option value="{{ $p->id_pais }}" @selected((int) $v('id_pais') === $p->id_pais)>{{ $p->nombre }}</option>
                                             @endforeach
@@ -126,11 +126,11 @@
                                     </div>
                                     <div class="col-12 col-lg-4">
                                         <label class="form-label" for="id_division">Departamento / Estado</label>
-                                        <select class="form-select" id="id_division" name="id_division" data-valor="{{ $v('id_division') }}"></select>
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_division" name="id_division" data-valor="{{ $v('id_division') }}"></select>
                                     </div>
                                     <div class="col-12 col-lg-4">
                                         <label class="form-label" for="id_municipio">Municipio / Ciudad</label>
-                                        <select class="form-select" id="id_municipio" name="id_municipio" data-valor="{{ $v('id_municipio') }}"></select>
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_municipio" name="id_municipio" data-valor="{{ $v('id_municipio') }}"></select>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label" for="direccion_fiscal">Dirección Fiscal Completa</label>
@@ -217,6 +217,8 @@
                     select.appendChild(opcion);
                 });
                 select.disabled = opciones.length === 0;
+                // Con buscador (Choices.js) hay que reconstruirlo para que muestre las opciones nuevas.
+                if (window.NexusSelect) window.NexusSelect.refrescar(select);
             }
             function cargarDivisiones(valor) {
                 llenar(division, divisiones.filter(function (d) { return String(d.id_pais) === pais.value; }), 'id_division', valor);
