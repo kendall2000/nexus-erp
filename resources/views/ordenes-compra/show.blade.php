@@ -33,10 +33,18 @@
                     <a class="btn btn-phoenix-secondary" href="{{ route('ordenes-compra.imprimir', $oc->id_oc) }}" target="_blank" rel="noopener">
                         <span class="fas fa-print me-2"></span>Imprimir OC
                     </a>
+                    <a class="btn btn-phoenix-secondary" href="{{ route('ordenes-compra.pdf', $oc->id_oc) }}">
+                        <span class="fas fa-file-pdf me-2"></span>Descargar PDF
+                    </a>
                 @endif
                 @if (in_array($oc->estado, \App\Http\Controllers\RecepcionController::RECIBIBLES, true) && $yo->puede('recepciones.crear'))
                     <a class="btn btn-primary" href="{{ route('recepciones.create', ['oc' => $oc->id_oc]) }}">
                         <span class="fas fa-truck-loading me-2"></span>Registrar recepción física
+                    </a>
+                @endif
+                @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.editar'))
+                    <a class="btn btn-phoenix-primary" href="{{ route('ordenes-compra.edit', $oc->id_oc) }}">
+                        <span class="fas fa-pen me-2"></span>Editar orden
                     </a>
                 @endif
                 @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.aprobar'))
@@ -51,11 +59,62 @@
                         </button>
                     </form>
                 @endif
+                @if ($cancelable && $yo->puede('ordenes_compra.cancelar'))
+                    <form method="POST" action="{{ route('ordenes-compra.cancelar', $oc->id_oc) }}" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button class="btn btn-phoenix-danger" type="button"
+                                data-confirm-phoenix="¿Cancelar la orden de compra #{{ $oc->numero_oc }}?{{ $oc->estado === 'ENVIADA' ? ' Se revertirá del presupuesto.' : '' }}"
+                                data-confirm-titulo="Cancelar Orden de Compra"
+                                data-confirm-boton="Sí, cancelar">
+                            <span class="fas fa-ban me-2"></span>Cancelar orden
+                        </button>
+                    </form>
+                @endif
+                @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.editar'))
+                    <form method="POST" action="{{ route('ordenes-compra.destroy', $oc->id_oc) }}" class="d-inline">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-phoenix-danger" type="button" title="Eliminar borrador"
+                                data-confirm-phoenix="¿Eliminar el borrador #{{ $oc->numero_oc }}? Esta acción no se puede deshacer."
+                                data-confirm-titulo="Eliminar borrador"
+                                data-confirm-boton="Sí, eliminar">
+                            <span class="fas fa-trash"></span>
+                        </button>
+                    </form>
+                @endif
                 <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="orden_compra" data-auditoria-id="{{ $oc->id_oc }}">
                     <span class="fas fa-history me-2"></span>Bitácora
                 </button>
             </div>
         </div>
+
+        @if ($sobregiros)
+            <div class="alert alert-soft-warning border-0 mb-4" role="alert">
+                <h5 class="alert-heading mb-2"><span class="fas fa-exclamation-triangle me-2"></span>La orden excede el saldo del presupuesto</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm fs--1 mb-3">
+                        <thead><tr><th>Partida (centro / cuenta)</th><th class="text-end">Requerido</th><th class="text-end">Disponible</th><th class="text-end">Sobregiro</th></tr></thead>
+                        <tbody>
+                            @foreach ($sobregiros as $s)
+                                <tr><td>{{ $s['partida'] }}</td><td class="text-end">{{ $dinero($s['requerido']) }}</td><td class="text-end">{{ $dinero($s['disponible']) }}</td><td class="text-end text-danger fw-bold">{{ $dinero($s['sobregiro']) }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.aprobar'))
+                    <form method="POST" action="{{ route('ordenes-compra.aprobar', $oc->id_oc) }}" class="d-flex flex-wrap gap-2 align-items-center">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="forzar" value="1" />
+                        <button class="btn btn-warning btn-sm" type="submit">Aprobar de todos modos</button>
+                        @if ($yo->puede('ordenes_compra.editar'))
+                            <span class="fs--1">o <a href="{{ route('ordenes-compra.edit', $oc->id_oc) }}">edita la orden</a> para ajustarla.</span>
+                        @endif
+                    </form>
+                @endif
+            </div>
+        @endif
 
         {{-- Tarjetas KPI de Estado de la Orden --}}
         <div class="row g-3 mb-4">

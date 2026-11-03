@@ -12,14 +12,15 @@ use App\Models\Inventario\OrdenCompra;
 use App\Models\Inventario\Producto;
 use App\Models\Inventario\Proveedor;
 use App\Services\Finanzas\PresupuestoService;
-use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
+use App\Support\Sistema;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -85,6 +86,28 @@ class OrdenCompraController extends Controller
             'empresa' => Empresa::find($this->idEmpresa($request)),
             'estados' => self::ESTADOS,
         ]);
+    }
+
+    /** Descarga la orden en PDF (dompdf) con el logo, los datos y el color de la empresa. */
+    public function pdf(Request $request, int $orden): Response
+    {
+        $oc = $this->cargar($request, $orden);
+        $empresa = Empresa::find($this->idEmpresa($request));
+
+        $pdf = Pdf::loadView('ordenes-compra.pdf', [
+            'oc' => $oc,
+            'empresa' => $empresa,
+            'estados' => self::ESTADOS,
+            'logo' => Sistema::logoIncrustado($empresa?->logo_url ?: Sistema::config()->imgLogo),
+            'color' => Sistema::colorPrimario(),
+        ])->setPaper('letter');
+
+        // dompdf no resuelve counter(pages) en CSS: el «Página X de Y» se dibuja ya renderizado.
+        $pdf->render(); // el del wrapper: marca el PDF como renderizado y download() no lo repite
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->getCanvas()->page_text(540, 768, 'Página {PAGE_NUM} de {PAGE_COUNT}', $dompdf->getFontMetrics()->getFont('DejaVu Sans'), 6, [0.61, 0.64, 0.69]);
+
+        return $pdf->download('Orden-de-compra-'.Str::slug($oc->numero_oc ?: (string) $oc->id_oc).'.pdf');
     }
 
     public function create(Request $request): View

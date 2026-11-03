@@ -272,6 +272,80 @@ window.NexusVue.register('FacturaLineas', {
 });
 
 /**
+ * Componente Vue 3: SelectBuscable
+ * Select con buscador (Choices.js, el «Advance Select» de Phoenix) que funciona con v-model.
+ * Vue no administra las <option>: las crea Choices, para que no se peleen por el DOM.
+ * Emite «cambio» después de actualizar el valor.
+ */
+window.NexusVue.register('SelectBuscable', {
+    props: {
+        modelValue: { type: [String, Number], default: '' },
+        opciones: { type: Array, default: () => [] }, // [{ value, label }]
+        name: { type: String, default: '' },
+        placeholder: { type: String, default: 'Selecciona…' },
+        buscarPlaceholder: { type: String, default: 'Buscar…' }
+    },
+    emits: ['update:modelValue', 'cambio'],
+    mounted() {
+        const select = this.$refs.select;
+        const actual = this.modelValue === null || this.modelValue === undefined ? '' : String(this.modelValue);
+        // Choices 9 pinta las etiquetas como HTML: se escapan porque vienen de la base de datos.
+        const escapar = texto => String(texto).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        select.addEventListener('change', () => {
+            this.$emit('update:modelValue', select.value);
+            this.$emit('cambio', select.value);
+        });
+
+        if (!window.Choices) {
+            // Sin Choices queda un select normal.
+            [{ value: '', label: this.placeholder }].concat(this.opciones).forEach(o => {
+                select.add(new Option(o.label, o.value, false, String(o.value) === actual));
+            });
+            return;
+        }
+
+        this.choices = new window.Choices(select, {
+            choices: [{ value: '', label: escapar(this.placeholder), placeholder: true, selected: actual === '' }]
+                .concat(this.opciones.map(o => ({ value: String(o.value), label: escapar(o.label), selected: String(o.value) === actual }))),
+            searchEnabled: true,
+            shouldSort: false,
+            itemSelectText: '',
+            removeItemButton: true,
+            searchResultLimit: 50,
+            searchPlaceholderValue: this.buscarPlaceholder,
+            noResultsText: 'Sin resultados',
+            noChoicesText: 'No hay opciones'
+        });
+
+        // La tabla tiene overflow (table-responsive) y recortaría la lista desplegada.
+        const contenedor = select.closest('.table-responsive');
+        if (contenedor) {
+            select.addEventListener('showDropdown', () => contenedor.classList.add('overflow-visible'));
+            select.addEventListener('hideDropdown', () => contenedor.classList.remove('overflow-visible'));
+        }
+    },
+    watch: {
+        modelValue(valor) {
+            const texto = valor === null || valor === undefined ? '' : String(valor);
+            if (this.choices && this.$refs.select.value !== texto) {
+                this.choices.setChoiceByValue(texto);
+            }
+        }
+    },
+    beforeUnmount() {
+        if (this.choices) {
+            this.choices.destroy();
+        }
+    },
+    template: `
+        <div>
+            <select ref="select" class="form-select form-select-sm" :name="name"></select>
+        </div>
+    `
+});
+
+/**
  * Componente Vue 3: OrdenCompraLineas
  * Cálculo reactivo en tiempo real de subtotales, IVA y total con imputación contable
  */
@@ -300,7 +374,8 @@ window.NexusVue.register('OrdenCompraLineas', {
     },
     data() {
         const lineas = this.initialLineas && this.initialLineas.length
-            ? this.initialLineas.map(l => ({
+            ? this.initialLineas.map((l, i) => ({
+                uid: i,
                 id_producto: l.id_producto || '',
                 descripcion: l.descripcion || '',
                 cantidad_pedida: parseFloat(l.cantidad_pedida) || 1,
@@ -310,6 +385,7 @@ window.NexusVue.register('OrdenCompraLineas', {
                 id_cuenta: l.id_cuenta || ''
             }))
             : [{
+                uid: 0,
                 id_producto: '',
                 descripcion: '',
                 cantidad_pedida: 1,
@@ -320,10 +396,18 @@ window.NexusVue.register('OrdenCompraLineas', {
             }];
 
         return {
-            lineas: lineas
+            lineas: lineas,
+            // Llave estable por línea: con el índice, al quitar una fila Vue reutilizaría el select de otra.
+            siguienteUid: lineas.length
         };
     },
     computed: {
+        opcionesProducto() {
+            return this.productos.map(p => ({
+                value: p.id_producto,
+                label: p.codigo + ' — ' + p.nombre + (p.unidad_medida ? ' (' + p.unidad_medida + ')' : '')
+            }));
+        },
         productosMap() {
             const map = {};
             this.productos.forEach(p => {
@@ -376,6 +460,7 @@ window.NexusVue.register('OrdenCompraLineas', {
     methods: {
         agregarLinea() {
             this.lineas.push({
+                uid: this.siguienteUid++,
                 id_producto: '',
                 descripcion: '',
                 cantidad_pedida: 1,
@@ -390,6 +475,7 @@ window.NexusVue.register('OrdenCompraLineas', {
                 this.lineas.splice(index, 1);
             } else {
                 this.lineas[0] = {
+                    uid: this.siguienteUid++,
                     id_producto: '',
                     descripcion: '',
                     cantidad_pedida: 1,
@@ -459,14 +545,16 @@ window.NexusVue.register('OrdenCompraLineas', {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="(l, i) in lineas" :key="i">
+                                <tr v-for="(l, i) in lineas" :key="l.uid">
                                     <td class="ps-4">
-                                        <select class="form-select form-select-sm" :name="'lineas[' + i + '][id_producto]'" v-model="l.id_producto" @change="cambioProducto(l)">
-                                            <option value="">Selecciona producto…</option>
-                                            <option v-for="p in productos" :key="p.id_producto" :value="p.id_producto">
-                                                {{ p.codigo }} — {{ p.nombre }} ({{ p.unidad_medida }})
-                                            </option>
-                                        </select>
+                                        <select-buscable
+                                            v-model="l.id_producto"
+                                            :name="'lineas[' + i + '][id_producto]'"
+                                            :opciones="opcionesProducto"
+                                            placeholder="Selecciona producto…"
+                                            buscar-placeholder="Buscar por código o nombre…"
+                                            @cambio="cambioProducto(l)"
+                                        ></select-buscable>
                                         <input class="form-control form-control-sm mt-1" :name="'lineas[' + i + '][descripcion]'" v-model="l.descripcion" maxlength="300" placeholder="Descripción complementaria (opcional)" />
                                     </td>
                                     <td>

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Core\ConfiguracionSistema;
+use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -34,6 +35,31 @@ class Sistema
     public static function nombre(): string
     {
         return self::config()->nombreSistema ?: 'Nexus ERP';
+    }
+
+    /**
+     * Logo como data URI para los PDF. dompdf trabaja con recursos remotos apagados
+     * (evita que un PDF haga peticiones a cualquier URL), así que la imagen se descarga
+     * aquí, con límite de tiempo y tamaño, y se incrusta. Null si no hay logo o falla.
+     */
+    public static function logoIncrustado(?string $url): ?string
+    {
+        if (! $url || ! preg_match('#^https?://#i', $url)) {
+            return null;
+        }
+
+        try {
+            $respuesta = Http::timeout(5)->get($url);
+        } catch (Throwable) {
+            return null;
+        }
+
+        $tipo = strtolower(trim(explode(';', (string) $respuesta->header('Content-Type'))[0]));
+        if (! $respuesta->successful() || ! in_array($tipo, ['image/png', 'image/jpeg', 'image/gif'], true) || strlen($respuesta->body()) > 2 * 1024 * 1024) {
+            return null;
+        }
+
+        return 'data:'.$tipo.';base64,'.base64_encode($respuesta->body());
     }
 
     /** Color primario válido (#rrggbb) o el azul de Phoenix. */

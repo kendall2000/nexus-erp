@@ -55,7 +55,7 @@
                     </div>
                     <div class="col-md-5">
                         <label class="form-label" for="id_proveedor">Proveedor</label>
-                        <select class="form-select" id="id_proveedor" name="id_proveedor" required>
+                        <select class="form-select @error('id_proveedor') is-invalid @enderror" id="id_proveedor" name="id_proveedor" required data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}'>
                             <option value="">Selecciona proveedor…</option>
                             @foreach ($proveedores as $p)
                                 <option value="{{ $p->id_proveedor }}" data-moneda="{{ $p->moneda_pago }}" @selected((int) $v('id_proveedor') === $p->id_proveedor)>
@@ -66,7 +66,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="id_bodega">Bodega de Destino</label>
-                        <select class="form-select" id="id_bodega" name="id_bodega">
+                        <select class="form-select @error('id_bodega') is-invalid @enderror" id="id_bodega" name="id_bodega" data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}'>
                             <option value="">Sin definir…</option>
                             @foreach ($bodegas as $b)
                                 <option value="{{ $b->id_bodega }}" @selected((int) $v('id_bodega') === $b->id_bodega)>{{ $b->nombre }}</option>
@@ -186,6 +186,7 @@
             var centros = @json($centros->pluck('nombre', 'id_centro'));
             var cuentas = @json($cuentas->mapWithKeys(fn ($c) => [$c->id_cuenta => $c->codigo.' '.$c->nombre]));
             var fiscal = @json($fiscal);
+            var monedasProveedor = @json($proveedores->pluck('moneda_pago', 'id_proveedor'));
             var cuerpo = document.querySelector('#tabla-lineas tbody');
             var siguiente = cuerpo.querySelectorAll('tr').length;
             var numero = function (v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -244,7 +245,8 @@
                 recalcular();
             });
             document.getElementById('id_proveedor').addEventListener('change', function () {
-                var moneda = this.selectedOptions[0] && this.selectedOptions[0].dataset.moneda;
+                // Choices.js reconstruye las <option>, así que la moneda no se lee de data-moneda.
+                var moneda = monedasProveedor[this.value];
                 if (moneda) document.getElementById('moneda').value = moneda;
             });
 

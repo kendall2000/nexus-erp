@@ -175,6 +175,39 @@ class OrdenesCompraTest extends TestCase
         $this->actingAs($comprador)->patch(route('ordenes-compra.aprobar', $oc->id_oc))->assertForbidden();
         $this->actingAs($comprador)->patch(route('ordenes-compra.cancelar', $oc->id_oc))->assertForbidden();
         $this->actingAs($comprador)->get(route('ordenes-compra.imprimir', $oc->id_oc))->assertForbidden();
+        $this->actingAs($comprador)->get(route('ordenes-compra.pdf', $oc->id_oc))->assertForbidden();
+    }
+
+    public function test_el_borrador_se_edita_con_permiso_y_se_le_agregan_lineas(): void
+    {
+        $comprador = $this->crearUsuario(['username' => 'c', 'email' => 'c@nexus.test'], 'Compras');
+        $this->darPermisos($comprador, ['ordenes_compra.ver', 'ordenes_compra.crear', 'ordenes_compra.editar']);
+        $this->actingAs($comprador)->post(route('ordenes-compra.store'), $this->datos());
+        $oc = $this->orden();
+        $urlEditar = route('ordenes-compra.edit', $oc->id_oc);
+
+        // El botón de editar aparece en el detalle y en el listado mientras sea borrador.
+        $this->actingAs($comprador)->get(route('ordenes-compra.show', $oc->id_oc))->assertOk()->assertSee($urlEditar);
+        $this->actingAs($comprador)->get(route('ordenes-compra.index'))->assertOk()->assertSee($urlEditar);
+        $this->actingAs($comprador)->get($urlEditar)->assertOk();
+
+        $lineas = [
+            ['id_producto' => $this->ids['producto'], 'cantidad_pedida' => 2, 'precio_unitario' => 50, 'descuento' => 0],
+            ['id_producto' => $this->ids['producto'], 'cantidad_pedida' => 3, 'precio_unitario' => 50, 'descuento' => 0],
+        ];
+        $this->actingAs($comprador)->put(route('ordenes-compra.update', $oc->id_oc), $this->datos(['lineas' => $lineas]))->assertSessionHasNoErrors();
+        $this->assertSame(2, DB::table('detalle_orden_compra')->where('id_oc', $oc->id_oc)->count());
+
+        // Sin el permiso de editar no se muestra el botón.
+        $lector = $this->crearUsuario(['username' => 'l', 'email' => 'l@nexus.test'], 'Lector');
+        $this->darPermisos($lector, ['ordenes_compra.ver']);
+        $this->actingAs($lector)->get(route('ordenes-compra.show', $oc->id_oc))->assertOk()->assertDontSee($urlEditar);
+        $this->actingAs($lector)->get($urlEditar)->assertForbidden();
+
+        // Aprobada ya no se edita.
+        DB::table('orden_compra')->where('id_oc', $oc->id_oc)->update(['estado' => 'ENVIADA']);
+        $this->actingAs($comprador)->get(route('ordenes-compra.show', $oc->id_oc))->assertOk()->assertDontSee($urlEditar);
+        $this->actingAs($comprador)->get($urlEditar)->assertRedirect(route('ordenes-compra.show', $oc->id_oc));
     }
 
     public function test_imprimir_y_exportar(): void
@@ -185,6 +218,12 @@ class OrdenesCompraTest extends TestCase
 
         $this->actingAs($admin)->get(route('ordenes-compra.imprimir', $oc->id_oc))->assertOk()->assertSee('ORDEN DE COMPRA')->assertSee('Cemento');
         $this->assertStringContainsString($oc->numero_oc, $this->actingAs($admin)->get(route('ordenes-compra.exportar'))->streamedContent());
+
+        // Descarga en PDF real (dompdf), no la página para imprimir.
+        $pdf = $this->actingAs($admin)->get(route('ordenes-compra.pdf', $oc->id_oc));
+        $pdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $pdf->getContent());
+        $this->assertStringContainsString('attachment', $pdf->headers->get('Content-Disposition'));
     }
 
     public function test_no_toca_ordenes_de_otra_empresa(): void

@@ -183,9 +183,17 @@
                                                 <a class="dropdown-item" href="{{ route('ordenes-compra.show', $oc->id_oc) }}">
                                                     <span class="fas fa-eye me-2"></span>Ver detalle
                                                 </a>
+                                                @if ($oc->estado === 'BORRADOR' && $yo->puede('ordenes_compra.editar'))
+                                                    <a class="dropdown-item" href="{{ route('ordenes-compra.edit', $oc->id_oc) }}">
+                                                        <span class="fas fa-pen me-2"></span>Editar orden
+                                                    </a>
+                                                @endif
                                                 @if ($yo->puede('ordenes_compra.imprimir'))
                                                     <a class="dropdown-item" href="{{ route('ordenes-compra.imprimir', $oc->id_oc) }}" target="_blank">
-                                                        <span class="fas fa-file-pdf me-2"></span>Imprimir PDF
+                                                        <span class="fas fa-print me-2"></span>Imprimir
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('ordenes-compra.pdf', $oc->id_oc) }}">
+                                                        <span class="fas fa-file-pdf me-2"></span>Descargar PDF
                                                     </a>
                                                 @endif
                                             </div>

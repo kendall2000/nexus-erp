@@ -13,6 +13,7 @@ Route::prefix('sistema/ordenes-compra')->name('ordenes-compra.')->controller(Ord
     Route::post('/', 'store')->middleware('permiso:ordenes_compra.crear')->name('store');
     Route::get('{orden}', 'show')->whereNumber('orden')->middleware('permiso:ordenes_compra.ver')->name('show');
     Route::get('{orden}/imprimir', 'imprimir')->whereNumber('orden')->middleware('permiso:ordenes_compra.imprimir')->name('imprimir');
+    Route::get('{orden}/pdf', 'pdf')->whereNumber('orden')->middleware('permiso:ordenes_compra.imprimir')->name('pdf');
     Route::middleware('permiso:ordenes_compra.editar')->group(function () {
         Route::get('{orden}/editar', 'edit')->whereNumber('orden')->name('edit');
         Route::put('{orden}', 'update')->whereNumber('orden')->name('update');
