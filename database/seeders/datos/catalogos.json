@@ -1,0 +1,2337 @@
+{
+    "moneda": [
+        {
+            "codigo": "CRC",
+            "nombre": "Colón Costarricense",
+            "simbolo": "₡",
+            "decimales": 2,
+            "activo": 1
+        },
+        {
+            "codigo": "GTQ",
+            "nombre": "Quetzal Guatemalteco",
+            "simbolo": "Q",
+            "decimales": 2,
+            "activo": 1
+        },
+        {
+            "codigo": "HNL",
+            "nombre": "Lempira Hondureño",
+            "simbolo": "L",
+            "decimales": 2,
+            "activo": 1
+        },
+        {
+            "codigo": "NIO",
+            "nombre": "Córdoba Nicaragüense",
+            "simbolo": "C$",
+            "decimales": 2,
+            "activo": 1
+        },
+        {
+            "codigo": "USD",
+            "nombre": "Dólar Estadounidense",
+            "simbolo": "$",
+            "decimales": 2,
+            "activo": 1
+        }
+    ],
+    "pais": [
+        {
+            "id_pais": 1,
+            "codigo_iso2": "GT",
+            "codigo_iso3": "GTM",
+            "nombre": "Guatemala",
+            "prefijo_tel": "+502",
+            "moneda_defecto": "GTQ",
+            "activo": 1,
+            "created_at": "2026-04-25 20:53:05"
+        },
+        {
+            "id_pais": 2,
+            "codigo_iso2": "SV",
+            "codigo_iso3": "SLV",
+            "nombre": "El Salvador",
+            "prefijo_tel": "+503",
+            "moneda_defecto": "USD",
+            "activo": 1,
+            "created_at": "2026-04-25 20:53:05"
+        },
+        {
+            "id_pais": 3,
+            "codigo_iso2": "HN",
+            "codigo_iso3": "HND",
+            "nombre": "Honduras",
+            "prefijo_tel": "+504",
+            "moneda_defecto": "HNL",
+            "activo": 1,
+            "created_at": "2026-04-25 20:53:05"
+        },
+        {
+            "id_pais": 4,
+            "codigo_iso2": "NI",
+            "codigo_iso3": "NIC",
+            "nombre": "Nicaragua",
+            "prefijo_tel": "+505",
+            "moneda_defecto": "NIO",
+            "activo": 1,
+            "created_at": "2026-04-25 20:53:05"
+        },
+        {
+            "id_pais": 5,
+            "codigo_iso2": "CR",
+            "codigo_iso3": "CRI",
+            "nombre": "Costa Rica",
+            "prefijo_tel": "+506",
+            "moneda_defecto": "CRC",
+            "activo": 1,
+            "created_at": "2026-04-25 20:53:05"
+        }
+    ],
+    "division_geografica": [
+        {
+            "id_division": 1,
+            "id_pais": 1,
+            "nombre": "Guatemala",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_division": 2,
+            "id_pais": 1,
+            "nombre": "Alta Verapaz",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 3,
+            "id_pais": 1,
+            "nombre": "Baja Verapaz",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 4,
+            "id_pais": 1,
+            "nombre": "Chimaltenango",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 5,
+            "id_pais": 1,
+            "nombre": "Chiquimula",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 6,
+            "id_pais": 1,
+            "nombre": "El Progreso",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 7,
+            "id_pais": 1,
+            "nombre": "Escuintla",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 8,
+            "id_pais": 1,
+            "nombre": "Huehuetenango",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 9,
+            "id_pais": 1,
+            "nombre": "Izabal",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 10,
+            "id_pais": 1,
+            "nombre": "Jalapa",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 11,
+            "id_pais": 1,
+            "nombre": "Jutiapa",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 12,
+            "id_pais": 1,
+            "nombre": "Petén",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 13,
+            "id_pais": 1,
+            "nombre": "Quetzaltenango",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 14,
+            "id_pais": 1,
+            "nombre": "Quiché",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 15,
+            "id_pais": 1,
+            "nombre": "Retalhuleu",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 16,
+            "id_pais": 1,
+            "nombre": "Sacatepéquez",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 17,
+            "id_pais": 1,
+            "nombre": "San Marcos",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 18,
+            "id_pais": 1,
+            "nombre": "Santa Rosa",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 19,
+            "id_pais": 1,
+            "nombre": "Sololá",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 20,
+            "id_pais": 1,
+            "nombre": "Suchitepéquez",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 21,
+            "id_pais": 1,
+            "nombre": "Totonicapán",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        },
+        {
+            "id_division": 22,
+            "id_pais": 1,
+            "nombre": "Zacapa",
+            "tipo": "departamento",
+            "activo": 1,
+            "created_at": "2026-04-29 22:39:26",
+            "updated_at": "2026-04-29 22:39:26"
+        }
+    ],
+    "municipio": [
+        {
+            "id_municipio": 1,
+            "id_division": 1,
+            "nombre": "Guatemala",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 2,
+            "id_division": 1,
+            "nombre": "Santa Catarina Pinula",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 3,
+            "id_division": 1,
+            "nombre": "San José Pinula",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 4,
+            "id_division": 1,
+            "nombre": "Mixco",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 5,
+            "id_division": 1,
+            "nombre": "Villa Nueva",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 6,
+            "id_division": 1,
+            "nombre": "Amatitlán",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 7,
+            "id_division": 1,
+            "nombre": "Villa Canales",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 8,
+            "id_division": 2,
+            "nombre": "Cobán",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 9,
+            "id_division": 3,
+            "nombre": "Salamá",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 10,
+            "id_division": 4,
+            "nombre": "Chimaltenango",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 11,
+            "id_division": 5,
+            "nombre": "Chiquimula",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 12,
+            "id_division": 6,
+            "nombre": "Guastatoya",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 13,
+            "id_division": 7,
+            "nombre": "Escuintla",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 14,
+            "id_division": 8,
+            "nombre": "Huehuetenango",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 15,
+            "id_division": 9,
+            "nombre": "Puerto Barrios",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 16,
+            "id_division": 10,
+            "nombre": "Jalapa",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 17,
+            "id_division": 11,
+            "nombre": "Jutiapa",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 18,
+            "id_division": 12,
+            "nombre": "Flores",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 19,
+            "id_division": 13,
+            "nombre": "Quetzaltenango",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 20,
+            "id_division": 14,
+            "nombre": "Santa Cruz del Quiché",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 21,
+            "id_division": 15,
+            "nombre": "Retalhuleu",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 22,
+            "id_division": 16,
+            "nombre": "Antigua Guatemala",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 23,
+            "id_division": 17,
+            "nombre": "San Marcos",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 24,
+            "id_division": 18,
+            "nombre": "Cuilapa",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 25,
+            "id_division": 19,
+            "nombre": "Sololá",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 26,
+            "id_division": 20,
+            "nombre": "Mazatenango",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 27,
+            "id_division": 21,
+            "nombre": "Totonicapán",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        },
+        {
+            "id_municipio": 28,
+            "id_division": 22,
+            "nombre": "Zacapa",
+            "activo": 1,
+            "created_at": null,
+            "updated_at": null
+        }
+    ],
+    "accion": [
+        {
+            "id_accion": 1,
+            "codigo": "ver",
+            "nombre": "Ver",
+            "descripcion": "Ver y listar.",
+            "orden": 1,
+            "activo": 1
+        },
+        {
+            "id_accion": 2,
+            "codigo": "crear",
+            "nombre": "Crear",
+            "descripcion": "Crear registros nuevos.",
+            "orden": 2,
+            "activo": 1
+        },
+        {
+            "id_accion": 3,
+            "codigo": "editar",
+            "nombre": "Editar",
+            "descripcion": "Modificar, activar y desactivar registros.",
+            "orden": 3,
+            "activo": 1
+        },
+        {
+            "id_accion": 4,
+            "codigo": "eliminar",
+            "nombre": "Eliminar",
+            "descripcion": "Eliminar registros.",
+            "orden": 4,
+            "activo": 1
+        },
+        {
+            "id_accion": 5,
+            "codigo": "exportar",
+            "nombre": "Exportar",
+            "descripcion": "Exportar a Excel o PDF.",
+            "orden": 5,
+            "activo": 1
+        },
+        {
+            "id_accion": 6,
+            "codigo": "aprobar",
+            "nombre": "Aprobar",
+            "descripcion": "Aprobar (órdenes de compra, presupuestos…).",
+            "orden": 12,
+            "activo": 1
+        },
+        {
+            "id_accion": 7,
+            "codigo": "cancelar",
+            "nombre": "Cancelar",
+            "descripcion": "Cancelar documentos.",
+            "orden": 7,
+            "activo": 1
+        },
+        {
+            "id_accion": 8,
+            "codigo": "anular",
+            "nombre": "Anular",
+            "descripcion": "Anular documentos emitidos.",
+            "orden": 6,
+            "activo": 1
+        },
+        {
+            "id_accion": 9,
+            "codigo": "asignar",
+            "nombre": "Asignar",
+            "descripcion": "Asignar a otra persona.",
+            "orden": 8,
+            "activo": 1
+        },
+        {
+            "id_accion": 10,
+            "codigo": "cerrar",
+            "nombre": "Cerrar",
+            "descripcion": "Cerrar (tickets, periodos…).",
+            "orden": 16,
+            "activo": 1
+        },
+        {
+            "id_accion": 11,
+            "codigo": "procesar",
+            "nombre": "Procesar",
+            "descripcion": "Procesar (nómina…).",
+            "orden": 18,
+            "activo": 1
+        },
+        {
+            "id_accion": 12,
+            "codigo": "configurar",
+            "nombre": "Configurar",
+            "descripcion": "Cambiar la configuración del módulo.",
+            "orden": 9,
+            "activo": 1
+        },
+        {
+            "id_accion": 13,
+            "codigo": "gestionar",
+            "nombre": "Gestionar",
+            "descripcion": "Administración completa del módulo.",
+            "orden": 10,
+            "activo": 1
+        },
+        {
+            "id_accion": 14,
+            "codigo": "imprimir",
+            "nombre": "Imprimir",
+            "descripcion": "Imprimir documentos.",
+            "orden": 11,
+            "activo": 1
+        },
+        {
+            "id_accion": 15,
+            "codigo": "cobrar",
+            "nombre": "Cobrar",
+            "descripcion": "Registrar cobros.",
+            "orden": 13,
+            "activo": 1
+        },
+        {
+            "id_accion": 16,
+            "codigo": "condonar",
+            "nombre": "Condonar",
+            "descripcion": "Perdonar saldos, mora o intereses.",
+            "orden": 14,
+            "activo": 1
+        },
+        {
+            "id_accion": 17,
+            "codigo": "devolver",
+            "nombre": "Devolver dinero",
+            "descripcion": "Registrar devoluciones de dinero.",
+            "orden": 15,
+            "activo": 1
+        },
+        {
+            "id_accion": 18,
+            "codigo": "reabrir",
+            "nombre": "Reabrir",
+            "descripcion": "Reabrir lo que se cerró.",
+            "orden": 17,
+            "activo": 1
+        }
+    ],
+    "modulo": [
+        {
+            "id_modulo": 1,
+            "codigo": "clientes",
+            "nombre": "Clientes",
+            "descripcion": null,
+            "icono": "briefcase",
+            "ruta": "/sistema/clientes",
+            "orden": 101,
+            "id_modulo_padre": 100,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:04:52",
+            "updated_at": "2026-09-29 22:04:52"
+        },
+        {
+            "id_modulo": 2,
+            "codigo": "contratos",
+            "nombre": "Contratos",
+            "descripcion": null,
+            "icono": "file-text",
+            "ruta": "/sistema/contratos",
+            "orden": 102,
+            "id_modulo_padre": 100,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:04:54",
+            "updated_at": "2026-09-29 22:04:54"
+        },
+        {
+            "id_modulo": 3,
+            "codigo": "prospectos",
+            "nombre": "Prospectos",
+            "descripcion": null,
+            "icono": "target",
+            "ruta": "/sistema/prospectos",
+            "orden": 103,
+            "id_modulo_padre": 101,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:04:55",
+            "updated_at": "2026-09-29 22:04:55"
+        },
+        {
+            "id_modulo": 4,
+            "codigo": "oportunidades",
+            "nombre": "Oportunidades",
+            "descripcion": null,
+            "icono": "trending-up",
+            "ruta": "/sistema/oportunidades",
+            "orden": 104,
+            "id_modulo_padre": 101,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:04:57",
+            "updated_at": "2026-09-29 22:04:57"
+        },
+        {
+            "id_modulo": 5,
+            "codigo": "tickets",
+            "nombre": "Tickets",
+            "descripcion": null,
+            "icono": "headphones",
+            "ruta": "/sistema/tickets",
+            "orden": 105,
+            "id_modulo_padre": null,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:04:58",
+            "updated_at": "2026-09-29 22:04:58"
+        },
+        {
+            "id_modulo": 6,
+            "codigo": "campanas",
+            "nombre": "Campañas",
+            "descripcion": null,
+            "icono": "mail",
+            "ruta": "/sistema/campanas",
+            "orden": 106,
+            "id_modulo_padre": 101,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:00",
+            "updated_at": "2026-09-29 22:05:00"
+        },
+        {
+            "id_modulo": 7,
+            "codigo": "empleados",
+            "nombre": "Empleados",
+            "descripcion": null,
+            "icono": "users",
+            "ruta": "/sistema/empleados",
+            "orden": 201,
+            "id_modulo_padre": 107,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:01",
+            "updated_at": "2026-09-29 22:05:01"
+        },
+        {
+            "id_modulo": 8,
+            "codigo": "nomina",
+            "nombre": "Nómina",
+            "descripcion": null,
+            "icono": "dollar-sign",
+            "ruta": "/sistema/nomina",
+            "orden": 202,
+            "id_modulo_padre": 108,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:02",
+            "updated_at": "2026-09-29 22:05:02"
+        },
+        {
+            "id_modulo": 9,
+            "codigo": "asistencia",
+            "nombre": "Asistencia",
+            "descripcion": null,
+            "icono": "clock",
+            "ruta": "/sistema/asistencia",
+            "orden": 203,
+            "id_modulo_padre": 107,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:03",
+            "updated_at": "2026-09-29 22:05:03"
+        },
+        {
+            "id_modulo": 10,
+            "codigo": "productos",
+            "nombre": "Productos",
+            "descripcion": null,
+            "icono": "package",
+            "ruta": "/sistema/productos",
+            "orden": 301,
+            "id_modulo_padre": 103,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:04",
+            "updated_at": "2026-09-29 22:05:04"
+        },
+        {
+            "id_modulo": 11,
+            "codigo": "categorias",
+            "nombre": "Categorías",
+            "descripcion": null,
+            "icono": "tag",
+            "ruta": "/sistema/categorias",
+            "orden": 302,
+            "id_modulo_padre": 103,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:06",
+            "updated_at": "2026-09-29 22:05:06"
+        },
+        {
+            "id_modulo": 12,
+            "codigo": "bodegas",
+            "nombre": "Bodegas",
+            "descripcion": null,
+            "icono": "archive",
+            "ruta": "/sistema/bodegas",
+            "orden": 303,
+            "id_modulo_padre": 104,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:08",
+            "updated_at": "2026-09-29 22:05:08"
+        },
+        {
+            "id_modulo": 13,
+            "codigo": "movimientos",
+            "nombre": "Kardex",
+            "descripcion": null,
+            "icono": "repeat",
+            "ruta": "/sistema/movimientos",
+            "orden": 304,
+            "id_modulo_padre": 104,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:09",
+            "updated_at": "2026-09-29 22:05:09"
+        },
+        {
+            "id_modulo": 14,
+            "codigo": "proveedores",
+            "nombre": "Proveedores",
+            "descripcion": null,
+            "icono": "truck",
+            "ruta": "/sistema/proveedores",
+            "orden": 401,
+            "id_modulo_padre": null,
+            "grupo": "Compras",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:10",
+            "updated_at": "2026-09-29 22:05:10"
+        },
+        {
+            "id_modulo": 15,
+            "codigo": "ordenes_compra",
+            "nombre": "Órdenes de compra",
+            "descripcion": null,
+            "icono": "shopping-cart",
+            "ruta": "/sistema/ordenes-compra",
+            "orden": 402,
+            "id_modulo_padre": null,
+            "grupo": "Compras",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:12",
+            "updated_at": "2026-09-29 22:05:12"
+        },
+        {
+            "id_modulo": 16,
+            "codigo": "recepciones",
+            "nombre": "Recepciones",
+            "descripcion": null,
+            "icono": "inbox",
+            "ruta": "/sistema/recepciones",
+            "orden": 403,
+            "id_modulo_padre": null,
+            "grupo": "Compras",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:14",
+            "updated_at": "2026-09-29 22:05:14"
+        },
+        {
+            "id_modulo": 17,
+            "codigo": "facturas",
+            "nombre": "Facturas",
+            "descripcion": null,
+            "icono": "file-text",
+            "ruta": "/sistema/facturas",
+            "orden": 501,
+            "id_modulo_padre": 105,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:15",
+            "updated_at": "2026-09-29 22:05:15"
+        },
+        {
+            "id_modulo": 18,
+            "codigo": "pagos",
+            "nombre": "Pagos",
+            "descripcion": null,
+            "icono": "credit-card",
+            "ruta": "/sistema/pagos",
+            "orden": 502,
+            "id_modulo_padre": 105,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:16",
+            "updated_at": "2026-09-29 22:05:16"
+        },
+        {
+            "id_modulo": 19,
+            "codigo": "presupuesto",
+            "nombre": "Presupuesto",
+            "descripcion": null,
+            "icono": "bar-chart-2",
+            "ruta": "/sistema/presupuesto",
+            "orden": 503,
+            "id_modulo_padre": 106,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:18",
+            "updated_at": "2026-09-29 22:05:18"
+        },
+        {
+            "id_modulo": 20,
+            "codigo": "centros_costo",
+            "nombre": "Centros de costo",
+            "descripcion": null,
+            "icono": "crosshair",
+            "ruta": "/sistema/centros-costo",
+            "orden": 504,
+            "id_modulo_padre": 106,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:19",
+            "updated_at": "2026-09-29 22:05:19"
+        },
+        {
+            "id_modulo": 21,
+            "codigo": "cuentas_contables",
+            "nombre": "Cuentas contables",
+            "descripcion": null,
+            "icono": "book",
+            "ruta": "/sistema/cuentas-contables",
+            "orden": 505,
+            "id_modulo_padre": 106,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:21",
+            "updated_at": "2026-09-29 22:05:21"
+        },
+        {
+            "id_modulo": 22,
+            "codigo": "usuarios",
+            "nombre": "Usuarios",
+            "descripcion": null,
+            "icono": "user",
+            "ruta": "/sistema/usuarios",
+            "orden": 601,
+            "id_modulo_padre": 109,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:23",
+            "updated_at": "2026-09-29 22:05:23"
+        },
+        {
+            "id_modulo": 23,
+            "codigo": "roles",
+            "nombre": "Roles y permisos",
+            "descripcion": null,
+            "icono": "shield",
+            "ruta": "/sistema/roles",
+            "orden": 602,
+            "id_modulo_padre": 109,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:24",
+            "updated_at": "2026-09-29 22:05:24"
+        },
+        {
+            "id_modulo": 24,
+            "codigo": "sucursales",
+            "nombre": "Sucursales",
+            "descripcion": null,
+            "icono": "layers",
+            "ruta": "/sistema/sucursales",
+            "orden": 603,
+            "id_modulo_padre": 110,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:26",
+            "updated_at": "2026-09-29 22:05:26"
+        },
+        {
+            "id_modulo": 25,
+            "codigo": "geografia",
+            "nombre": "Geografía",
+            "descripcion": null,
+            "icono": "map-pin",
+            "ruta": "/sistema/geografia",
+            "orden": 604,
+            "id_modulo_padre": 110,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:26",
+            "updated_at": "2026-09-29 22:05:26"
+        },
+        {
+            "id_modulo": 26,
+            "codigo": "sistema",
+            "nombre": "Configuración del sistema",
+            "descripcion": null,
+            "icono": "settings",
+            "ruta": "/sistema/configuracion",
+            "orden": 605,
+            "id_modulo_padre": 111,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:27",
+            "updated_at": "2026-09-29 22:05:27"
+        },
+        {
+            "id_modulo": 27,
+            "codigo": "modulos",
+            "nombre": "Módulos",
+            "descripcion": null,
+            "icono": "grid",
+            "ruta": "/sistema/modulos",
+            "orden": 606,
+            "id_modulo_padre": 111,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-29 22:05:27",
+            "updated_at": "2026-09-29 22:05:27"
+        },
+        {
+            "id_modulo": 28,
+            "codigo": "lineas_negocio",
+            "nombre": "Líneas de negocio",
+            "descripcion": null,
+            "icono": "layers",
+            "ruta": "/sistema/lineas-negocio",
+            "orden": 107,
+            "id_modulo_padre": 102,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-30 17:27:59",
+            "updated_at": "2026-09-30 17:27:59"
+        },
+        {
+            "id_modulo": 29,
+            "codigo": "tipos_servicio",
+            "nombre": "Tipos de servicio",
+            "descripcion": null,
+            "icono": "list",
+            "ruta": "/sistema/tipos-servicio",
+            "orden": 108,
+            "id_modulo_padre": 102,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-09-30 17:28:02",
+            "updated_at": "2026-09-30 17:28:02"
+        },
+        {
+            "id_modulo": 30,
+            "codigo": "series_facturacion",
+            "nombre": "Series de facturación",
+            "descripcion": null,
+            "icono": "hash",
+            "ruta": "/sistema/series-facturacion",
+            "orden": 506,
+            "id_modulo_padre": 105,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-09-30 17:28:06",
+            "updated_at": "2026-09-30 17:28:06"
+        },
+        {
+            "id_modulo": 31,
+            "codigo": "bitacora",
+            "nombre": "Bitácora de cambios",
+            "descripcion": "Quién creó, cambió o eliminó cada registro",
+            "icono": "activity",
+            "ruta": "/sistema/bitacora",
+            "orden": 607,
+            "id_modulo_padre": 111,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-09-30 20:57:48",
+            "updated_at": "2026-09-30 20:57:48"
+        },
+        {
+            "id_modulo": 32,
+            "codigo": "prestaciones",
+            "nombre": "Prestaciones",
+            "descripcion": "Aguinaldo, bono 14 y liquidaciones",
+            "icono": "gift",
+            "ruta": "/sistema/prestaciones",
+            "orden": 204,
+            "id_modulo_padre": 108,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-10-03 22:11:58",
+            "updated_at": "2026-10-03 22:11:58"
+        },
+        {
+            "id_modulo": 100,
+            "codigo": "crm_clientes",
+            "nombre": "Clientes y Contratos",
+            "descripcion": "Gestión de clientes y acuerdos",
+            "icono": "briefcase",
+            "ruta": null,
+            "orden": 110,
+            "id_modulo_padre": null,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 101,
+            "codigo": "crm_comercial",
+            "nombre": "Gestión Comercial",
+            "descripcion": "Prospectos, oportunidades y campañas",
+            "icono": "target",
+            "ruta": null,
+            "orden": 120,
+            "id_modulo_padre": null,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 102,
+            "codigo": "crm_catalogos",
+            "nombre": "Catálogos Comerciales",
+            "descripcion": "Líneas de negocio y tipos de servicio",
+            "icono": "layers",
+            "ruta": null,
+            "orden": 130,
+            "id_modulo_padre": null,
+            "grupo": "CRM",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 103,
+            "codigo": "inv_catalogo",
+            "nombre": "Catálogo de Productos",
+            "descripcion": "Productos y categorías de inventario",
+            "icono": "package",
+            "ruta": null,
+            "orden": 310,
+            "id_modulo_padre": null,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 104,
+            "codigo": "inv_almacen",
+            "nombre": "Operaciones Almacén",
+            "descripcion": "Bodegas y control de kardex",
+            "icono": "archive",
+            "ruta": null,
+            "orden": 320,
+            "id_modulo_padre": null,
+            "grupo": "Inventario",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 105,
+            "codigo": "fin_facturacion",
+            "nombre": "Facturación y Cobros",
+            "descripcion": "Facturas, pagos y series",
+            "icono": "file-text",
+            "ruta": null,
+            "orden": 510,
+            "id_modulo_padre": null,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 106,
+            "codigo": "fin_contabilidad",
+            "nombre": "Contabilidad y Control",
+            "descripcion": "Presupuesto, centros de costo y cuentas",
+            "icono": "bar-chart-2",
+            "ruta": null,
+            "orden": 520,
+            "id_modulo_padre": null,
+            "grupo": "Finanzas",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 107,
+            "codigo": "rrhh_personal",
+            "nombre": "Gestión de Personal",
+            "descripcion": "Empleados y control de asistencia",
+            "icono": "users",
+            "ruta": null,
+            "orden": 210,
+            "id_modulo_padre": null,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 108,
+            "codigo": "rrhh_nomina",
+            "nombre": "Nómina y Beneficios",
+            "descripcion": "Cálculo de nómina y prestaciones laborales",
+            "icono": "dollar-sign",
+            "ruta": null,
+            "orden": 220,
+            "id_modulo_padre": null,
+            "grupo": "Recursos humanos",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 109,
+            "codigo": "cfg_seguridad",
+            "nombre": "Seguridad y Accesos",
+            "descripcion": "Gestión de usuarios y roles",
+            "icono": "shield",
+            "ruta": null,
+            "orden": 610,
+            "id_modulo_padre": null,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 110,
+            "codigo": "cfg_organizacion",
+            "nombre": "Estructura Organizacional",
+            "descripcion": "Sucursales y divisiones geográficas",
+            "icono": "map-pin",
+            "ruta": null,
+            "orden": 620,
+            "id_modulo_padre": null,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        },
+        {
+            "id_modulo": 111,
+            "codigo": "cfg_sistema",
+            "nombre": "Ajustes del Sistema",
+            "descripcion": "Parámetros generales y bitácora",
+            "icono": "settings",
+            "ruta": null,
+            "orden": 630,
+            "id_modulo_padre": null,
+            "grupo": "Configuración",
+            "activo": 1,
+            "created_at": "2026-11-01 17:38:48",
+            "updated_at": "2026-11-01 17:38:48"
+        }
+    ],
+    "permiso": [
+        {
+            "id_permiso": 1,
+            "id_modulo": 1,
+            "id_accion": 1,
+            "descripcion": "Ver clientes"
+        },
+        {
+            "id_permiso": 2,
+            "id_modulo": 1,
+            "id_accion": 2,
+            "descripcion": "Crear clientes"
+        },
+        {
+            "id_permiso": 3,
+            "id_modulo": 1,
+            "id_accion": 3,
+            "descripcion": "Editar clientes"
+        },
+        {
+            "id_permiso": 4,
+            "id_modulo": 1,
+            "id_accion": 4,
+            "descripcion": "Eliminar clientes"
+        },
+        {
+            "id_permiso": 5,
+            "id_modulo": 1,
+            "id_accion": 5,
+            "descripcion": "Exportar clientes"
+        },
+        {
+            "id_permiso": 6,
+            "id_modulo": 2,
+            "id_accion": 1,
+            "descripcion": "Ver contratos"
+        },
+        {
+            "id_permiso": 7,
+            "id_modulo": 2,
+            "id_accion": 2,
+            "descripcion": "Crear contratos"
+        },
+        {
+            "id_permiso": 8,
+            "id_modulo": 2,
+            "id_accion": 3,
+            "descripcion": "Editar contratos"
+        },
+        {
+            "id_permiso": 9,
+            "id_modulo": 3,
+            "id_accion": 1,
+            "descripcion": "Ver prospectos"
+        },
+        {
+            "id_permiso": 10,
+            "id_modulo": 3,
+            "id_accion": 2,
+            "descripcion": "Crear prospectos"
+        },
+        {
+            "id_permiso": 11,
+            "id_modulo": 3,
+            "id_accion": 3,
+            "descripcion": "Editar prospectos"
+        },
+        {
+            "id_permiso": 12,
+            "id_modulo": 3,
+            "id_accion": 4,
+            "descripcion": "Eliminar prospectos"
+        },
+        {
+            "id_permiso": 13,
+            "id_modulo": 4,
+            "id_accion": 1,
+            "descripcion": "Ver oportunidades"
+        },
+        {
+            "id_permiso": 14,
+            "id_modulo": 4,
+            "id_accion": 2,
+            "descripcion": "Crear oportunidades"
+        },
+        {
+            "id_permiso": 15,
+            "id_modulo": 4,
+            "id_accion": 3,
+            "descripcion": "Editar oportunidades"
+        },
+        {
+            "id_permiso": 16,
+            "id_modulo": 5,
+            "id_accion": 1,
+            "descripcion": "Ver tickets"
+        },
+        {
+            "id_permiso": 17,
+            "id_modulo": 5,
+            "id_accion": 2,
+            "descripcion": "Crear tickets"
+        },
+        {
+            "id_permiso": 18,
+            "id_modulo": 5,
+            "id_accion": 9,
+            "descripcion": "Asignar tickets"
+        },
+        {
+            "id_permiso": 19,
+            "id_modulo": 5,
+            "id_accion": 10,
+            "descripcion": "Cerrar tickets"
+        },
+        {
+            "id_permiso": 20,
+            "id_modulo": 6,
+            "id_accion": 1,
+            "descripcion": "Ver campañas"
+        },
+        {
+            "id_permiso": 21,
+            "id_modulo": 6,
+            "id_accion": 2,
+            "descripcion": "Crear campañas"
+        },
+        {
+            "id_permiso": 22,
+            "id_modulo": 7,
+            "id_accion": 1,
+            "descripcion": "Ver empleados"
+        },
+        {
+            "id_permiso": 23,
+            "id_modulo": 7,
+            "id_accion": 2,
+            "descripcion": "Crear empleados"
+        },
+        {
+            "id_permiso": 24,
+            "id_modulo": 7,
+            "id_accion": 3,
+            "descripcion": "Editar empleados"
+        },
+        {
+            "id_permiso": 25,
+            "id_modulo": 7,
+            "id_accion": 4,
+            "descripcion": "Eliminar empleados"
+        },
+        {
+            "id_permiso": 26,
+            "id_modulo": 8,
+            "id_accion": 1,
+            "descripcion": "Ver nómina"
+        },
+        {
+            "id_permiso": 27,
+            "id_modulo": 8,
+            "id_accion": 11,
+            "descripcion": "Procesar nómina"
+        },
+        {
+            "id_permiso": 28,
+            "id_modulo": 9,
+            "id_accion": 1,
+            "descripcion": "Ver asistencia"
+        },
+        {
+            "id_permiso": 29,
+            "id_modulo": 9,
+            "id_accion": 3,
+            "descripcion": "Editar asistencia"
+        },
+        {
+            "id_permiso": 30,
+            "id_modulo": 10,
+            "id_accion": 1,
+            "descripcion": "Ver productos"
+        },
+        {
+            "id_permiso": 31,
+            "id_modulo": 10,
+            "id_accion": 2,
+            "descripcion": "Crear productos"
+        },
+        {
+            "id_permiso": 32,
+            "id_modulo": 10,
+            "id_accion": 3,
+            "descripcion": "Editar productos"
+        },
+        {
+            "id_permiso": 33,
+            "id_modulo": 10,
+            "id_accion": 4,
+            "descripcion": "Eliminar productos"
+        },
+        {
+            "id_permiso": 34,
+            "id_modulo": 11,
+            "id_accion": 1,
+            "descripcion": "Ver categorías"
+        },
+        {
+            "id_permiso": 35,
+            "id_modulo": 11,
+            "id_accion": 2,
+            "descripcion": "Crear categorías"
+        },
+        {
+            "id_permiso": 36,
+            "id_modulo": 11,
+            "id_accion": 3,
+            "descripcion": "Editar categorías"
+        },
+        {
+            "id_permiso": 37,
+            "id_modulo": 11,
+            "id_accion": 4,
+            "descripcion": "Eliminar categorías"
+        },
+        {
+            "id_permiso": 38,
+            "id_modulo": 12,
+            "id_accion": 1,
+            "descripcion": "Ver bodegas"
+        },
+        {
+            "id_permiso": 39,
+            "id_modulo": 12,
+            "id_accion": 2,
+            "descripcion": "Crear bodegas"
+        },
+        {
+            "id_permiso": 40,
+            "id_modulo": 12,
+            "id_accion": 3,
+            "descripcion": "Editar bodegas"
+        },
+        {
+            "id_permiso": 41,
+            "id_modulo": 12,
+            "id_accion": 4,
+            "descripcion": "Eliminar bodegas"
+        },
+        {
+            "id_permiso": 42,
+            "id_modulo": 13,
+            "id_accion": 1,
+            "descripcion": "Ver movimientos de inventario"
+        },
+        {
+            "id_permiso": 43,
+            "id_modulo": 13,
+            "id_accion": 2,
+            "descripcion": "Crear movimientos de inventario"
+        },
+        {
+            "id_permiso": 44,
+            "id_modulo": 14,
+            "id_accion": 1,
+            "descripcion": "Ver proveedores"
+        },
+        {
+            "id_permiso": 45,
+            "id_modulo": 14,
+            "id_accion": 2,
+            "descripcion": "Crear proveedores"
+        },
+        {
+            "id_permiso": 46,
+            "id_modulo": 14,
+            "id_accion": 3,
+            "descripcion": "Editar proveedores"
+        },
+        {
+            "id_permiso": 47,
+            "id_modulo": 14,
+            "id_accion": 4,
+            "descripcion": "Eliminar proveedores"
+        },
+        {
+            "id_permiso": 48,
+            "id_modulo": 15,
+            "id_accion": 1,
+            "descripcion": "Ver órdenes de compra"
+        },
+        {
+            "id_permiso": 49,
+            "id_modulo": 15,
+            "id_accion": 2,
+            "descripcion": "Crear órdenes de compra"
+        },
+        {
+            "id_permiso": 50,
+            "id_modulo": 15,
+            "id_accion": 3,
+            "descripcion": "Editar órdenes de compra"
+        },
+        {
+            "id_permiso": 51,
+            "id_modulo": 15,
+            "id_accion": 6,
+            "descripcion": "Aprobar órdenes de compra"
+        },
+        {
+            "id_permiso": 52,
+            "id_modulo": 15,
+            "id_accion": 7,
+            "descripcion": "Cancelar órdenes de compra"
+        },
+        {
+            "id_permiso": 53,
+            "id_modulo": 16,
+            "id_accion": 1,
+            "descripcion": "Ver recepciones"
+        },
+        {
+            "id_permiso": 54,
+            "id_modulo": 16,
+            "id_accion": 2,
+            "descripcion": "Crear recepciones"
+        },
+        {
+            "id_permiso": 55,
+            "id_modulo": 17,
+            "id_accion": 1,
+            "descripcion": "Ver facturas"
+        },
+        {
+            "id_permiso": 56,
+            "id_modulo": 17,
+            "id_accion": 2,
+            "descripcion": "Crear facturas"
+        },
+        {
+            "id_permiso": 57,
+            "id_modulo": 17,
+            "id_accion": 3,
+            "descripcion": "Editar facturas"
+        },
+        {
+            "id_permiso": 58,
+            "id_modulo": 17,
+            "id_accion": 8,
+            "descripcion": "Anular facturas"
+        },
+        {
+            "id_permiso": 59,
+            "id_modulo": 18,
+            "id_accion": 1,
+            "descripcion": "Ver pagos"
+        },
+        {
+            "id_permiso": 60,
+            "id_modulo": 18,
+            "id_accion": 2,
+            "descripcion": "Crear pagos"
+        },
+        {
+            "id_permiso": 61,
+            "id_modulo": 18,
+            "id_accion": 4,
+            "descripcion": "Eliminar pagos"
+        },
+        {
+            "id_permiso": 62,
+            "id_modulo": 19,
+            "id_accion": 1,
+            "descripcion": "Ver presupuesto"
+        },
+        {
+            "id_permiso": 63,
+            "id_modulo": 19,
+            "id_accion": 2,
+            "descripcion": "Crear presupuesto"
+        },
+        {
+            "id_permiso": 64,
+            "id_modulo": 19,
+            "id_accion": 3,
+            "descripcion": "Editar presupuesto"
+        },
+        {
+            "id_permiso": 65,
+            "id_modulo": 19,
+            "id_accion": 6,
+            "descripcion": "Aprobar presupuesto"
+        },
+        {
+            "id_permiso": 66,
+            "id_modulo": 20,
+            "id_accion": 1,
+            "descripcion": "Ver centros de costo"
+        },
+        {
+            "id_permiso": 67,
+            "id_modulo": 20,
+            "id_accion": 2,
+            "descripcion": "Crear centros de costo"
+        },
+        {
+            "id_permiso": 68,
+            "id_modulo": 20,
+            "id_accion": 3,
+            "descripcion": "Editar centros de costo"
+        },
+        {
+            "id_permiso": 69,
+            "id_modulo": 20,
+            "id_accion": 4,
+            "descripcion": "Eliminar centros de costo"
+        },
+        {
+            "id_permiso": 70,
+            "id_modulo": 21,
+            "id_accion": 1,
+            "descripcion": "Ver cuentas contables"
+        },
+        {
+            "id_permiso": 71,
+            "id_modulo": 21,
+            "id_accion": 2,
+            "descripcion": "Crear cuentas contables"
+        },
+        {
+            "id_permiso": 72,
+            "id_modulo": 21,
+            "id_accion": 3,
+            "descripcion": "Editar cuentas contables"
+        },
+        {
+            "id_permiso": 73,
+            "id_modulo": 21,
+            "id_accion": 4,
+            "descripcion": "Eliminar cuentas contables"
+        },
+        {
+            "id_permiso": 74,
+            "id_modulo": 22,
+            "id_accion": 1,
+            "descripcion": "Ver usuarios"
+        },
+        {
+            "id_permiso": 75,
+            "id_modulo": 22,
+            "id_accion": 2,
+            "descripcion": "Crear usuarios"
+        },
+        {
+            "id_permiso": 76,
+            "id_modulo": 22,
+            "id_accion": 3,
+            "descripcion": "Editar usuarios"
+        },
+        {
+            "id_permiso": 77,
+            "id_modulo": 22,
+            "id_accion": 4,
+            "descripcion": "Eliminar usuarios"
+        },
+        {
+            "id_permiso": 78,
+            "id_modulo": 23,
+            "id_accion": 1,
+            "descripcion": "Ver roles y permisos"
+        },
+        {
+            "id_permiso": 79,
+            "id_modulo": 23,
+            "id_accion": 2,
+            "descripcion": "Crear roles y permisos"
+        },
+        {
+            "id_permiso": 80,
+            "id_modulo": 23,
+            "id_accion": 3,
+            "descripcion": "Editar roles y permisos"
+        },
+        {
+            "id_permiso": 81,
+            "id_modulo": 23,
+            "id_accion": 4,
+            "descripcion": "Eliminar roles y permisos"
+        },
+        {
+            "id_permiso": 82,
+            "id_modulo": 17,
+            "id_accion": 14,
+            "descripcion": "Imprimir facturas"
+        },
+        {
+            "id_permiso": 83,
+            "id_modulo": 17,
+            "id_accion": 5,
+            "descripcion": "Exportar facturas"
+        },
+        {
+            "id_permiso": 84,
+            "id_modulo": 17,
+            "id_accion": 15,
+            "descripcion": "Cobrar facturas"
+        },
+        {
+            "id_permiso": 85,
+            "id_modulo": 17,
+            "id_accion": 16,
+            "descripcion": "Condonar facturas"
+        },
+        {
+            "id_permiso": 86,
+            "id_modulo": 18,
+            "id_accion": 14,
+            "descripcion": "Imprimir pagos"
+        },
+        {
+            "id_permiso": 87,
+            "id_modulo": 18,
+            "id_accion": 5,
+            "descripcion": "Exportar pagos"
+        },
+        {
+            "id_permiso": 88,
+            "id_modulo": 18,
+            "id_accion": 17,
+            "descripcion": "Devolver dinero pagos"
+        },
+        {
+            "id_permiso": 89,
+            "id_modulo": 19,
+            "id_accion": 5,
+            "descripcion": "Exportar presupuesto"
+        },
+        {
+            "id_permiso": 90,
+            "id_modulo": 19,
+            "id_accion": 10,
+            "descripcion": "Cerrar presupuesto"
+        },
+        {
+            "id_permiso": 91,
+            "id_modulo": 19,
+            "id_accion": 18,
+            "descripcion": "Reabrir presupuesto"
+        },
+        {
+            "id_permiso": 92,
+            "id_modulo": 15,
+            "id_accion": 14,
+            "descripcion": "Imprimir órdenes de compra"
+        },
+        {
+            "id_permiso": 93,
+            "id_modulo": 15,
+            "id_accion": 5,
+            "descripcion": "Exportar órdenes de compra"
+        },
+        {
+            "id_permiso": 94,
+            "id_modulo": 16,
+            "id_accion": 14,
+            "descripcion": "Imprimir recepciones"
+        },
+        {
+            "id_permiso": 95,
+            "id_modulo": 2,
+            "id_accion": 14,
+            "descripcion": "Imprimir contratos"
+        },
+        {
+            "id_permiso": 96,
+            "id_modulo": 2,
+            "id_accion": 10,
+            "descripcion": "Cerrar contratos"
+        },
+        {
+            "id_permiso": 97,
+            "id_modulo": 2,
+            "id_accion": 18,
+            "descripcion": "Reabrir contratos"
+        },
+        {
+            "id_permiso": 98,
+            "id_modulo": 5,
+            "id_accion": 18,
+            "descripcion": "Reabrir tickets"
+        },
+        {
+            "id_permiso": 99,
+            "id_modulo": 8,
+            "id_accion": 14,
+            "descripcion": "Imprimir nómina"
+        },
+        {
+            "id_permiso": 100,
+            "id_modulo": 8,
+            "id_accion": 10,
+            "descripcion": "Cerrar nómina"
+        },
+        {
+            "id_permiso": 101,
+            "id_modulo": 8,
+            "id_accion": 18,
+            "descripcion": "Reabrir nómina"
+        },
+        {
+            "id_permiso": 102,
+            "id_modulo": 10,
+            "id_accion": 5,
+            "descripcion": "Exportar productos"
+        },
+        {
+            "id_permiso": 103,
+            "id_modulo": 14,
+            "id_accion": 5,
+            "descripcion": "Exportar proveedores"
+        },
+        {
+            "id_permiso": 104,
+            "id_modulo": 12,
+            "id_accion": 5,
+            "descripcion": "Exportar bodegas"
+        },
+        {
+            "id_permiso": 105,
+            "id_modulo": 11,
+            "id_accion": 5,
+            "descripcion": "Exportar categorías"
+        },
+        {
+            "id_permiso": 106,
+            "id_modulo": 21,
+            "id_accion": 5,
+            "descripcion": "Exportar cuentas contables"
+        },
+        {
+            "id_permiso": 107,
+            "id_modulo": 20,
+            "id_accion": 5,
+            "descripcion": "Exportar centros de costo"
+        },
+        {
+            "id_permiso": 108,
+            "id_modulo": 7,
+            "id_accion": 5,
+            "descripcion": "Exportar empleados"
+        },
+        {
+            "id_permiso": 109,
+            "id_modulo": 1,
+            "id_accion": 14,
+            "descripcion": "Imprimir clientes"
+        },
+        {
+            "id_permiso": 110,
+            "id_modulo": 1,
+            "id_accion": 9,
+            "descripcion": "Asignar clientes"
+        },
+        {
+            "id_permiso": 111,
+            "id_modulo": 28,
+            "id_accion": 1,
+            "descripcion": "Ver líneas de negocio"
+        },
+        {
+            "id_permiso": 112,
+            "id_modulo": 28,
+            "id_accion": 2,
+            "descripcion": "Crear líneas de negocio"
+        },
+        {
+            "id_permiso": 113,
+            "id_modulo": 28,
+            "id_accion": 3,
+            "descripcion": "Editar líneas de negocio"
+        },
+        {
+            "id_permiso": 114,
+            "id_modulo": 28,
+            "id_accion": 4,
+            "descripcion": "Eliminar líneas de negocio"
+        },
+        {
+            "id_permiso": 115,
+            "id_modulo": 29,
+            "id_accion": 1,
+            "descripcion": "Ver tipos de servicio"
+        },
+        {
+            "id_permiso": 116,
+            "id_modulo": 29,
+            "id_accion": 2,
+            "descripcion": "Crear tipos de servicio"
+        },
+        {
+            "id_permiso": 117,
+            "id_modulo": 29,
+            "id_accion": 3,
+            "descripcion": "Editar tipos de servicio"
+        },
+        {
+            "id_permiso": 118,
+            "id_modulo": 29,
+            "id_accion": 4,
+            "descripcion": "Eliminar tipos de servicio"
+        },
+        {
+            "id_permiso": 119,
+            "id_modulo": 29,
+            "id_accion": 5,
+            "descripcion": "Exportar tipos de servicio"
+        },
+        {
+            "id_permiso": 120,
+            "id_modulo": 30,
+            "id_accion": 1,
+            "descripcion": "Ver series de facturación"
+        },
+        {
+            "id_permiso": 121,
+            "id_modulo": 30,
+            "id_accion": 2,
+            "descripcion": "Crear series de facturación"
+        },
+        {
+            "id_permiso": 122,
+            "id_modulo": 30,
+            "id_accion": 3,
+            "descripcion": "Editar series de facturación"
+        },
+        {
+            "id_permiso": 123,
+            "id_modulo": 30,
+            "id_accion": 4,
+            "descripcion": "Eliminar series de facturación"
+        },
+        {
+            "id_permiso": 124,
+            "id_modulo": 7,
+            "id_accion": 12,
+            "descripcion": "Configurar departamentos y cargos"
+        },
+        {
+            "id_permiso": 125,
+            "id_modulo": 5,
+            "id_accion": 3,
+            "descripcion": "Responder y cambiar el estado de tickets"
+        },
+        {
+            "id_permiso": 126,
+            "id_modulo": 5,
+            "id_accion": 12,
+            "descripcion": "Configurar categorías y SLA de tickets"
+        },
+        {
+            "id_permiso": 127,
+            "id_modulo": 9,
+            "id_accion": 6,
+            "descripcion": "Aprobar solicitudes de ausencia"
+        },
+        {
+            "id_permiso": 128,
+            "id_modulo": 6,
+            "id_accion": 3,
+            "descripcion": "Editar campañas"
+        },
+        {
+            "id_permiso": 129,
+            "id_modulo": 31,
+            "id_accion": 1,
+            "descripcion": "Ver bitácora de cambios"
+        },
+        {
+            "id_permiso": 130,
+            "id_modulo": 31,
+            "id_accion": 5,
+            "descripcion": "Exportar bitácora de cambios"
+        },
+        {
+            "id_permiso": 131,
+            "id_modulo": 32,
+            "id_accion": 1,
+            "descripcion": "Ver prestaciones"
+        },
+        {
+            "id_permiso": 132,
+            "id_modulo": 32,
+            "id_accion": 11,
+            "descripcion": "Calcular y pagar prestaciones"
+        },
+        {
+            "id_permiso": 133,
+            "id_modulo": 32,
+            "id_accion": 6,
+            "descripcion": "Aprobar prestaciones"
+        },
+        {
+            "id_permiso": 134,
+            "id_modulo": 32,
+            "id_accion": 5,
+            "descripcion": "Exportar prestaciones"
+        }
+    ],
+    "industria": [
+        {
+            "id_industria": 1,
+            "nombre": "Manufactura"
+        },
+        {
+            "id_industria": 2,
+            "nombre": "Retail / Comercio"
+        },
+        {
+            "id_industria": 3,
+            "nombre": "Banca y Finanzas"
+        },
+        {
+            "id_industria": 4,
+            "nombre": "Salud / Hospitales"
+        },
+        {
+            "id_industria": 5,
+            "nombre": "Hotelería y Turismo"
+        },
+        {
+            "id_industria": 6,
+            "nombre": "Educación"
+        },
+        {
+            "id_industria": 7,
+            "nombre": "Gobierno / Sector Público"
+        },
+        {
+            "id_industria": 8,
+            "nombre": "Centros Comerciales"
+        },
+        {
+            "id_industria": 9,
+            "nombre": "Logística y Distribución"
+        },
+        {
+            "id_industria": 10,
+            "nombre": "Tecnología"
+        },
+        {
+            "id_industria": 11,
+            "nombre": "Agroindustria"
+        },
+        {
+            "id_industria": 12,
+            "nombre": "ONG / Organismos Internacionales"
+        }
+    ],
+    "fuente_lead": [
+        {
+            "id_fuente": 1,
+            "nombre": "Referido por cliente",
+            "activo": 1
+        },
+        {
+            "id_fuente": 2,
+            "nombre": "Página Web / Formulario",
+            "activo": 1
+        },
+        {
+            "id_fuente": 3,
+            "nombre": "LinkedIn",
+            "activo": 1
+        },
+        {
+            "id_fuente": 4,
+            "nombre": "Google Ads",
+            "activo": 1
+        },
+        {
+            "id_fuente": 5,
+            "nombre": "Expo / Evento",
+            "activo": 1
+        },
+        {
+            "id_fuente": 6,
+            "nombre": "Llamada en frío",
+            "activo": 1
+        },
+        {
+            "id_fuente": 7,
+            "nombre": "WhatsApp directo",
+            "activo": 1
+        },
+        {
+            "id_fuente": 8,
+            "nombre": "Alianza estratégica",
+            "activo": 1
+        }
+    ],
+    "ConfiguracionSistema": [
+        {
+            "idConfig": 3,
+            "tipo": "login",
+            "nombreSistema": "Nexus ERP",
+            "nombreEmpresa": "Nexo ERP",
+            "slogan": "Gestión empresarial sin fronteras",
+            "descripcion": "Sistema integral ERP + CRM para empresas de servicios en Centroamérica",
+            "version": "1.0.0",
+            "nit": null,
+            "telefono": null,
+            "correoContacto": null,
+            "direccion": null,
+            "sitioWeb": null,
+            "loginTitulo": "Bienvenido",
+            "loginSubtitulo": "Accede a tu cuenta",
+            "loginTextBoton": "Iniciar Sesión",
+            "loginLabelUsuario": "Email / Usuario",
+            "loginPlaceholderUs": "nombre@ejemplo.com",
+            "loginLabelPassword": "Contraseña",
+            "loginLabelRecordar": "Recordar sesión",
+            "loginLinkOlvide": "Olvidé mi contraseña",
+            "loginMensajeBienve": "Ingresa tus credenciales para continuar",
+            "loginTextRegistro": "Crear una cuenta",
+            "navbarNombreSistema": "Sistema",
+            "navbarTextBuscar": "Buscar...",
+            "navbarTextPerfil": "Perfil de Usuario",
+            "navbarTextSalir": "Cerrar Sesión",
+            "navbarTextNotif": "Notificaciones",
+            "navbarTextMarcar": "Marcar todo como leído",
+            "navbarTextHistorial": "Historial de Notificaciones",
+            "navbarTextStatus": "Actualizar estado",
+            "footerTexto": "Todos los derechos reservados",
+            "footerVersion": "v1.0.0",
+            "footerLinkPrivacy": "Política de privacidad",
+            "footerLinkTerminos": "Términos",
+            "footerLinkCookies": "Cookies",
+            "footerAnio": "2026",
+            "emailAsuntoReset": "Restablecer contraseña",
+            "emailAsuntoBienve": "Bienvenido al sistema",
+            "emailAsuntoCuota": "Recordatorio de cuota pendiente",
+            "emailFirma": "El equipo de administración",
+            "colorPrimario": "#6366f1",
+            "colorSecundario": "#8b5cf6",
+            "colorAccent": "#06b6d4",
+            "colorFondo": "#ffffff",
+            "colorTexto": "#000000",
+            "imgLogo": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/logoNexus.png",
+            "imgLogoOscuro": null,
+            "imgFavicon": null,
+            "imgFondoLogin": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/NexusERP.png",
+            "imgBannerDashboard": null,
+            "imgAvatarDefault": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/logoNexus.png",
+            "imgFondoEmail": null,
+            "imgLogoEmail": null,
+            "imgLogoReporte": null,
+            "imgFondoError404": null,
+            "zonaHoraria": "America/Guatemala",
+            "formatoFecha": "d/m/Y",
+            "formatoHora": "H:i",
+            "moneda": "Q",
+            "monedaCodigo": "GTQ",
+            "idioma": "es",
+            "diasMora": 5,
+            "porcentajeMora": "5.00",
+            "maxIntentosSesion": 3,
+            "bloqueoMinutos": 15,
+            "sesionExpiraMin": 60,
+            "passwordMinimo": 12,
+            "passwordMayusculas": 1,
+            "passwordNumeros": 1,
+            "passwordSimbolos": 1,
+            "passwordVenceDias": 0,
+            "passwordHistorial": 0,
+            "estado": 1,
+            "fechaCreacion": "2026-04-26 05:18:57",
+            "fechaActualizacion": "2026-04-26 19:23:36",
+            "actualizadoPor": null
+        },
+        {
+            "idConfig": 4,
+            "tipo": "general",
+            "nombreSistema": "Nexus ERP",
+            "nombreEmpresa": "Nexo ERP",
+            "slogan": "Gestión empresarial sin fronteras",
+            "descripcion": "Sistema integral ERP + CRM para empresas de servicios en Centroamérica",
+            "version": "1.0.0",
+            "nit": null,
+            "telefono": null,
+            "correoContacto": null,
+            "direccion": null,
+            "sitioWeb": null,
+            "loginTitulo": "Bienvenido",
+            "loginSubtitulo": "Accede a tu cuenta",
+            "loginTextBoton": "Iniciar Sesión",
+            "loginLabelUsuario": "Email / Usuario",
+            "loginPlaceholderUs": "nombre@ejemplo.com",
+            "loginLabelPassword": "Contraseña",
+            "loginLabelRecordar": "Recordar sesión",
+            "loginLinkOlvide": "Olvidé mi contraseña",
+            "loginMensajeBienve": "Ingresa tus credenciales para continuar",
+            "loginTextRegistro": "Crear una cuenta",
+            "navbarNombreSistema": "Sistema",
+            "navbarTextBuscar": "Buscar...",
+            "navbarTextPerfil": "Perfil de Usuario",
+            "navbarTextSalir": "Cerrar Sesión",
+            "navbarTextNotif": "Notificaciones",
+            "navbarTextMarcar": "Marcar todo como leído",
+            "navbarTextHistorial": "Historial de Notificaciones",
+            "navbarTextStatus": "Actualizar estado",
+            "footerTexto": "Todos los derechos reservados",
+            "footerVersion": "v1.0.0",
+            "footerLinkPrivacy": "Política de privacidad",
+            "footerLinkTerminos": "Términos",
+            "footerLinkCookies": "Cookies",
+            "footerAnio": "2026",
+            "emailAsuntoReset": "Restablecer contraseña",
+            "emailAsuntoBienve": "Bienvenido al sistema",
+            "emailAsuntoCuota": "Recordatorio de cuota pendiente",
+            "emailFirma": "El equipo de administración",
+            "colorPrimario": "#6366f1",
+            "colorSecundario": "#8b5cf6",
+            "colorAccent": "#06b6d4",
+            "colorFondo": "#ffffff",
+            "colorTexto": "#000000",
+            "imgLogo": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/logoNexus.png",
+            "imgLogoOscuro": null,
+            "imgFavicon": null,
+            "imgFondoLogin": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/NexusERP.png",
+            "imgBannerDashboard": null,
+            "imgAvatarDefault": "https://usc1.contabostorage.com/7bbe5b0925e64474aaf8b5e74dbdccb8:nexus/login/logoNexus.png",
+            "imgFondoEmail": null,
+            "imgLogoEmail": null,
+            "imgLogoReporte": null,
+            "imgFondoError404": null,
+            "zonaHoraria": "America/Guatemala",
+            "formatoFecha": "d/m/Y",
+            "formatoHora": "H:i",
+            "moneda": "Q",
+            "monedaCodigo": "GTQ",
+            "idioma": "es",
+            "diasMora": 5,
+            "porcentajeMora": "5.00",
+            "maxIntentosSesion": 3,
+            "bloqueoMinutos": 15,
+            "sesionExpiraMin": 60,
+            "passwordMinimo": 12,
+            "passwordMayusculas": 1,
+            "passwordNumeros": 1,
+            "passwordSimbolos": 1,
+            "passwordVenceDias": 0,
+            "passwordHistorial": 0,
+            "estado": 1,
+            "fechaCreacion": "2026-04-26 05:19:00",
+            "fechaActualizacion": "2026-04-26 19:23:36",
+            "actualizadoPor": null
+        }
+    ]
+}
