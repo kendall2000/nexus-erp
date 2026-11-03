@@ -148,7 +148,7 @@
                                 <div class="col-6"><label class="fs--2 text-600">Días trabajados</label><input class="form-control form-control-sm" name="dias_trabajados" type="number" step="0.5" min="0" value="{{ (float) $d->dias_trabajados }}" /></div>
                                 <div class="col-6"><label class="fs--2 text-600">Horas extra</label><input class="form-control form-control-sm" name="horas_extra" type="number" step="0.5" min="0" value="{{ (float) $d->horas_extra }}" /></div>
                                 <div class="col-7">
-                                    <select class="form-select form-select-sm" name="id_concepto"><option value="">Agregar concepto…</option>@foreach ($manuales as $c)<option value="{{ $c->id_concepto }}">{{ $c->nombre }} ({{ $c->tipo === 'INGRESO' ? '+' : '−' }})</option>@endforeach</select>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_concepto"><option value="">Agregar concepto…</option>@foreach ($manuales as $c)<option value="{{ $c->id_concepto }}">{{ $c->nombre }} ({{ $c->tipo === 'INGRESO' ? '+' : '−' }})</option>@endforeach</select>
                                 </div>
                                 <div class="col-5"><input class="form-control form-control-sm" name="monto" type="number" step="0.01" min="0.01" placeholder="Monto" /></div>
                                 <div class="col-8"><input class="form-control form-control-sm" name="descripcion" maxlength="200" placeholder="Detalle (opcional)" /></div>

@@ -35,7 +35,7 @@
                     @csrf
                     <div class="col-md-3">
                         <label class="form-label fs--1" for="calc-tipo">Prestación</label>
-                        <select class="form-select form-select-sm" id="calc-tipo" name="tipo">@foreach ($anuales as $t)<option value="{{ $t }}" @selected(old('tipo') === $t)>{{ $tipos[$t] }}</option>@endforeach</select>
+                        <select data-choices="data-choices" class="form-select form-select-sm" id="calc-tipo" name="tipo">@foreach ($anuales as $t)<option value="{{ $t }}" @selected(old('tipo') === $t)>{{ $tipos[$t] }}</option>@endforeach</select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fs--1" for="calc-anio">Año de pago</label>
@@ -54,7 +54,7 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label fs--1" for="liq-empleado">Empleado</label>
-                        <select class="form-select form-select-sm" id="liq-empleado" name="id_empleado" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" id="liq-empleado" name="id_empleado" required>
                             <option value="">Elegir…</option>
                             @foreach ($empleados as $e)<option value="{{ $e->id_empleado }}" data-baja="{{ $e->fecha_baja?->format('Y-m-d') }}" @selected((int) old('id_empleado') === $e->id_empleado)>{{ $e->nombre_completo }}{{ $e->estado === 'BAJA' ? ' (de baja)' : '' }}</option>@endforeach
                         </select>
@@ -98,8 +98,8 @@
     <div class="tab-pane fade show active" id="tab-calculos" role="tabpanel">
     <form method="GET" class="row g-2 mb-3">
         <div class="col-auto"><input class="form-control form-control-sm" type="number" name="anio" min="2000" max="2100" value="{{ $anio }}" title="Año" style="width: 6rem" /></div>
-        <div class="col-auto"><select class="form-select form-select-sm" name="tipo"><option value="">Todas las prestaciones</option>@foreach ($tipos as $k => $n)<option value="{{ $k }}" @selected(($filtros['tipo'] ?? '') === $k)>{{ $n }}</option>@endforeach</select></div>
-        <div class="col-auto"><select class="form-select form-select-sm" name="estado"><option value="">Todos los estados</option>@foreach ($estados as $k => [$n])<option value="{{ $k }}" @selected(($filtros['estado'] ?? '') === $k)>{{ $n }}</option>@endforeach</select></div>
+        <div class="col-auto"><select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="tipo"><option value="">Todas las prestaciones</option>@foreach ($tipos as $k => $n)<option value="{{ $k }}" @selected(($filtros['tipo'] ?? '') === $k)>{{ $n }}</option>@endforeach</select></div>
+        <div class="col-auto"><select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="estado"><option value="">Todos los estados</option>@foreach ($estados as $k => [$n])<option value="{{ $k }}" @selected(($filtros['estado'] ?? '') === $k)>{{ $n }}</option>@endforeach</select></div>
         <div class="col-auto"><button class="btn btn-phoenix-secondary btn-sm" type="submit">Filtrar</button></div>
         <div class="col text-end fs--1 text-700 align-self-center">
             @foreach ($estados as $k => [$n])@if (($totales[$k] ?? 0) > 0)<span class="ms-3">{{ $n }}: <strong>{{ $dinero($totales[$k]) }}</strong></span>@endif @endforeach

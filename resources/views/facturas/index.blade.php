@@ -104,7 +104,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="cliente" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="cliente" onchange="this.form.submit()">
                                     <option value="">Todos los clientes</option>
                                     @foreach ($clientes as $c)
                                         <option value="{{ $c->id_cliente }}" @selected((int) ($filtros['cliente'] ?? 0) === $c->id_cliente)>{{ $c->razon_social }}</option>
@@ -112,7 +112,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Todos los estados</option>
                                     <option value="vencidas" @selected(($filtros['estado'] ?? '') === 'vencidas')>Vencidas con saldo</option>
                                     @foreach ($estados as $codigo => [$nombre])

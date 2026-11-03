@@ -19,14 +19,14 @@
                 @if ($tipo === 'division')
                     <div class="mb-3">
                         <label class="form-label" for="id_pais">País</label>
-                        <select class="form-select" id="id_pais" name="id_pais" required>
+                        <select data-choices="data-choices" class="form-select" id="id_pais" name="id_pais" required>
                             @foreach ($paises as $p)<option value="{{ $p->id_pais }}" @selected((int) old('id_pais', $registro->id_pais) === $p->id_pais)>{{ $p->nombre }}</option>@endforeach
                         </select>
                     </div>
                 @elseif ($tipo === 'municipio')
                     <div class="mb-3">
                         <label class="form-label" for="id_division">Departamento</label>
-                        <select class="form-select" id="id_division" name="id_division" required>
+                        <select data-choices="data-choices" class="form-select" id="id_division" name="id_division" required>
                             @foreach ($divisiones as $d)<option value="{{ $d->id_division }}" @selected((int) old('id_division', $registro->id_division) === $d->id_division)>{{ $d->nombre }} ({{ $d->pais?->nombre }})</option>@endforeach
                         </select>
                     </div>

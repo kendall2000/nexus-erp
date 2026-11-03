@@ -62,7 +62,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" for="tipo_doc_id">Documento <span class="text-danger">*</span></label>
-                                <select class="form-select" id="tipo_doc_id" name="tipo_doc_id">
+                                <select data-choices="data-choices" class="form-select" id="tipo_doc_id" name="tipo_doc_id">
                                     @foreach (['DPI', 'DUI', 'DNI', 'PASAPORTE', 'OTRO'] as $t)
                                         <option value="{{ $t }}" @selected($v('tipo_doc_id') === $t)>{{ $t }}</option>
                                     @endforeach
@@ -89,7 +89,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" for="genero">Género</label>
-                                <select class="form-select" id="genero" name="genero">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="genero" name="genero">
                                     <option value="">—</option>
                                     @foreach (['M' => 'Masculino', 'F' => 'Femenino', 'OTRO' => 'Otro', 'NO_ESPECIFICA' => 'Prefiere no decir'] as $c => $n)
                                         <option value="{{ $c }}" @selected($v('genero') === $c)>{{ $n }}</option>
@@ -98,7 +98,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="estado_civil">Estado civil</label>
-                                <select class="form-select" id="estado_civil" name="estado_civil">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="estado_civil" name="estado_civil">
                                     <option value="">—</option>
                                     @foreach (['SOLTERO' => 'Soltero(a)', 'CASADO' => 'Casado(a)', 'UNION_LIBRE' => 'Unión de hecho', 'DIVORCIADO' => 'Divorciado(a)', 'VIUDO' => 'Viudo(a)'] as $c => $n)
                                         <option value="{{ $c }}" @selected($v('estado_civil') === $c)>{{ $n }}</option>
@@ -243,7 +243,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="tipo_contrato">Tipo de contrato</label>
-                            <select class="form-select" id="tipo_contrato" name="tipo_contrato">
+                            <select data-choices="data-choices" class="form-select" id="tipo_contrato" name="tipo_contrato">
                                 @foreach ($tipos as $c => $n)
                                     <option value="{{ $c }}" @selected($v('tipo_contrato') === $c)>{{ $n }}</option>
                                 @endforeach
@@ -252,7 +252,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="modalidad_trabajo">Modalidad de trabajo</label>
-                            <select class="form-select" id="modalidad_trabajo" name="modalidad_trabajo">
+                            <select data-choices="data-choices" class="form-select" id="modalidad_trabajo" name="modalidad_trabajo">
                                 @foreach (['PRESENCIAL' => 'Presencial', 'REMOTO' => 'Remoto', 'HIBRIDO' => 'Híbrido'] as $c => $n)
                                     <option value="{{ $c }}" @selected($v('modalidad_trabajo') === $c)>{{ $n }}</option>
                                 @endforeach
@@ -277,7 +277,7 @@
                         @if ($e->exists)
                             <div class="border-top border-200 pt-3">
                                 <label class="form-label" for="estado">Estado del colaborador</label>
-                                <select class="form-select" id="estado" name="estado">
+                                <select data-choices="data-choices" class="form-select" id="estado" name="estado">
                                     @foreach ($estados as $c => [$n])
                                         <option value="{{ $c }}" @selected($v('estado') === $c)>{{ $n }}</option>
                                     @endforeach

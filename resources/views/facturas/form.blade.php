@@ -59,7 +59,7 @@
                         @if ($f->exists)
                             <input class="form-control" value="{{ $f->serie?->codigo_serie }} — {{ $tipos[$f->tipo] ?? $f->tipo }}" disabled />
                         @else
-                            <select class="form-select @error('id_serie') is-invalid @enderror" id="id_serie" name="id_serie" required>
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_serie') is-invalid @enderror" id="id_serie" name="id_serie" required>
                                 <option value="">Selecciona serie…</option>
                                 @foreach ($series as $s)
                                     <option value="{{ $s->id_serie }}" @selected((int) old('id_serie', $series->firstWhere('tipo', 'FACTURA')?->id_serie) === $s->id_serie)>
@@ -72,7 +72,7 @@
                     </div>
                     <div class="col-md-5">
                         <label class="form-label" for="id_cliente">Cliente Facturado</label>
-                        <select class="form-select @error('id_cliente') is-invalid @enderror" id="id_cliente" name="id_cliente" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_cliente') is-invalid @enderror" id="id_cliente" name="id_cliente" required>
                             <option value="">Selecciona cliente…</option>
                             @foreach ($clientes as $c)
                                 <option value="{{ $c->id_cliente }}" data-moneda="{{ $c->moneda_facturacion }}" data-dias="{{ $c->dias_credito }}" @selected((int) $v('id_cliente') === $c->id_cliente)>

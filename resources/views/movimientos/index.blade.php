@@ -90,7 +90,7 @@
             <div class="mb-4">
                 <form method="GET" action="{{ route('movimientos.index') }}" class="row g-3 align-items-center">
                     <div class="col-auto">
-                        <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="producto" onchange="this.form.submit()">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="producto" onchange="this.form.submit()">
                             <option value="">Todos los productos</option>
                             @foreach ($productos as $p)
                                 <option value="{{ $p->id_producto }}" @selected((int) ($filtros['producto'] ?? 0) === $p->id_producto)>{{ $p->codigo }} — {{ $p->nombre }}</option>
@@ -98,7 +98,7 @@
                         </select>
                     </div>
                     <div class="col-auto">
-                        <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="bodega" onchange="this.form.submit()">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="bodega" onchange="this.form.submit()">
                             <option value="">Todas las bodegas</option>
                             @foreach ($bodegas as $b)
                                 <option value="{{ $b->id_bodega }}" @selected((int) ($filtros['bodega'] ?? 0) === $b->id_bodega)>{{ $b->nombre }}</option>
@@ -106,7 +106,7 @@
                         </select>
                     </div>
                     <div class="col-auto">
-                        <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="tipo" onchange="this.form.submit()">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="tipo" onchange="this.form.submit()">
                             <option value="">Todo tipo de movimiento</option>
                             @foreach ($tipos as $codigo => $nombre)
                                 <option value="{{ $codigo }}" @selected(($filtros['tipo'] ?? '') === $codigo)>{{ $nombre }}</option>

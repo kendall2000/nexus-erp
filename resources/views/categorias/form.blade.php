@@ -21,7 +21,7 @@
                 @endif
                 <div class="mb-3">
                     <label class="form-label" for="id_padre">Dentro de</label>
-                    <select class="form-select" id="id_padre" name="id_padre">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_padre" name="id_padre">
                         <option value="">Ninguna (categoría principal)</option>
                         @foreach ($padres as ['categoria' => $p, 'nivel' => $nivel])
                             <option value="{{ $p->id_categoria }}" @selected((int) old('id_padre', $categoria->id_padre) === $p->id_categoria)>{{ str_repeat('— ', $nivel) }}{{ $p->nombre }}</option>

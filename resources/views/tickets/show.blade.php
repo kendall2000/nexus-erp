@@ -54,7 +54,7 @@
                             @method('PATCH')
                             <div class="col-md-3">
                                 <label class="form-label" for="calificacion_cliente">Calificación</label>
-                                <select class="form-select" id="calificacion_cliente" name="calificacion_cliente">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="calificacion_cliente" name="calificacion_cliente">
                                     <option value="">Sin calificar</option>
                                     @for ($i = 5; $i >= 1; $i--)
                                         <option value="{{ $i }}">{{ $i }} de 5 estrellas</option>

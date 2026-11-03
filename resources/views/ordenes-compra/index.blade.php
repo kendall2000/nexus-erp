@@ -61,7 +61,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="proveedor" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="proveedor" onchange="this.form.submit()">
                                     <option value="">Todos los proveedores</option>
                                     @foreach ($proveedores as $p)
                                         <option value="{{ $p->id_proveedor }}" @selected((int) ($filtros['proveedor'] ?? 0) === $p->id_proveedor)>{{ $p->razon_social }}</option>
@@ -69,7 +69,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Todos los estados</option>
                                     @foreach ($estados as $codigo => [$nombre])
                                         <option value="{{ $codigo }}" @selected(($filtros['estado'] ?? '') === $codigo)>{{ $nombre }}</option>

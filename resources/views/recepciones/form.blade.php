@@ -22,7 +22,7 @@
                 <form method="GET" action="{{ route('recepciones.create') }}" class="row g-2 align-items-end">
                     <div class="col-md-8">
                         <label class="form-label" for="oc">Orden de compra</label>
-                        <select class="form-select" id="oc" name="oc" onchange="this.form.submit()" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="oc" name="oc" onchange="this.form.submit()" required>
                             <option value="">Selecciona la orden que llegó…</option>
                             @foreach ($ordenes as $o)
                                 <option value="{{ $o->id_oc }}" @selected($oc?->id_oc === $o->id_oc)>{{ $o->numero_oc }} — {{ $o->proveedor?->razon_social }}{{ $o->estado === 'PARCIAL' ? ' (recibida en parte)' : '' }}</option>
@@ -59,7 +59,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label" for="id_bodega">Bodega que recibe</label>
-                            <select class="form-select @error('id_bodega') is-invalid @enderror" id="id_bodega" name="id_bodega" required>
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_bodega') is-invalid @enderror" id="id_bodega" name="id_bodega" required>
                                 <option value="">Selecciona…</option>
                                 @foreach ($bodegas as $b)<option value="{{ $b->id_bodega }}" @selected((int) old('id_bodega', $oc->id_bodega) === $b->id_bodega)>{{ $b->nombre }}</option>@endforeach
                             </select>

@@ -45,7 +45,7 @@
                 @csrf
                 @method('PATCH')
                 <div class="col-md-4">
-                    <select class="form-select form-select-sm" name="id_etapa" id="id_etapa">
+                    <select data-choices="data-choices" class="form-select form-select-sm" name="id_etapa" id="id_etapa">
                         @foreach ($etapas as $e)<option value="{{ $e->id_etapa }}" data-perdida="{{ (int) $e->es_perdida }}" @selected($e->id_etapa === $o->id_etapa)>{{ $e->nombre }} ({{ $e->probabilidad_cierre }} %)</option>@endforeach
                     </select>
                 </div>
@@ -82,7 +82,7 @@
                             @csrf
                             <div class="col-md-6"><input class="form-control form-control-sm" name="titulo" value="{{ old('titulo') }}" maxlength="200" placeholder="Título ({{ $siguientePropuesta }})" required /></div>
                             <div class="col-md-3"><input class="form-control form-control-sm" name="valor_propuesto" type="number" step="0.01" min="0" value="{{ old('valor_propuesto', (float) $o->valor_estimado) }}" required /></div>
-                            <div class="col-md-3"><select class="form-select form-select-sm" name="id_elaborado_por" required>@foreach ($vendedores as $v)<option value="{{ $v->id_empleado }}" @selected((int) old('id_elaborado_por', $o->id_responsable) === $v->id_empleado)>{{ $v->nombre_completo }}</option>@endforeach</select></div>
+                            <div class="col-md-3"><select data-choices="data-choices" class="form-select form-select-sm" name="id_elaborado_por" required>@foreach ($vendedores as $v)<option value="{{ $v->id_empleado }}" @selected((int) old('id_elaborado_por', $o->id_responsable) === $v->id_empleado)>{{ $v->nombre_completo }}</option>@endforeach</select></div>
                             <div class="col-md-3"><input class="form-control form-control-sm" type="date" name="fecha_emision" value="{{ old('fecha_emision', now()->format('Y-m-d')) }}" required /></div>
                             <div class="col-md-3"><input class="form-control form-control-sm" type="date" name="fecha_vencimiento" value="{{ old('fecha_vencimiento', now()->addDays(30)->format('Y-m-d')) }}" required title="Vigencia" /></div>
                             <div class="col-md-4"><input class="form-control form-control-sm" name="notas_internas" value="{{ old('notas_internas') }}" maxlength="5000" placeholder="Notas internas" /></div>

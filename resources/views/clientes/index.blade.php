@@ -56,7 +56,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="segmento" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="segmento" onchange="this.form.submit()">
                                     <option value="">Todos los segmentos</option>
                                     @foreach ($segmentos as $codigo => $nombre)
                                         <option value="{{ $codigo }}" @selected(($filtros['segmento'] ?? '') === $codigo)>{{ $nombre }}</option>
@@ -64,7 +64,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="categoria" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="categoria" onchange="this.form.submit()">
                                     <option value="">Todas las categorías</option>
                                     @foreach ($categorias as $cat)
                                         <option value="{{ $cat }}" @selected(($filtros['categoria'] ?? '') === $cat)>Categoría {{ $cat }}</option>
@@ -72,7 +72,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Estado: Todos</option>
                                     <option value="activos" @selected(($filtros['estado'] ?? '') === 'activos')>Activos</option>
                                     <option value="inactivos" @selected(($filtros['estado'] ?? '') === 'inactivos')>Inactivos</option>

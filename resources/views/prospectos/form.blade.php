@@ -44,7 +44,7 @@
                             </div>
                             <div class="col-12 col-md-3">
                                 <label class="form-label" for="id_industria">Sector / Industria</label>
-                                <select class="form-select" id="id_industria" name="id_industria">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_industria" name="id_industria">
                                     <option value="">Seleccione...</option>
                                     @foreach ($industrias as $i)
                                         <option value="{{ $i->id_industria }}" @selected((int) $v('id_industria') === $i->id_industria)>{{ $i->nombre }}</option>
@@ -53,7 +53,7 @@
                             </div>
                             <div class="col-12 col-md-3">
                                 <label class="form-label" for="id_pais">País</label>
-                                <select class="form-select" id="id_pais" name="id_pais">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_pais" name="id_pais">
                                     <option value="">Seleccione...</option>
                                     @foreach ($paises as $pa)
                                         <option value="{{ $pa->id_pais }}" @selected((int) $v('id_pais') === $pa->id_pais)>{{ $pa->nombre }}</option>
@@ -133,7 +133,7 @@
                     <div class="card-body p-4">
                         <div class="mb-3">
                             <label class="form-label" for="id_fuente">Canal / Fuente de Captación</label>
-                            <select class="form-select" id="id_fuente" name="id_fuente">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_fuente" name="id_fuente">
                                 <option value="">Sin especificar...</option>
                                 @foreach ($fuentes as $f)
                                     <option value="{{ $f->id_fuente }}" @selected((int) $v('id_fuente') === $f->id_fuente)>{{ $f->nombre }}</option>
@@ -143,7 +143,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="id_asignado_a">Vendedor Asignado</label>
-                            <select class="form-select" id="id_asignado_a" name="id_asignado_a">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_asignado_a" name="id_asignado_a">
                                 <option value="">Sin asignar (Bolsa general)</option>
                                 @foreach ($vendedores as $ve)
                                     <option value="{{ $ve->id_empleado }}" @selected((int) $v('id_asignado_a') === $ve->id_empleado)>{{ $ve->nombre_completo }}</option>
@@ -153,7 +153,7 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="temperatura">Temperatura del Lead</label>
-                            <select class="form-select" id="temperatura" name="temperatura">
+                            <select data-choices="data-choices" class="form-select" id="temperatura" name="temperatura">
                                 @foreach ($temperaturas as $k => [$n])
                                     <option value="{{ $k }}" @selected($v('temperatura') === $k)>{{ $n }}</option>
                                 @endforeach
@@ -171,7 +171,7 @@
                         <div class="mb-3">
                             <label class="form-label" for="presupuesto_estimado">Presupuesto Estimado</label>
                             <div class="input-group">
-                                <select class="form-select" name="moneda" style="max-width: 90px;">
+                                <select data-choices="data-choices" class="form-select" name="moneda" style="max-width: 90px;">
                                     <option value="GTQ" @selected($v('moneda') === 'GTQ')>GTQ</option>
                                     <option value="USD" @selected($v('moneda') === 'USD')>USD</option>
                                 </select>
@@ -182,7 +182,7 @@
                         @if ($p->exists)
                             <div class="mb-3">
                                 <label class="form-label" for="estado">Estado del Prospecto</label>
-                                <select class="form-select" id="estado" name="estado">
+                                <select data-choices="data-choices" class="form-select" id="estado" name="estado">
                                     @foreach ($estados as $k => [$n])
                                         <option value="{{ $k }}" @selected($v('estado') === $k)>{{ $n }}</option>
                                     @endforeach

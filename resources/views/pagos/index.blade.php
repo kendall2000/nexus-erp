@@ -121,14 +121,14 @@
     <div class="card shadow-none border">
         <div class="card-header p-3 border-bottom bg-body-emphasis">
             <form method="GET" class="row g-2 align-items-center">
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <div class="search-box w-100">
                         <input class="form-control form-control-sm search-input search" name="buscar" value="{{ $filtros['buscar'] ?? '' }}" placeholder="Referencia, recibo, factura o cliente..." maxlength="100" />
                         <span class="fas fa-search search-box-icon text-500"></span>
                     </div>
                 </div>
                 <div class="col-12 col-sm-6 col-md-2">
-                    <select class="form-select form-select-sm" name="cliente">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="cliente">
                         <option value="">Todos los clientes</option>
                         @foreach ($clientes as $c)
                             <option value="{{ $c->id_cliente }}" @selected((int) ($filtros['cliente'] ?? 0) === $c->id_cliente)>{{ $c->razon_social }}</option>
@@ -136,15 +136,15 @@
                     </select>
                 </div>
                 <div class="col-12 col-sm-6 col-md-2">
-                    <select class="form-select form-select-sm" name="forma">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="forma">
                         <option value="">Toda forma de pago</option>
                         @foreach ($formas as $codigo => $nombre)
                             <option value="{{ $codigo }}" @selected(($filtros['forma'] ?? '') === $codigo)>{{ $nombre }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-1">
-                    <select class="form-select form-select-sm" name="estado" title="Estado">
+                <div class="col-6 col-md-2">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="estado" title="Estado">
                         <option value="">Estado: Todos</option>
                         @foreach ($estados as $codigo => [$nombre])
                             <option value="{{ $codigo }}" @selected(($filtros['estado'] ?? '') === $codigo)>{{ $nombre }}</option>

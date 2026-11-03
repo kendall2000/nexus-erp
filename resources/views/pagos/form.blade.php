@@ -28,7 +28,7 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label" for="id_factura">Factura</label>
-                            <select class="form-select @error('id_factura') is-invalid @enderror" id="id_factura" name="id_factura" required>
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_factura') is-invalid @enderror" id="id_factura" name="id_factura" required>
                                 <option value="">Selecciona…</option>
                                 @foreach ($facturas as $f)
                                     <option value="{{ $f->id_factura }}" data-saldo="{{ round((float) $f->saldo_pendiente, 2) }}" data-moneda="{{ $f->moneda }}" @selected((int) $elegida === $f->id_factura)>
@@ -46,7 +46,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="forma_pago">Forma de pago</label>
-                            <select class="form-select" id="forma_pago" name="forma_pago" required>
+                            <select data-choices="data-choices" class="form-select" id="forma_pago" name="forma_pago" required>
                                 @foreach ($formas as $codigo => $nombre)<option value="{{ $codigo }}" @selected(old('forma_pago', 'TRANSFERENCIA') === $codigo)>{{ $nombre }}</option>@endforeach
                             </select>
                         </div>

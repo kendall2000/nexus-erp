@@ -63,7 +63,7 @@
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="id_rol">Rol del sistema <span class="text-danger">*</span></label>
                                 <div class="form-icon-container">
-                                    <select class="form-select @error('id_rol') is-invalid @enderror" id="id_rol" name="id_rol" required>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_rol') is-invalid @enderror" id="id_rol" name="id_rol" required>
                                         <option value="">Selecciona rol…</option>
                                         @foreach ($roles as $rol)
                                             <option value="{{ $rol->id_rol }}" @selected((int) old('id_rol', $idRol) === $rol->id_rol)>{{ $rol->nombre }}</option>
@@ -74,7 +74,7 @@
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="id_sucursal">Sucursal de adscripción</label>
-                                <select class="form-select @error('id_sucursal') is-invalid @enderror" id="id_sucursal" name="id_sucursal">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_sucursal') is-invalid @enderror" id="id_sucursal" name="id_sucursal">
                                     <option value="">Sin sucursal fija (Global)</option>
                                     @foreach ($sucursales as $s)
                                         <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $usuario->id_sucursal) === $s->id_sucursal)>{{ $s->nombre }}</option>

@@ -34,13 +34,13 @@
             <form method="GET" class="row g-2 mb-0">
                 <div class="col-md-5"><input class="form-control form-control-sm" name="buscar" value="{{ $filtros['buscar'] ?? '' }}" placeholder="Código (empieza con…) o nombre" maxlength="100" /></div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" name="tipo">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="tipo">
                         <option value="">Todos los tipos</option>
                         @foreach ($tipos as $t)<option value="{{ $t }}" @selected(($filtros['tipo'] ?? '') === $t)>{{ ucfirst(strtolower($t)) }}</option>@endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" name="estado">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="estado">
                         <option value="">Activas e inactivas</option>
                         <option value="activas" @selected(($filtros['estado'] ?? '') === 'activas')>Activas</option>
                         <option value="inactivas" @selected(($filtros['estado'] ?? '') === 'inactivas')>Inactivas</option>

@@ -60,7 +60,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="bodega" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="bodega" onchange="this.form.submit()">
                                     <option value="">Todas las bodegas de entrega</option>
                                     @foreach ($bodegas as $b)
                                         <option value="{{ $b->id_bodega }}" @selected((int) ($filtros['bodega'] ?? 0) === $b->id_bodega)>{{ $b->nombre }}</option>

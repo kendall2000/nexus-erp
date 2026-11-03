@@ -12,13 +12,13 @@
     <div class="col-md-8"><input class="form-control form-control-sm" name="nombre" value="{{ $v('nombre') }}" placeholder="Nombre" required maxlength="150" /></div>
     <div class="col-md-4"><input class="form-control form-control-sm text-uppercase" name="codigo" value="{{ $v('codigo') }}" placeholder="Código" maxlength="20" /></div>
     <div class="col-md-6">
-        <select class="form-select form-select-sm" name="id_padre" title="Depende de">
+        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_padre" title="Depende de">
             <option value="">Sin departamento superior</option>
             @foreach ($departamentos->where('id_depto_org', '!=', $d->id_depto_org) as $p)<option value="{{ $p->id_depto_org }}" @selected((int) $v('id_padre') === $p->id_depto_org)>{{ $p->nombre }}</option>@endforeach
         </select>
     </div>
     <div class="col-md-6">
-        <select class="form-select form-select-sm" name="centro_costo" title="Centro de costo">
+        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="centro_costo" title="Centro de costo">
             <option value="">Sin centro de costo</option>
             @foreach ($centros as $cc)<option value="{{ $cc->codigo }}" @selected($v('centro_costo') === $cc->codigo)>{{ $cc->etiqueta }}</option>@endforeach
         </select>

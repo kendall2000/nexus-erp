@@ -21,7 +21,7 @@
     <div class="mb-4">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-md-3">
-                <select class="form-select" name="usuario">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="usuario">
                     <option value="">Todos los usuarios</option>
                     @foreach ($usuarios as $u)
                         <option value="{{ $u->id_usuario }}" @selected((int) ($filtros['usuario'] ?? 0) === $u->id_usuario)>{{ $u->nombre_completo }} ({{ $u->username }})</option>
@@ -29,7 +29,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select class="form-select" name="tabla">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="tabla">
                     <option value="">Todas las tablas</option>
                     @foreach ($tablas as $codigo => $nombre)
                         <option value="{{ $codigo }}" @selected(($filtros['tabla'] ?? '') === $codigo)>{{ $nombre }}</option>
@@ -37,7 +37,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select class="form-select" name="accion">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="accion">
                     <option value="">Toda acción</option>
                     @foreach ($acciones as $codigo => [$nombre])
                         <option value="{{ $codigo }}" @selected(($filtros['accion'] ?? '') === $codigo)>{{ $nombre }}</option>

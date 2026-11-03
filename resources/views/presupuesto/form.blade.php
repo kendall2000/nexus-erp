@@ -109,7 +109,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="moneda">Moneda <span class="text-danger">*</span></label>
-                            <select class="form-select" id="moneda" name="moneda" required>
+                            <select data-choices="data-choices" class="form-select" id="moneda" name="moneda" required>
                                 @foreach ($monedas as $m)
                                     <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }} — {{ $m->nombre }}</option>
                                 @endforeach

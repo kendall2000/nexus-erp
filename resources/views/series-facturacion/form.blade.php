@@ -35,7 +35,7 @@
                             <input type="hidden" name="tipo" value="{{ $serie->tipo }}" />
                             <input class="form-control" value="{{ $tipos[$serie->tipo] ?? $serie->tipo }}" disabled />
                         @else
-                            <select class="form-select" id="tipo" name="tipo" required>
+                            <select data-choices="data-choices" class="form-select" id="tipo" name="tipo" required>
                                 @foreach ($tipos as $codigo => $nombre)<option value="{{ $codigo }}" @selected($v('tipo') === $codigo)>{{ $nombre }}</option>@endforeach
                             </select>
                         @endif

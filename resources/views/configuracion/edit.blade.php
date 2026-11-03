@@ -57,13 +57,13 @@
                             <div class="col-md-3"><label class="form-label" for="monedaCodigo">Moneda (código)</label><input class="form-control text-uppercase" id="monedaCodigo" name="monedaCodigo" value="{{ $v('monedaCodigo') }}" maxlength="3" required /></div>
                             <div class="col-md-3">
                                 <label class="form-label" for="zonaHoraria">Zona horaria</label>
-                                <select class="form-select" id="zonaHoraria" name="zonaHoraria" required>
+                                <select data-choices="data-choices" class="form-select" id="zonaHoraria" name="zonaHoraria" required>
                                     @foreach ($zonas as $zona)<option value="{{ $zona }}" @selected($v('zonaHoraria') === $zona)>{{ $zona }}</option>@endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" for="formatoFecha">Formato de fecha</label>
-                                <select class="form-select" id="formatoFecha" name="formatoFecha" required>
+                                <select data-choices="data-choices" class="form-select" id="formatoFecha" name="formatoFecha" required>
                                     @foreach ($formatosFecha as $formato => $ejemplo)<option value="{{ $formato }}" @selected($v('formatoFecha') === $formato)>{{ $ejemplo }}</option>@endforeach
                                 </select>
                             </div>

@@ -29,7 +29,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label" for="id_sucursal">Sucursal</label>
-                        <select class="form-select" id="id_sucursal" name="id_sucursal">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_sucursal" name="id_sucursal">
                             <option value="">Sin sucursal</option>
                             @foreach ($sucursales as $s)
                                 <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $bodega->id_sucursal) === $s->id_sucursal)>{{ $s->nombre }}</option>
@@ -38,7 +38,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="responsable_id">Responsable</label>
-                        <select class="form-select" id="responsable_id" name="responsable_id" @disabled($empleados->isEmpty())>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="responsable_id" name="responsable_id" @disabled($empleados->isEmpty())>
                             <option value="">{{ $empleados->isEmpty() ? 'No hay empleados activos' : 'Sin responsable' }}</option>
                             @foreach ($empleados as $e)
                                 <option value="{{ $e->id_empleado }}" @selected((int) old('responsable_id', $bodega->responsable_id) === $e->id_empleado)>{{ $e->nombre_completo }}</option>

@@ -51,7 +51,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="id_modulo_padre">Dentro de (submenú)</label>
-                                <select class="form-select" id="id_modulo_padre" name="id_modulo_padre">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_modulo_padre" name="id_modulo_padre">
                                     <option value="">Ninguno (opción de primer nivel)</option>
                                     @foreach ($padres as $p)
                                         <option value="{{ $p->id_modulo }}" @selected((int) old('id_modulo_padre', $modulo->id_modulo_padre) === $p->id_modulo)>{{ $p->grupo ? $p->grupo.' › ' : '' }}{{ $p->nombre }}</option>

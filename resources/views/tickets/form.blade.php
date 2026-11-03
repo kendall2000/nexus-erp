@@ -72,7 +72,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label" for="id_categoria">Categoría</label>
-                            <select class="form-select" id="id_categoria" name="id_categoria">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_categoria" name="id_categoria">
                                 <option value="">— Sin categoría —</option>
                                 @foreach ($categorias as $c)
                                     <option value="{{ $c->id_categoria }}" data-prioridad="{{ $c->prioridad_default }}" @selected((int) old('id_categoria') === $c->id_categoria)>{{ $c->nombre }}</option>
@@ -81,7 +81,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="tipo">Tipo de caso</label>
-                            <select class="form-select" id="tipo" name="tipo">
+                            <select data-choices="data-choices" class="form-select" id="tipo" name="tipo">
                                 @foreach ($tipos as $k => $n)
                                     <option value="{{ $k }}" @selected(old('tipo', 'INCIDENTE') === $k)>{{ $n }}</option>
                                 @endforeach
@@ -97,7 +97,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="canal_origen">Canal de origen</label>
-                            <select class="form-select" id="canal_origen" name="canal_origen">
+                            <select data-choices="data-choices" class="form-select" id="canal_origen" name="canal_origen">
                                 @foreach ($canales as $k => $n)
                                     <option value="{{ $k }}" @selected(old('canal_origen', 'TELEFONO') === $k)>{{ $n }}</option>
                                 @endforeach
@@ -105,7 +105,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="plan_sla">Acuerdo de Nivel de Servicio (SLA)</label>
-                            <select class="form-select" id="plan_sla" name="plan_sla">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="plan_sla" name="plan_sla">
                                 <option value="">Sin SLA específico</option>
                                 @foreach ($planes as $p)
                                     <option value="{{ $p }}" @selected(old('plan_sla', $planes->first()) === $p)>{{ $p }}</option>

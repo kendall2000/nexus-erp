@@ -27,13 +27,13 @@
         <form method="GET" class="row g-2">
             <div class="col-md-5"><input class="form-control form-control-sm" name="buscar" value="{{ $filtros['buscar'] ?? '' }}" placeholder="Nombre del servicio" maxlength="100" /></div>
             <div class="col-md-3">
-                <select class="form-select form-select-sm" name="linea">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="linea">
                     <option value="">Todas las líneas</option>
                     @foreach ($lineas as $l)<option value="{{ $l->id_linea }}" @selected((int) ($filtros['linea'] ?? 0) === $l->id_linea)>{{ $l->nombre }}</option>@endforeach
                 </select>
             </div>
             <div class="col-md-2">
-                <select class="form-select form-select-sm" name="estado">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="estado">
                     <option value="">Todos</option>
                     <option value="activos" @selected(($filtros['estado'] ?? '') === 'activos')>Activos</option>
                     <option value="inactivos" @selected(($filtros['estado'] ?? '') === 'inactivos')>Inactivos</option>

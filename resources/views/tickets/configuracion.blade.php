@@ -26,7 +26,7 @@
                             @endif
                             <div class="col-md-5"><input class="form-control form-control-sm" name="nombre" value="{{ $c->nombre }}" placeholder="{{ $c->exists ? '' : 'Nueva categoría' }}" required maxlength="100" /></div>
                             <div class="col-md-3">
-                                <select class="form-select form-select-sm" name="prioridad_default" title="Prioridad sugerida">@foreach ($prioridades as $k => [$n])<option value="{{ $k }}" @selected($c->prioridad_default === $k)>{{ $n }}</option>@endforeach</select>
+                                <select data-choices="data-choices" class="form-select form-select-sm" name="prioridad_default" title="Prioridad sugerida">@foreach ($prioridades as $k => [$n])<option value="{{ $k }}" @selected($c->prioridad_default === $k)>{{ $n }}</option>@endforeach</select>
                             </div>
                             <div class="col-md-2">
                                 <input type="hidden" name="activo" value="0" />

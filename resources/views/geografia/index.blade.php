@@ -59,7 +59,7 @@
                         <form method="GET" class="d-flex gap-2 align-items-end">
                             <input type="hidden" name="pestana" value="division" />
                             <div><label class="form-label fs--1" for="filtro-pais">Filtrar por país</label>
-                                <select class="form-select form-select-sm" id="filtro-pais" name="pais" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" id="filtro-pais" name="pais" onchange="this.form.submit()">
                                     <option value="">Todos</option>
                                     @foreach ($paises as $p)<option value="{{ $p->id_pais }}" @selected($idPais === $p->id_pais)>{{ $p->nombre }}</option>@endforeach
                                 </select>
@@ -103,7 +103,7 @@
                         <form method="GET" class="d-flex gap-2 align-items-end">
                             <input type="hidden" name="pestana" value="municipio" />
                             <div><label class="form-label fs--1" for="filtro-dep">Filtrar por departamento</label>
-                                <select class="form-select form-select-sm" id="filtro-dep" name="departamento" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" id="filtro-dep" name="departamento" onchange="this.form.submit()">
                                     <option value="">Todos</option>
                                     @foreach ($todasDivisiones as $d)<option value="{{ $d->id_division }}" @selected($idDivision === $d->id_division)>{{ $d->nombre }} ({{ $d->pais?->nombre }})</option>@endforeach
                                 </select>

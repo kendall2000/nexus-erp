@@ -30,7 +30,7 @@
                     </div>
                     <div class="col-md-12">
                         <label class="form-label" for="id_padre">Cuenta padre</label>
-                        <select class="form-select @error('id_padre') is-invalid @enderror" id="id_padre" name="id_padre">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_padre') is-invalid @enderror" id="id_padre" name="id_padre">
                             <option value="">Ninguna (cuenta raíz)</option>
                             @foreach ($padres as $p)
                                 <option value="{{ $p->id_cuenta }}" data-tipo="{{ $p->tipo }}" data-naturaleza="{{ $p->naturaleza }}" @selected((int) old('id_padre', $cuenta->id_padre) === $p->id_cuenta)>{{ str_repeat('— ', $p->nivel - 1) }}{{ $p->codigo }} {{ $p->nombre }} ({{ strtolower($p->tipo) }})</option>

@@ -33,7 +33,7 @@
                 </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select" name="estado">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="estado">
                     <option value="">Todos</option>
                     <option value="activos" @selected(($filtros['estado'] ?? '') === 'activos')>Activos</option>
                     <option value="inactivos" @selected(($filtros['estado'] ?? '') === 'inactivos')>Inactivos</option>

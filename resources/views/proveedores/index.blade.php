@@ -62,7 +62,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="tipo" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="tipo" onchange="this.form.submit()">
                                     <option value="">Todos los tipos</option>
                                     @foreach ($tipos as $codigo => $nombre)
                                         <option value="{{ $codigo }}" @selected(($filtros['tipo'] ?? '') === $codigo)>{{ $nombre }}</option>
@@ -70,7 +70,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Estado: Todos</option>
                                     <option value="activos" @selected(($filtros['estado'] ?? '') === 'activos')>Activos</option>
                                     <option value="inactivos" @selected(($filtros['estado'] ?? '') === 'inactivos')>Inactivos</option>

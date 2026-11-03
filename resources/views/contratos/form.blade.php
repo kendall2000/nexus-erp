@@ -37,7 +37,7 @@
                     </div>
                     <div class="col-md-5">
                         <label class="form-label" for="id_cliente">Cliente</label>
-                        <select class="form-select @error('id_cliente') is-invalid @enderror" id="id_cliente" name="id_cliente" @disabled($clienteFijo) required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_cliente') is-invalid @enderror" id="id_cliente" name="id_cliente" @disabled($clienteFijo) required>
                             <option value="">Selecciona…</option>
                             @foreach ($clientes as $cl)<option value="{{ $cl->id_cliente }}" data-moneda="{{ $cl->moneda_facturacion }}" @selected((int) $v('id_cliente') === $cl->id_cliente)>{{ $cl->razon_social }}</option>@endforeach
                         </select>
@@ -55,7 +55,7 @@
                     <div class="col-md-3"><label class="form-label" for="fecha_firma">Firma</label><input class="form-control" id="fecha_firma" name="fecha_firma" type="date" value="{{ $fecha('fecha_firma') }}" /></div>
                     <div class="col-md-3">
                         <label class="form-label" for="id_vendedor">Vendedor</label>
-                        <select class="form-select" id="id_vendedor" name="id_vendedor">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_vendedor" name="id_vendedor">
                             <option value="">—</option>
                             @foreach ($vendedores as $e)<option value="{{ $e->id_empleado }}" @selected((int) $v('id_vendedor') === $e->id_empleado)>{{ $e->nombre_completo }}</option>@endforeach
                         </select>
@@ -66,7 +66,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="periodicidad_factura">Se factura</label>
-                        <select class="form-select" id="periodicidad_factura" name="periodicidad_factura">@foreach ($periodicidades as $k => $n)<option value="{{ $k }}" @selected($v('periodicidad_factura') === $k)>{{ $n }}</option>@endforeach</select>
+                        <select data-choices="data-choices" class="form-select" id="periodicidad_factura" name="periodicidad_factura">@foreach ($periodicidades as $k => $n)<option value="{{ $k }}" @selected($v('periodicidad_factura') === $k)>{{ $n }}</option>@endforeach</select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label" for="dia_facturacion">Día</label>

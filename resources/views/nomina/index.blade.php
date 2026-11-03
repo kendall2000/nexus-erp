@@ -40,7 +40,7 @@
                             @csrf
                             <div class="col-md-2">
                                 <label class="form-label" for="tipo">Frecuencia / Tipo</label>
-                                <select class="form-select" id="tipo" name="tipo">
+                                <select data-choices="data-choices" class="form-select" id="tipo" name="tipo">
                                     @foreach ($tipos as $k => $n)
                                         <option value="{{ $k }}" @selected(old('tipo', $sugerido['tipo']) === $k)>{{ $n }}</option>
                                     @endforeach
@@ -277,7 +277,7 @@
                                     <form method="POST" action="{{ route('nomina.prestamos.store') }}" class="row g-2">
                                         @csrf
                                         <div class="col-md-4">
-                                            <select class="form-select form-select-sm" name="id_empleado" required>
+                                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_empleado" required>
                                                 <option value="">Selecciona el empleado…</option>
                                                 @foreach ($empleados as $e)
                                                     <option value="{{ $e->id_empleado }}" @selected((int) old('id_empleado') === $e->id_empleado)>{{ $e->nombre_completo }}</option>

@@ -41,7 +41,7 @@
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label" for="id_linea">Línea de Negocio / Producto</label>
-                                <select class="form-select" id="id_linea" name="id_linea">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_linea" name="id_linea">
                                     <option value="">Línea General</option>
                                     @foreach ($lineas as $l)
                                         <option value="{{ $l->id_linea }}" @selected((int) $v('id_linea') === $l->id_linea)>{{ $l->nombre }}</option>
@@ -51,7 +51,7 @@
 
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="tipo">Tipo / Canal Publicitario</label>
-                                <select class="form-select" id="tipo" name="tipo">
+                                <select data-choices="data-choices" class="form-select" id="tipo" name="tipo">
                                     @foreach ($tipos as $k => $n)
                                         <option value="{{ $k }}" @selected($v('tipo') === $k)>{{ $n }}</option>
                                     @endforeach
@@ -59,7 +59,7 @@
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="objetivo">Objetivo Primario</label>
-                                <select class="form-select" id="objetivo" name="objetivo">
+                                <select data-choices="data-choices" class="form-select" id="objetivo" name="objetivo">
                                     @foreach ($objetivos as $k => $n)
                                         <option value="{{ $k }}" @selected($v('objetivo') === $k)>{{ $n }}</option>
                                     @endforeach
@@ -94,7 +94,7 @@
                     <div class="card-body p-4">
                         <div class="mb-3">
                             <label class="form-label" for="moneda">Moneda Operativa</label>
-                            <select class="form-select" id="moneda" name="moneda">
+                            <select data-choices="data-choices" class="form-select" id="moneda" name="moneda">
                                 @foreach ($monedas as $m)
                                     <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }} ({{ $m->nombre }})</option>
                                 @endforeach
@@ -120,7 +120,7 @@
                         @if ($c->exists)
                             <div class="border-top pt-3 mb-3">
                                 <label class="form-label fw-bold" for="estado">Estado Actual de Campaña</label>
-                                <select class="form-select" id="estado" name="estado">
+                                <select data-choices="data-choices" class="form-select" id="estado" name="estado">
                                     @foreach ($estados as $k => [$n])
                                         <option value="{{ $k }}" @selected($v('estado') === $k)>{{ $n }}</option>
                                     @endforeach

@@ -28,7 +28,7 @@
                     </div>
                     <div class="col-md-8">
                         <label class="form-label" for="id_producto">Producto</label>
-                        <select class="form-select @error('id_producto') is-invalid @enderror" id="id_producto" name="id_producto" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_producto') is-invalid @enderror" id="id_producto" name="id_producto" required>
                             <option value="">Selecciona…</option>
                             @foreach ($productos as $p)<option value="{{ $p->id_producto }}" data-unidad="{{ $p->unidad_medida }}" data-lote="{{ (int) $p->requiere_lote }}" data-perecedero="{{ (int) $p->es_perecedero }}" @selected((int) old('id_producto', $elegido['producto'] ?? 0) === $p->id_producto)>{{ $p->codigo }} — {{ $p->nombre }}</option>@endforeach
                         </select>
@@ -36,7 +36,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="id_bodega"><span id="etiqueta-bodega">Bodega</span></label>
-                        <select class="form-select @error('id_bodega') is-invalid @enderror" id="id_bodega" name="id_bodega" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_bodega') is-invalid @enderror" id="id_bodega" name="id_bodega" required>
                             <option value="">Selecciona…</option>
                             @foreach ($bodegas as $b)<option value="{{ $b->id_bodega }}" @selected((int) old('id_bodega', $elegido['bodega'] ?? 0) === $b->id_bodega)>{{ $b->nombre }}</option>@endforeach
                         </select>
@@ -44,7 +44,7 @@
                     </div>
                     <div class="col-md-4 solo-traslado">
                         <label class="form-label" for="id_bodega_destino">Bodega destino</label>
-                        <select class="form-select @error('id_bodega_destino') is-invalid @enderror" id="id_bodega_destino" name="id_bodega_destino">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_bodega_destino') is-invalid @enderror" id="id_bodega_destino" name="id_bodega_destino">
                             <option value="">Selecciona…</option>
                             @foreach ($bodegas as $b)<option value="{{ $b->id_bodega }}" @selected((int) old('id_bodega_destino') === $b->id_bodega)>{{ $b->nombre }}</option>@endforeach
                         </select>

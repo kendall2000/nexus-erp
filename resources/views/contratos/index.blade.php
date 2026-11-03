@@ -64,7 +64,7 @@
                 </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select" name="cliente">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="cliente">
                     <option value="">Todos los clientes</option>
                     @foreach ($clientes as $cl)
                         <option value="{{ $cl->id_cliente }}" @selected((int) ($filtros['cliente'] ?? 0) === $cl->id_cliente)>{{ $cl->razon_social }}</option>
@@ -72,7 +72,7 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <select class="form-select" name="estado">
+                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" name="estado">
                     <option value="">Todos los estados</option>
                     @foreach ($estados as $codigo => [$nombre])
                         <option value="{{ $codigo }}" @selected(($filtros['estado'] ?? '') === $codigo)>{{ $nombre }}</option>

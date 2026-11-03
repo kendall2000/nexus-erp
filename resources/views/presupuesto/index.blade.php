@@ -160,7 +160,7 @@
                     <input type="hidden" name="anio" value="{{ $anio }}" />
                     <div class="col-auto">
                         <div class="btn-group position-static">
-                            <select class="form-select btn-phoenix-secondary px-4" name="anio" onchange="this.form.submit()">
+                            <select data-choices="data-choices" class="form-select btn-phoenix-secondary px-4" name="anio" onchange="this.form.submit()">
                                 @foreach ($anios as $a)
                                     <option value="{{ $a }}" @selected($a === $anio)>Año: {{ $a }}</option>
                                 @endforeach
@@ -170,7 +170,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="centro" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="centro" onchange="this.form.submit()">
                                     <option value="">Todos los centros de costo</option>
                                     @foreach ($centros as $c)
                                         <option value="{{ $c->id_centro }}" @selected((int) ($filtros['centro'] ?? 0) === $c->id_centro)>{{ $c->etiqueta }}</option>
@@ -178,7 +178,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Todos los estados</option>
                                     @foreach ($estados as $codigo => [$nombre])
                                         <option value="{{ $codigo }}" @selected(($filtros['estado'] ?? '') === $codigo)>{{ $nombre }}</option>

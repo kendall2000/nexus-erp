@@ -176,7 +176,7 @@
                             <form method="POST" action="{{ route('empleados.salario', $e->id_empleado) }}" class="row g-2 border rounded p-2 mb-3">
                                 @csrf
                                 @if ($errors->salario->any())<div class="col-12 text-danger">{{ $errors->salario->first() }}</div>@endif
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="tipo_cambio">@foreach ($cambios as $c => $n)<option value="{{ $c }}" @selected(old('tipo_cambio') === $c)>{{ $n }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><select data-choices="data-choices" class="form-select form-select-sm" name="tipo_cambio">@foreach ($cambios as $c => $n)<option value="{{ $c }}" @selected(old('tipo_cambio') === $c)>{{ $n }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><input class="form-control form-control-sm" name="salario_nuevo" type="number" step="0.01" min="0.01" value="{{ old('salario_nuevo') }}" placeholder="Salario nuevo" required /></div>
                                 <div class="col-md-4"><input class="form-control form-control-sm" name="fecha_efectiva" type="date" value="{{ old('fecha_efectiva', now()->format('Y-m-d')) }}" required /></div>
                                 <div class="col-md-8"><input class="form-control form-control-sm" name="motivo" value="{{ old('motivo') }}" maxlength="300" placeholder="Motivo" required /></div>
@@ -189,13 +189,13 @@
                                 @if ($errors->contrato->any())<div class="col-12 text-danger">{{ $errors->contrato->first() }}</div>@endif
                                 @if ($cv)<div class="col-12 text-700">El contrato actual quedará como renovado.</div>@endif
                                 <div class="col-md-4"><input class="form-control form-control-sm text-uppercase" name="numero_contrato" value="{{ old('numero_contrato') }}" maxlength="50" placeholder="{{ $siguienteContrato }}" title="Número (vacío = automático)" /></div>
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="tipo">@foreach ($tipos as $c => $n)<option value="{{ $c }}" @selected(old('tipo', $e->tipo_contrato) === $c)>{{ $n }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><select class="form-select form-select-sm" name="jornada">@foreach ($jornadas as $c => $n)<option value="{{ $c }}" @selected(old('jornada') === $c)>{{ $n }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><select data-choices="data-choices" class="form-select form-select-sm" name="tipo">@foreach ($tipos as $c => $n)<option value="{{ $c }}" @selected(old('tipo', $e->tipo_contrato) === $c)>{{ $n }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><select data-choices="data-choices" class="form-select form-select-sm" name="jornada">@foreach ($jornadas as $c => $n)<option value="{{ $c }}" @selected(old('jornada') === $c)>{{ $n }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="fs--2 text-600">Inicio</label><input class="form-control form-control-sm" name="fecha_inicio" type="date" value="{{ old('fecha_inicio', ($cv ? now() : $e->fecha_ingreso)?->format('Y-m-d')) }}" required /></div>
                                 <div class="col-md-4"><label class="fs--2 text-600">Fin (si aplica)</label><input class="form-control form-control-sm" name="fecha_fin" type="date" value="{{ old('fecha_fin') }}" /></div>
                                 <div class="col-md-4"><label class="fs--2 text-600">Horas por semana</label><input class="form-control form-control-sm" name="horas_semana" type="number" min="1" max="72" value="{{ old('horas_semana', 44) }}" required /></div>
                                 <div class="col-md-5"><input class="form-control form-control-sm" name="salario_base" type="number" step="0.01" min="0.01" value="{{ old('salario_base', $cv?->salario_base ? (float) $cv->salario_base : '') }}" placeholder="Salario base mensual" required /></div>
-                                <div class="col-md-3"><select class="form-select form-select-sm" name="moneda">@foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected(old('moneda', $cv->moneda ?? 'GTQ') === $m->codigo)>{{ $m->codigo }}</option>@endforeach</select></div>
+                                <div class="col-md-3"><select data-choices="data-choices" class="form-select form-select-sm" name="moneda">@foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected(old('moneda', $cv->moneda ?? 'GTQ') === $m->codigo)>{{ $m->codigo }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><button class="btn btn-primary btn-sm w-100" type="submit">Guardar contrato</button></div>
                             </form>
                         </div>
@@ -238,7 +238,7 @@
                     <form method="POST" action="{{ route('empleados.documentos.store', $e->id_empleado) }}" enctype="multipart/form-data" class="row g-2 border rounded p-2 mb-3">
                         @csrf
                         @if ($errors->documento->any())<div class="col-12 text-danger">{{ $errors->documento->first() }}</div>@endif
-                        <div class="col-md-3"><label class="fs--2 text-600">Tipo</label><select class="form-select form-select-sm" name="tipo_documento">@foreach ($tiposDocumento as $c => $n)<option value="{{ $c }}" @selected(old('tipo_documento') === $c)>{{ $n }}</option>@endforeach</select></div>
+                        <div class="col-md-3"><label class="fs--2 text-600">Tipo</label><select data-choices="data-choices" class="form-select form-select-sm" name="tipo_documento">@foreach ($tiposDocumento as $c => $n)<option value="{{ $c }}" @selected(old('tipo_documento') === $c)>{{ $n }}</option>@endforeach</select></div>
                         <div class="col-md-4"><label class="fs--2 text-600">Nombre (vacío = el del archivo)</label><input class="form-control form-control-sm" name="nombre" value="{{ old('nombre') }}" maxlength="200" /></div>
                         <div class="col-md-5"><label class="fs--2 text-600">Archivo (PDF, imagen o Word, hasta 10 MB)</label><input class="form-control form-control-sm" name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" required /></div>
                         <div class="col-md-3"><label class="fs--2 text-600">Emisión</label><input class="form-control form-control-sm" name="fecha_emision" type="date" value="{{ old('fecha_emision') }}" /></div>

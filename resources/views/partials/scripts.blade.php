@@ -9,6 +9,7 @@
 <script src="{{ asset('vendors/feather-icons/feather.min.js') }}"></script>
 <script src="{{ asset('vendors/dayjs/dayjs.min.js') }}"></script>
 <script src="{{ asset('vendors/choices/choices.min.js') }}"></script>
+<script src="{{ asset('assets/js/selects-buscables.js') }}"></script>
 <script src="{{ asset('assets/js/phoenix.js') }}"></script>
 <script src="{{ asset('vendors/vue/vue.global.prod.js') }}"></script>
 <script src="{{ asset('assets/js/app-vue.js') }}"></script>

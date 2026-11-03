@@ -156,7 +156,7 @@
                             @csrf
                             <div class="col-12 col-md-5">
                                 <label class="form-label fs--2 mb-1 text-muted">Prospectos disponibles (Ctrl + clic para varios)</label>
-                                <select class="form-select form-select-sm" name="prospectos[]" multiple size="3" title="Prospectos">
+                                <select data-choices="data-choices" class="form-select form-select-sm" name="prospectos[]" multiple size="3" title="Prospectos">
                                     @foreach ($prospectos as $p)
                                         <option value="{{ $p->id_prospecto }}">{{ $p->nombre_empresa }} ({{ $p->nombre_contacto }})</option>
                                     @endforeach
@@ -164,7 +164,7 @@
                             </div>
                             <div class="col-12 col-md-5">
                                 <label class="form-label fs--2 mb-1 text-muted">Clientes registrados (Ctrl + clic para varios)</label>
-                                <select class="form-select form-select-sm" name="clientes[]" multiple size="3" title="Clientes">
+                                <select data-choices="data-choices" class="form-select form-select-sm" name="clientes[]" multiple size="3" title="Clientes">
                                     @foreach ($clientes as $cl)
                                         <option value="{{ $cl->id_cliente }}">{{ $cl->razon_social }}</option>
                                     @endforeach

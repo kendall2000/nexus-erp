@@ -198,13 +198,13 @@
             <form method="GET" action="{{ route('seguridad.index') }}#historial" class="row g-2 mb-3">
                 <div class="col-md-3"><input class="form-control form-control-sm" name="buscar" value="{{ $filtros['buscar'] ?? '' }}" placeholder="Usuario, correo o IP" maxlength="150" /></div>
                 <div class="col-md-3">
-                    <select class="form-select form-select-sm" name="usuario">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="usuario">
                         <option value="">Todos los usuarios</option>
                         @foreach ($usuarios as $u)<option value="{{ $u->id_usuario }}" @selected((int) ($filtros['usuario'] ?? 0) === $u->id_usuario)>{{ $u->nombre_completo }} ({{ $u->username }})</option>@endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" name="evento">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="evento">
                         <option value="">Todos los eventos</option>
                         @foreach ($eventos as $clave => $texto)
                             <option value="{{ $clave }}" @selected(($filtros['evento'] ?? '') === $clave)>{{ $texto }}</option>

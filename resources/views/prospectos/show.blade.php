@@ -101,7 +101,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fs--2 mb-1">Etapa de la oportunidad</label>
-                            <select class="form-select form-select-sm @error('id_etapa') is-invalid @enderror" name="id_etapa">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm @error('id_etapa') is-invalid @enderror" name="id_etapa">
                                 <option value="">Selecciona etapa...</option>
                                 @foreach ($etapas as $e)
                                     <option value="{{ $e->id_etapa }}">{{ $e->nombre }} ({{ $e->probabilidad_cierre }} %)</option>
@@ -110,7 +110,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fs--2 mb-1">Ejecutivo responsable</label>
-                            <select class="form-select form-select-sm @error('id_responsable') is-invalid @enderror" name="id_responsable">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm @error('id_responsable') is-invalid @enderror" name="id_responsable">
                                 <option value="">Selecciona vendedor...</option>
                                 @foreach ($vendedores as $v)
                                     <option value="{{ $v->id_empleado }}" @selected($p->id_asignado_a === $v->id_empleado)>{{ $v->nombre_completo }}</option>
@@ -228,7 +228,7 @@
                             @csrf
                             <div class="col-12 col-sm-6 col-md-3">
                                 <label class="form-label fs--2 mb-1">Canal</label>
-                                <select class="form-select form-select-sm" name="tipo">
+                                <select data-choices="data-choices" class="form-select form-select-sm" name="tipo">
                                     @foreach ($tipos as $k => $n)
                                         <option value="{{ $k }}" @selected(old('tipo') === $k)>{{ $n }}</option>
                                     @endforeach
@@ -236,7 +236,7 @@
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
                                 <label class="form-label fs--2 mb-1">Resultado</label>
-                                <select class="form-select form-select-sm" name="resultado">
+                                <select data-choices="data-choices" class="form-select form-select-sm" name="resultado">
                                     @foreach ($resultados as $k => $n)
                                         <option value="{{ $k }}" @selected(old('resultado') === $k)>{{ $n }}</option>
                                     @endforeach
@@ -248,7 +248,7 @@
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
                                 <label class="form-label fs--2 mb-1">Ejecutivo</label>
-                                <select class="form-select form-select-sm" name="id_realizado_por" required>
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_realizado_por" required>
                                     <option value="">Selecciona...</option>
                                     @foreach ($vendedores as $v)
                                         <option value="{{ $v->id_empleado }}" @selected((int) old('id_realizado_por', $p->id_asignado_a) === $v->id_empleado)>{{ $v->nombre_completo }}</option>

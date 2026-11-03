@@ -75,7 +75,7 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label" for="moneda">Moneda</label>
-                                        <select class="form-select" id="moneda" name="moneda" required>
+                                        <select data-choices="data-choices" class="form-select" id="moneda" name="moneda" required>
                                             @foreach ($monedas as $m)
                                                 <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }} — {{ $m->nombre }}</option>
                                             @endforeach
@@ -118,7 +118,7 @@
                                 <div class="row g-3">
                                     <div class="col-12">
                                         <label class="form-label" for="id_cuenta_gasto">Cuenta contable de gasto</label>
-                                        <select class="form-select" id="id_cuenta_gasto" name="id_cuenta_gasto">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_cuenta_gasto" name="id_cuenta_gasto">
                                             <option value="">Ninguna</option>
                                             @foreach ($cuentas as $c)
                                                 <option value="{{ $c->id_cuenta }}" @selected((int) $v('id_cuenta_gasto') === $c->id_cuenta)>{{ $c->codigo }} — {{ $c->nombre }}</option>
@@ -127,7 +127,7 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label" for="id_centro_default">Centro de costo predeterminado</label>
-                                        <select class="form-select" id="id_centro_default" name="id_centro_default">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_centro_default" name="id_centro_default">
                                             <option value="">Ninguno</option>
                                             @foreach ($centros as $c)
                                                 <option value="{{ $c->id_centro }}" @selected((int) $v('id_centro_default') === $c->id_centro)>{{ $c->codigo }} — {{ $c->nombre }}</option>
@@ -155,7 +155,7 @@
                                     </div>
                                     <div class="col-12 mb-3">
                                         <label class="form-label" for="id_categoria">Categoría</label>
-                                        <select class="form-select" id="id_categoria" name="id_categoria">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_categoria" name="id_categoria">
                                             <option value="">Sin categoría</option>
                                             @foreach ($categorias as $c)
                                                 <option value="{{ $c->id_categoria }}" @selected((int) $v('id_categoria') === $c->id_categoria)>{{ $c->nombre }}</option>
@@ -164,7 +164,7 @@
                                     </div>
                                     <div class="col-12 mb-3">
                                         <label class="form-label" for="unidad_medida">Unidad de Medida</label>
-                                        <select class="form-select" id="unidad_medida" name="unidad_medida" required>
+                                        <select data-choices="data-choices" class="form-select" id="unidad_medida" name="unidad_medida" required>
                                             @foreach ($unidades as $codigo => $nombre)
                                                 <option value="{{ $codigo }}" @selected($v('unidad_medida') === $codigo)>{{ $nombre }} ({{ $codigo }})</option>
                                             @endforeach

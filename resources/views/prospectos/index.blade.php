@@ -43,7 +43,7 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-2">
-                    <select class="form-select form-select-sm" name="estado">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="estado">
                         <option value="">Estado: Abiertos</option>
                         <option value="todos" @selected(($filtros['estado'] ?? '') === 'todos')>Todos los estados</option>
                         @foreach ($estados as $k => [$n])
@@ -52,7 +52,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <select class="form-select form-select-sm" name="temperatura">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="temperatura">
                         <option value="">Temperatura: Todas</option>
                         @foreach ($temperaturas as $k => [$n])
                             <option value="{{ $k }}" @selected(($filtros['temperatura'] ?? '') === $k)>{{ $n }}</option>
@@ -60,7 +60,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <select class="form-select form-select-sm" name="fuente">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="fuente">
                         <option value="">Fuente: Todas</option>
                         @foreach ($fuentes as $f)
                             <option value="{{ $f->id_fuente }}" @selected((int) ($filtros['fuente'] ?? 0) === $f->id_fuente)>{{ $f->nombre }}</option>
@@ -68,7 +68,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <select class="form-select form-select-sm" name="asignado">
+                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="asignado">
                         <option value="">Vendedor: Todos</option>
                         @foreach ($vendedores as $v)
                             <option value="{{ $v->id_empleado }}" @selected((int) ($filtros['asignado'] ?? 0) === $v->id_empleado)>{{ $v->nombre_completo }}</option>

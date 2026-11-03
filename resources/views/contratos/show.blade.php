@@ -125,7 +125,7 @@
                                 <div class="col-12"><input class="form-control form-control-sm" name="nombre" value="{{ old('nombre') }}" placeholder="Nombre del sitio" required maxlength="200" /></div>
                                 <div class="col-12"><input class="form-control form-control-sm" name="direccion" value="{{ old('direccion') }}" placeholder="Dirección" required maxlength="300" /></div>
                                 <div class="col-md-6">
-                                    <select class="form-select form-select-sm" name="id_municipio"><option value="">Municipio…</option>@foreach ($municipios as $m)<option value="{{ $m->id_municipio }}" @selected((int) old('id_municipio') === $m->id_municipio)>{{ $m->nombre }}</option>@endforeach</select>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_municipio"><option value="">Municipio…</option>@foreach ($municipios as $m)<option value="{{ $m->id_municipio }}" @selected((int) old('id_municipio') === $m->id_municipio)>{{ $m->nombre }}</option>@endforeach</select>
                                 </div>
                                 <div class="col-md-6"><input class="form-control form-control-sm" name="responsable_cliente" value="{{ old('responsable_cliente') }}" placeholder="Responsable del cliente" maxlength="200" /></div>
                                 <div class="col-md-6"><input class="form-control form-control-sm" name="tel_responsable" value="{{ old('tel_responsable') }}" placeholder="Teléfono" maxlength="20" /></div>
@@ -165,14 +165,14 @@
                             <form method="POST" action="{{ route('contratos.asignaciones.store', $c->id_contrato) }}" class="row g-2 mt-1">
                                 @csrf
                                 <div class="col-md-6">
-                                    <select class="form-select form-select-sm" name="id_empleado" required><option value="">Empleado…</option>@foreach ($empleados as $e)<option value="{{ $e->id_empleado }}" @selected((int) old('id_empleado') === $e->id_empleado)>{{ $e->nombre_completo }}</option>@endforeach</select>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_empleado" required><option value="">Empleado…</option>@foreach ($empleados as $e)<option value="{{ $e->id_empleado }}" @selected((int) old('id_empleado') === $e->id_empleado)>{{ $e->nombre_completo }}</option>@endforeach</select>
                                 </div>
                                 <div class="col-md-6">
-                                    <select class="form-select form-select-sm" name="id_sitio"><option value="">Sin sitio</option>@foreach ($sitios as $s)<option value="{{ $s->id_sitio }}" @selected((int) old('id_sitio') === $s->id_sitio)>{{ $s->nombre }}</option>@endforeach</select>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_sitio"><option value="">Sin sitio</option>@foreach ($sitios as $s)<option value="{{ $s->id_sitio }}" @selected((int) old('id_sitio') === $s->id_sitio)>{{ $s->nombre }}</option>@endforeach</select>
                                 </div>
                                 <div class="col-md-6"><input class="form-control form-control-sm" name="rol_en_sitio" value="{{ old('rol_en_sitio') }}" placeholder="Rol (ej.: agente, supervisor)" maxlength="150" /></div>
                                 <div class="col-md-6">
-                                    <select class="form-select form-select-sm" name="turno"><option value="">Turno…</option>@foreach ($turnos as $k => $n)<option value="{{ $k }}" @selected(old('turno') === $k)>{{ $n }}</option>@endforeach</select>
+                                    <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="turno"><option value="">Turno…</option>@foreach ($turnos as $k => $n)<option value="{{ $k }}" @selected(old('turno') === $k)>{{ $n }}</option>@endforeach</select>
                                 </div>
                                 <div class="col-md-4"><input class="form-control form-control-sm" name="fecha_inicio" type="date" value="{{ old('fecha_inicio', ($c->fecha_inicio->gt(today()) ? $c->fecha_inicio : today())->format('Y-m-d')) }}" required /></div>
                                 <div class="col-md-4"><input class="form-control form-control-sm" name="fecha_fin" type="date" value="{{ old('fecha_fin') }}" /></div>

@@ -70,7 +70,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="tipo_proveedor">Tipo de Proveedor</label>
-                                        <select class="form-select" id="tipo_proveedor" name="tipo_proveedor" required>
+                                        <select data-choices="data-choices" class="form-select" id="tipo_proveedor" name="tipo_proveedor" required>
                                             @foreach ($tipos as $codigo => $nombre)
                                                 <option value="{{ $codigo }}" @selected($v('tipo_proveedor') === $codigo)>{{ $nombre }}</option>
                                             @endforeach
@@ -78,7 +78,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="id_pais">País de Origen</label>
-                                        <select class="form-select" id="id_pais" name="id_pais" required>
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_pais" name="id_pais" required>
                                             <option value="">Selecciona un país…</option>
                                             @foreach ($paises as $p)
                                                 <option value="{{ $p->id_pais }}" @selected((int) $v('id_pais') === $p->id_pais)>{{ $p->nombre }}</option>
@@ -122,7 +122,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="moneda_pago">Moneda de Pago</label>
-                                        <select class="form-select" id="moneda_pago" name="moneda_pago" required>
+                                        <select data-choices="data-choices" class="form-select" id="moneda_pago" name="moneda_pago" required>
                                             @foreach ($monedas as $m)
                                                 <option value="{{ $m->codigo }}" @selected($v('moneda_pago') === $m->codigo)>{{ $m->codigo }} — {{ $m->nombre }}</option>
                                             @endforeach

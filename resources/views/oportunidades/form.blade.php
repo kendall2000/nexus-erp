@@ -68,7 +68,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="id_linea">Línea de negocio</label>
-                                <select class="form-select" id="id_linea" name="id_linea">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_linea" name="id_linea">
                                     <option value="">— General —</option>
                                     @foreach ($lineas as $l)
                                         <option value="{{ $l->id_linea }}" @selected((int) $v('id_linea') === $l->id_linea)>{{ $l->nombre }}</option>
@@ -102,7 +102,7 @@
                         @unless ($o->exists)
                             <div class="mb-3">
                                 <label class="form-label" for="id_etapa">Etapa inicial <span class="text-danger">*</span></label>
-                                <select class="form-select @error('id_etapa') is-invalid @enderror" id="id_etapa" name="id_etapa" required>
+                                <select data-choices="data-choices" class="form-select @error('id_etapa') is-invalid @enderror" id="id_etapa" name="id_etapa" required>
                                     @foreach ($etapas as $e)
                                         <option value="{{ $e->id_etapa }}" data-probabilidad="{{ $e->probabilidad_cierre }}" @selected((int) old('id_etapa') === $e->id_etapa)>{{ $e->nombre }}</option>
                                     @endforeach
@@ -115,7 +115,7 @@
                             <label class="form-label" for="valor_estimado">Valor estimado <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input class="form-control" id="valor_estimado" name="valor_estimado" type="number" step="0.01" min="0" value="{{ $v('valor_estimado') !== null ? (float) $v('valor_estimado') : '' }}" required placeholder="0.00" />
-                                <select class="form-select" id="moneda" name="moneda" style="max-width: 90px;">
+                                <select data-choices="data-choices" class="form-select" id="moneda" name="moneda" style="max-width: 90px;">
                                     @foreach ($monedas as $m)
                                         <option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>
                                     @endforeach

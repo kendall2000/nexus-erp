@@ -77,14 +77,14 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="tipo_persona">Tipo de Persona</label>
-                                        <select class="form-select" id="tipo_persona" name="tipo_persona" required>
+                                        <select data-choices="data-choices" class="form-select" id="tipo_persona" name="tipo_persona" required>
                                             <option value="JURIDICA" @selected($v('tipo_persona') === 'JURIDICA')>Persona Jurídica (Empresa)</option>
                                             <option value="NATURAL" @selected($v('tipo_persona') === 'NATURAL')>Persona Natural (Individual)</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="id_industria">Industria / Sector</label>
-                                        <select class="form-select" id="id_industria" name="id_industria">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_industria" name="id_industria">
                                             <option value="">Selecciona industria…</option>
                                             @foreach ($industrias as $i)
                                                 <option value="{{ $i->id_industria }}" @selected((int) $v('id_industria') === $i->id_industria)>{{ $i->nombre }}</option>
@@ -93,7 +93,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="segmento">Segmento Comercial</label>
-                                        <select class="form-select" id="segmento" name="segmento">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="segmento" name="segmento">
                                             <option value="">Selecciona segmento…</option>
                                             @foreach ($segmentos as $codigo => $nombre)
                                                 <option value="{{ $codigo }}" @selected($v('segmento') === $codigo)>{{ $nombre }}</option>
@@ -102,7 +102,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="categoria">Categoría</label>
-                                        <select class="form-select" id="categoria" name="categoria">
+                                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="categoria" name="categoria">
                                             <option value="">Selecciona categoría…</option>
                                             @foreach ($categorias as $cat)
                                                 <option value="{{ $cat }}" @selected($v('categoria') === $cat)>Categoría {{ $cat }}</option>
@@ -145,7 +145,7 @@
                                 <div class="row g-3">
                                     <div class="col-12 col-lg-4">
                                         <label class="form-label" for="moneda_facturacion">Moneda de Facturación</label>
-                                        <select class="form-select" id="moneda_facturacion" name="moneda_facturacion" required>
+                                        <select data-choices="data-choices" class="form-select" id="moneda_facturacion" name="moneda_facturacion" required>
                                             @foreach ($monedas as $m)
                                                 <option value="{{ $m->codigo }}" @selected($v('moneda_facturacion') === $m->codigo)>{{ $m->codigo }} — {{ $m->nombre }}</option>
                                             @endforeach

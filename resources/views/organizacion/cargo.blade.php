@@ -11,12 +11,12 @@
     <input type="hidden" name="id" value="{{ $c->id_cargo }}" />
     <div class="col-md-6"><input class="form-control form-control-sm" name="nombre" value="{{ $v('nombre') }}" placeholder="Nombre del cargo" required maxlength="150" /></div>
     <div class="col-md-3">
-        <select class="form-select form-select-sm" name="nivel_jerarquico" title="Nivel">
+        <select data-choices="data-choices" class="form-select form-select-sm" name="nivel_jerarquico" title="Nivel">
             @foreach ($niveles as $n => $nombre)<option value="{{ $n }}" @selected((int) $v('nivel_jerarquico') === $n)>{{ $nombre }}</option>@endforeach
         </select>
     </div>
     <div class="col-md-3">
-        <select class="form-select form-select-sm" name="id_depto_org" title="Departamento">
+        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select form-select-sm" name="id_depto_org" title="Departamento">
             <option value="">Sin departamento</option>
             @foreach ($departamentos as $d)<option value="{{ $d->id_depto_org }}" @selected((int) $v('id_depto_org') === $d->id_depto_org)>{{ $d->nombre }}</option>@endforeach
         </select>
@@ -24,7 +24,7 @@
     <div class="col-md-4"><input class="form-control form-control-sm" name="salario_min" type="number" step="0.01" min="0" value="{{ $v('salario_min') !== null ? (float) $v('salario_min') : '' }}" placeholder="Salario mínimo" /></div>
     <div class="col-md-4"><input class="form-control form-control-sm" name="salario_max" type="number" step="0.01" min="0" value="{{ $v('salario_max') !== null ? (float) $v('salario_max') : '' }}" placeholder="Salario máximo" /></div>
     <div class="col-md-4">
-        <select class="form-select form-select-sm" name="moneda">@foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>@endforeach</select>
+        <select data-choices="data-choices" class="form-select form-select-sm" name="moneda">@foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>@endforeach</select>
     </div>
     <div class="col-12"><input class="form-control form-control-sm" name="descripcion" value="{{ $v('descripcion') }}" placeholder="Funciones (opcional)" maxlength="2000" /></div>
     <div class="col-12 d-flex align-items-center gap-3">

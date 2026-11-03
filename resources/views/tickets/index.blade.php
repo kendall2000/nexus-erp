@@ -91,7 +91,7 @@
                     <div class="col-auto scrollbar overflow-hidden-y flex-grow-1">
                         <div class="btn-group position-static" role="group">
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="estado" onchange="this.form.submit()">
                                     <option value="">Abiertos</option>
                                     <option value="todos" @selected(($filtros['estado'] ?? '') === 'todos')>Todos los estados</option>
                                     @foreach ($estados as $codigo => [$nombre])
@@ -100,7 +100,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="prioridad" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="prioridad" onchange="this.form.submit()">
                                     <option value="">Toda prioridad</option>
                                     @foreach ($prioridades as $codigo => [$nombre])
                                         <option value="{{ $codigo }}" @selected(($filtros['prioridad'] ?? '') === $codigo)>{{ $nombre }}</option>
@@ -108,7 +108,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="cliente" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="cliente" onchange="this.form.submit()">
                                     <option value="">Todos los clientes</option>
                                     @foreach ($clientes as $c)
                                         <option value="{{ $c->id_cliente }}" @selected((int) ($filtros['cliente'] ?? 0) === $c->id_cliente)>{{ $c->razon_social }}</option>
@@ -116,7 +116,7 @@
                                 </select>
                             </div>
                             <div class="btn-group position-static text-nowrap">
-                                <select class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="asignado" onchange="this.form.submit()">
+                                <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select btn-phoenix-secondary px-4 flex-shrink-0" name="asignado" onchange="this.form.submit()">
                                     <option value="">Cualquier agente</option>
                                     <option value="ninguno" @selected(($filtros['asignado'] ?? '') === 'ninguno')>Sin asignar</option>
                                     @foreach ($agentes as $a)

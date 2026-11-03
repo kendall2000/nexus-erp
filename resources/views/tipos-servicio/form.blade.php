@@ -23,7 +23,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-5">
                         <label class="form-label" for="id_linea">Línea de negocio</label>
-                        <select class="form-select @error('id_linea') is-invalid @enderror" id="id_linea" name="id_linea" required>
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_linea') is-invalid @enderror" id="id_linea" name="id_linea" required>
                             <option value="">Selecciona…</option>
                             @foreach ($lineas as $l)<option value="{{ $l->id_linea }}" @selected((int) $v('id_linea') === $l->id_linea)>{{ $l->nombre }}</option>@endforeach
                         </select>
@@ -43,13 +43,13 @@
                     <div class="col-md-4"><label class="form-label" for="precio_base">Precio base</label><input class="form-control" id="precio_base" name="precio_base" type="number" step="0.01" min="0" value="{{ $v('precio_base') !== null ? (float) $v('precio_base') : '' }}" /></div>
                     <div class="col-md-4">
                         <label class="form-label" for="moneda">Moneda</label>
-                        <select class="form-select" id="moneda" name="moneda" required>
+                        <select data-choices="data-choices" class="form-select" id="moneda" name="moneda" required>
                             @foreach ($monedas as $m)<option value="{{ $m->codigo }}" @selected($v('moneda') === $m->codigo)>{{ $m->codigo }}</option>@endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="id_cuenta_ingreso">Cuenta de ingreso</label>
-                        <select class="form-select @error('id_cuenta_ingreso') is-invalid @enderror" id="id_cuenta_ingreso" name="id_cuenta_ingreso">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_cuenta_ingreso') is-invalid @enderror" id="id_cuenta_ingreso" name="id_cuenta_ingreso">
                             <option value="">Sin cuenta</option>
                             @foreach ($cuentas as $c)<option value="{{ $c->id_cuenta }}" @selected((int) $v('id_cuenta_ingreso') === $c->id_cuenta)>{{ $c->etiqueta }}</option>@endforeach
                         </select>
@@ -57,7 +57,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="id_centro_default">Centro de costo</label>
-                        <select class="form-select" id="id_centro_default" name="id_centro_default">
+                        <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_centro_default" name="id_centro_default">
                             <option value="">Sin centro</option>
                             @foreach ($centros as $c)<option value="{{ $c->id_centro }}" @selected((int) $v('id_centro_default') === $c->id_centro)>{{ $c->etiqueta }}</option>@endforeach
                         </select>

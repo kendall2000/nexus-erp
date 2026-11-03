@@ -34,7 +34,7 @@
                         @csrf
                         <div class="col-md-4">
                             <label class="form-label" for="id_rotativo">Rotativo</label>
-                            <select class="form-select {{ $invalido('id_rotativo') }}" id="id_rotativo" name="id_rotativo" required>
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select {{ $invalido('id_rotativo') }}" id="id_rotativo" name="id_rotativo" required>
                                 <option value="">Elegir…</option>
                                 @foreach ($rotativos as $r)<option value="{{ $r->id_empleado }}" @selected((int) old('id_rotativo') === $r->id_empleado)>{{ $r->nombre_completo }}{{ $r->tarifa_dia ? ' · '.$dinero($r->tarifa_dia).' / día' : '' }}</option>@endforeach
                             </select>
@@ -42,13 +42,13 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label" for="motivo">Motivo</label>
-                            <select class="form-select" id="motivo" name="motivo">
+                            <select data-choices="data-choices" class="form-select" id="motivo" name="motivo">
                                 @foreach ($motivos as $k => $n)<option value="{{ $k }}" @selected(old('motivo') === $k)>{{ $n }}</option>@endforeach
                             </select>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label" for="id_titular">Cubre a</label>
-                            <select class="form-select {{ $invalido('id_titular') }}" id="id_titular" name="id_titular">
+                            <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select {{ $invalido('id_titular') }}" id="id_titular" name="id_titular">
                                 <option value="">— (puesto vacante)</option>
                                 @foreach ($titulares as $t)<option value="{{ $t->id_empleado }}" @selected((int) old('id_titular') === $t->id_empleado)>{{ $t->nombre_completo }}{{ $t->cargo ? ' · '.$t->cargo->nombre : '' }}</option>@endforeach
                             </select>
