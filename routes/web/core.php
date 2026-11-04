@@ -19,15 +19,17 @@ Route::delete('cuenta/sesiones', [CuentaSeguridadController::class, 'cerrarSesio
 // ── Seguridad y accesos (solo administrador) ────────────────────
 Route::middleware('admin')->group(function () {
     Route::get('sistema/seguridad', [SeguridadController::class, 'index'])->name('seguridad.index');
-    Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->name('seguridad.guardar');
+    Route::put('sistema/seguridad', [SeguridadController::class, 'guardar'])->middleware('admin:general')->name('seguridad.guardar');
     Route::put('sistema/seguridad/roles', [SeguridadController::class, 'roles'])->name('seguridad.roles');
-    Route::put('sistema/seguridad/contrasenas', [SeguridadController::class, 'contrasenas'])->name('seguridad.contrasenas');
+    Route::put('sistema/seguridad/contrasenas', [SeguridadController::class, 'contrasenas'])->middleware('admin:general')->name('seguridad.contrasenas');
     Route::post('sistema/seguridad/desbloquear', [SeguridadController::class, 'desbloquear'])->name('seguridad.desbloquear');
     Route::get('sistema/seguridad/exportar', [SeguridadController::class, 'exportar'])->name('seguridad.exportar');
 
-    // Configuración del sistema
-    Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
-    Route::put('sistema/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
+    // Configuración del sistema (la comparten todas las empresas: solo el administrador general)
+    Route::middleware('admin:general')->group(function () {
+        Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
+        Route::put('sistema/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
+    });
 
     // Sucursales
     Route::prefix('sistema/sucursales')->name('sucursales.')->controller(SucursalController::class)->group(function () {
@@ -41,7 +43,7 @@ Route::middleware('admin')->group(function () {
     });
 
     // Geografía (catálogo compartido): {tipo} = pais | division | municipio
-    Route::prefix('sistema/geografia')->name('geografia.')->controller(GeografiaController::class)
+    Route::prefix('sistema/geografia')->middleware('admin:general')->name('geografia.')->controller(GeografiaController::class)
         ->where(['tipo' => 'pais|division|municipio', 'id' => '[0-9]+'])->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('{tipo}', 'store')->name('store');
@@ -53,7 +55,7 @@ Route::middleware('admin')->group(function () {
 
     // Módulos (menú lateral y acciones de los permisos)
     Route::redirect('sistema/menu', '/sistema/modulos');
-    Route::prefix('sistema/modulos')->name('modulos.')->controller(ModuloController::class)->group(function () {
+    Route::prefix('sistema/modulos')->middleware('admin:general')->name('modulos.')->controller(ModuloController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('nuevo', 'create')->name('create');
         Route::post('/', 'store')->name('store');

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
  */
 class MenuLateral
 {
+    /** Rutas de lo que comparten todas las empresas (ver Usuario::esAdministradorGeneral). */
+    public const SOLO_GENERAL = ['sistema/configuracion', 'sistema/modulos', 'sistema/geografia'];
+
     /** @return Collection<int, array{nombre: string, items: Collection}> */
     public static function para(?Usuario $usuario): Collection
     {
@@ -26,7 +29,10 @@ class MenuLateral
         $conVer = DB::table('permiso')->join('accion', 'accion.id_accion', '=', 'permiso.id_accion')
             ->where('accion.codigo', 'ver')->pluck('permiso.id_modulo')->map(fn ($id) => (int) $id)->all();
 
-        $visible = fn (Modulo $m) => $esAdmin || (in_array($m->id_modulo, $conVer, true) && $usuario->puede($m->codigo.'.ver'));
+        // Las pantallas que comparten todas las empresas solo las ve el administrador general.
+        $general = $esAdmin && $usuario->esAdministradorGeneral();
+        $visible = fn (Modulo $m) => ($esAdmin && ($general || ! in_array(trim((string) $m->ruta, '/'), self::SOLO_GENERAL, true)))
+            || (in_array($m->id_modulo, $conVer, true) && $usuario->puede($m->codigo.'.ver'));
 
         $construirArbol = function (Modulo $m) use (&$construirArbol, $modulos, $visible) {
             $hijosDirectos = $modulos->where('id_modulo_padre', $m->id_modulo);
@@ -87,4 +93,3 @@ class MenuLateral
         // Si se implementa cache por usuario se borra aquí.
     }
 }
-

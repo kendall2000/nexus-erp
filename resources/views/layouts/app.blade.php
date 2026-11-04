@@ -277,7 +277,7 @@
                                             </a>
                                         </div>
                                     @endif
-                                    @if ($usuario->esAdministrador())
+                                    @if ($usuario->esAdministradorGeneral())
                                         <div class="col-4">
                                             <a class="d-block hover-bg-200 p-2 rounded-3 text-center text-decoration-none mb-2" href="{{ route('configuracion.edit') }}">
                                                 <span class="d-inline-flex flex-center rounded-circle bg-soft-info text-info" style="width:2.5rem;height:2.5rem;"><span data-feather="settings" style="width:18px;height:18px;"></span></span>
@@ -323,7 +323,9 @@
                                     <li class="nav-item"><a class="nav-link px-3" href="{{ route('cuenta.seguridad') }}"><span class="me-2 text-900" data-feather="lock"></span><span>Seguridad de mi cuenta</span></a></li>
                                     @if ($usuario->esAdministrador())
                                         <li class="nav-item"><a class="nav-link px-3" href="{{ route('seguridad.index') }}"><span class="me-2 text-900" data-feather="shield"></span><span>Seguridad y accesos</span></a></li>
-                                        <li class="nav-item"><a class="nav-link px-3" href="{{ route('configuracion.edit') }}"><span class="me-2 text-900" data-feather="settings"></span><span>Configuración del sistema</span></a></li>
+                                        @if ($usuario->esAdministradorGeneral())
+                                            <li class="nav-item"><a class="nav-link px-3" href="{{ route('configuracion.edit') }}"><span class="me-2 text-900" data-feather="settings"></span><span>Configuración del sistema</span></a></li>
+                                        @endif
                                     @endif
                                 </ul>
                             </div>

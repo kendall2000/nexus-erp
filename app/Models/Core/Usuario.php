@@ -5,11 +5,11 @@ namespace App\Models\Core;
 use App\Models\Concerns\PerteneceAEmpresa;
 use App\Support\MatrizPermisos;
 use App\Support\Sistema;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
@@ -160,6 +160,21 @@ class Usuario extends Authenticatable
         return $this->roles()
             ->where('rol.activo', true)
             ->whereIn('rol.id_empresa', array_unique([$this->idEmpresaPrincipal(), (int) $this->id_empresa]))
+            ->pluck('rol.nombre')
+            ->contains(fn ($nombre) => Rol::esNombreDeAccesoTotal((string) $nombre));
+    }
+
+    /**
+     * Acceso total en su empresa principal: administra toda la organización (las 4 empresas).
+     * Solo él cambia lo que comparten todas: configuración del sistema, reglas de sesión y de
+     * contraseñas, módulos, geografía y los accesos a otras empresas. Quien tiene acceso
+     * total solo en otra empresa administra esa empresa, no lo compartido.
+     */
+    public function esAdministradorGeneral(): bool
+    {
+        return $this->roles()
+            ->where('rol.activo', true)
+            ->where('rol.id_empresa', $this->idEmpresaPrincipal())
             ->pluck('rol.nombre')
             ->contains(fn ($nombre) => Rol::esNombreDeAccesoTotal((string) $nombre));
     }

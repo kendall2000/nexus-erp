@@ -344,13 +344,13 @@ class UsuarioController extends Controller
 
     /**
      * Otras empresas a las que el administrador puede dar acceso (las suyas, menos la actual),
-     * con sus roles activos y el rol que ya tiene el usuario en cada una. Solo para quien tiene
-     * acceso total y nunca sobre su propia cuenta.
+     * con sus roles activos y el rol que ya tiene el usuario en cada una. Solo el administrador
+     * general (el de una sola empresa podría crear administradores en otra) y nunca sobre su propia cuenta.
      */
     private function otrasEmpresas(Request $request, ?Usuario $usuario = null)
     {
         $yo = $request->user();
-        if (! $yo->esAdministrador() || ($usuario && $usuario->is($yo))) {
+        if (! $yo->esAdministradorGeneral() || ($usuario && $usuario->is($yo))) {
             return collect();
         }
         $idActual = $this->idEmpresa($request);
@@ -396,6 +396,7 @@ class UsuarioController extends Controller
             $this->asignarRol($request, $usuario, $idEmpresa, $idRol);
         }
     }
+
     /** Roles que puedo asignar (más el que ya tiene el usuario, para no perderlo al guardar). */
     private function roles(Request $request, ?int $actual = null)
     {

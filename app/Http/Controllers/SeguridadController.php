@@ -37,6 +37,7 @@ class SeguridadController extends Controller
         return view('seguridad.index', [
             'config' => Seguridad::config(),
             'politica' => Contrasenas::politica(),
+            'esGeneral' => $request->user()->esAdministradorGeneral(),
             'roles' => Rol::query()->where('id_empresa', $idEmpresa)->withCount('usuarios')->orderBy('nombre')->get(),
             'accesos' => $this->filtrados($request)->with('usuario:id_usuario,nombre_completo')->orderByDesc('id_auditoria')->paginate(25)->withQueryString(),
             'eventos' => AuditoriaAcceso::EVENTOS,

@@ -102,9 +102,11 @@
             <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-3">Reglas de inicio de sesión</h4>
+                    @include('seguridad.solo-general')
                     <form method="POST" action="{{ route('seguridad.guardar') }}">
                         @csrf
                         @method('PUT')
+                        <fieldset @disabled(! $esGeneral)>
                         <div class="mb-3">
                             <label class="form-label" for="max_intentos">Intentos fallidos antes del bloqueo</label>
                             <input class="form-control" id="max_intentos" name="max_intentos" type="number" min="1" max="20" value="{{ old('max_intentos', $config['intentos']) }}" required />
@@ -119,6 +121,7 @@
                             <input class="form-control" id="sesion_expira_min" name="sesion_expira_min" type="number" min="5" max="1440" value="{{ old('sesion_expira_min', $config['expira']) }}" required />
                         </div>
                         <button class="btn btn-primary" type="submit">Guardar</button>
+                        </fieldset>
                     </form>
                 </div>
             </div>
@@ -157,9 +160,11 @@
         <div class="card-body">
             <h4 class="mb-2">Política de contraseñas</h4>
             <p class="text-700 fs--1">Se aplica al cambiar o recuperar la contraseña y cuando un administrador la pone. Las contraseñas actuales siguen valiendo hasta que se cambien o venzan.</p>
+            @include('seguridad.solo-general')
             <form method="POST" action="{{ route('seguridad.contrasenas') }}">
                 @csrf
                 @method('PUT')
+                <fieldset @disabled(! $esGeneral)>
                 <div class="row g-3 align-items-end">
                     <div class="col-sm-4 col-xl-2">
                         <label class="form-label" for="minimo">Largo mínimo</label>
@@ -185,6 +190,7 @@
                     <div class="col-xl-2"><button class="btn btn-primary w-100" type="submit">Guardar</button></div>
                 </div>
                 <div class="form-text mt-2">0 días = no vence · 0 = se puede repetir. Regla actual: {{ \App\Support\Contrasenas::requisitos() }}</div>
+                </fieldset>
             </form>
         </div>
     </div>
