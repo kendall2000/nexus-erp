@@ -38,7 +38,7 @@
             <div class="card border border-300 shadow-none h-100">
                 <div class="card-body">
                     <h4 class="mb-2">Bloqueos vigentes</h4>
-                    <p class="text-700 fs--1">Usuario (o correo) + IP que agotaron los {{ $config['intentos'] }} intentos. El bloqueo vence solo a los {{ $config['bloqueo'] }} minutos; puedes quitarlo antes si confirmaste que es la persona.</p>
+                    <p class="text-700 fs--1">Usuario (o correo) + IP que agotaron los {{ $config['intentos'] }} intentos, y cuentas bloqueadas en todas las IPs tras {{ \App\Support\Seguridad::intentosCuenta() }} fallidos desde cualquier lugar. El bloqueo vence solo a los {{ $config['bloqueo'] }} minutos; puedes quitarlo antes si confirmaste que es la persona.</p>
                     <div class="table-responsive">
                         <table class="table table-sm fs--1 mb-0 align-middle">
                             <thead><tr><th>Usuario</th><th>IP</th><th class="text-end">Intentos</th><th>Vence en</th><th></th></tr></thead>
@@ -49,7 +49,7 @@
                                         {{ $b->login }}
                                         @if ($b->id_usuario === null)<span class="badge badge-phoenix badge-phoenix-secondary ms-1" title="Nadie tiene ese usuario o correo">No existe</span>@endif
                                     </td>
-                                    <td>{{ $b->ip }}</td>
+                                    <td>@if ($b->ip === null)<span class="badge badge-phoenix badge-phoenix-danger" title="La cuenta está bloqueada desde cualquier IP">Todas</span>@else{{ $b->ip }}@endif</td>
                                     <td class="text-end">{{ $b->fallidos }}</td>
                                     <td class="text-nowrap">{{ $tiempo($b->segundos) }}</td>
                                     <td class="text-end">
@@ -112,7 +112,7 @@
                         <div class="mb-3">
                             <label class="form-label" for="bloqueo_minutos">Minutos de bloqueo</label>
                             <input class="form-control" id="bloqueo_minutos" name="bloqueo_minutos" type="number" min="1" max="1440" value="{{ old('bloqueo_minutos', $config['bloqueo']) }}" required />
-                            <div class="form-text">El bloqueo es por usuario (o correo) + IP.</div>
+                            <div class="form-text">El bloqueo es por cuenta + IP; con el doble de fallidos desde cualquier IP se bloquea la cuenta.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="sesion_expira_min">Cerrar la sesión tras (minutos sin actividad)</label>

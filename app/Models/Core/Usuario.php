@@ -250,24 +250,6 @@ class Usuario extends Authenticatable
         return $this->esAdmin ??= $this->esAdministrador();
     }
 
-    public function registrarLogin(): void
-    {
-        $this->update([
-            'ultimo_login' => now(),
-            'intentos_fallidos' => 0,
-            'bloqueado_hasta' => null,
-        ]);
-    }
-
-    public function registrarLoginFallido(): void
-    {
-        $intentos = $this->intentos_fallidos + 1;
-        $this->update([
-            'intentos_fallidos' => $intentos,
-            'bloqueado_hasta' => $intentos >= 5 ? now()->addMinutes(30) : null,
-        ]);
-    }
-
     // ── Scopes ──────────────────────────────────────────────────────────────
 
     public function scopeActivos($query)

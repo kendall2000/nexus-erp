@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // «Recordar sesión» dura 30 días (Laravel trae 400 por defecto).
+            'remember' => (int) env('AUTH_REMEMBER_MINUTOS', 43200),
         ],
     ],
 

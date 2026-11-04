@@ -96,6 +96,17 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3 mb-3">
+                            @if ($usuario->exists && $usuario->id_usuario === auth()->id())
+                                <div class="col-12">
+                                    <label class="form-label" for="password_actual">Contraseña actual</label>
+                                    <div class="form-icon-container">
+                                        <input class="form-control form-icon-input @error('password_actual') is-invalid @enderror" id="password_actual" name="password_actual" type="password" autocomplete="current-password" placeholder="••••••••••••" />
+                                        <span class="fas fa-lock text-900 fs--1 form-icon"></span>
+                                    </div>
+                                    <div class="form-text fs--2 mt-1">Necesaria solo si cambias tu contraseña, tu usuario o tu correo.</div>
+                                    @error('password_actual')<div class="text-danger fs--2 mt-1">{{ $message }}</div>@enderror
+                                </div>
+                            @endif
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="password">{{ $usuario->exists ? 'Nueva contraseña (opcional)' : 'Contraseña de acceso *' }}</label>
                                 <div class="form-icon-container">

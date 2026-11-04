@@ -42,7 +42,7 @@ class SeguridadController extends Controller
             'eventos' => AuditoriaAcceso::EVENTOS,
             'usuarios' => Usuario::withTrashed()->where('id_empresa', $idEmpresa)->orderBy('nombre_completo')->get(['id_usuario', 'nombre_completo', 'username']),
             'resumen' => $resumen,
-            'bloqueos' => Seguridad::bloqueos(fn ($q) => $this->soloMiEmpresa($q, $request)),
+            'bloqueos' => Seguridad::bloqueos(fn ($q) => $this->soloMiEmpresa($q, $request), $idEmpresa),
             'ipsSospechosas' => $this->deMiEmpresa($request)->whereIn('accion', ['LOGIN_FAIL', 'LOGIN_FAIL_2FA', 'BLOQUEO'])
                 ->where('created_at', '>=', now()->subDays(7))->whereNotNull('ip_address')
                 ->groupBy('ip_address')->selectRaw('ip_address, COUNT(*) AS intentos, COUNT(DISTINCT username_intento) AS cuentas, MAX(created_at) AS ultimo')
@@ -54,17 +54,19 @@ class SeguridadController extends Controller
     /** Quita un bloqueo vigente por intentos fallidos (usuario/correo + IP). */
     public function desbloquear(Request $request): RedirectResponse
     {
-        $datos = $request->validate(['login' => ['required', 'string', 'max:60'], 'ip' => ['required', 'string', 'max:45']]);
-        $bloqueo = Seguridad::bloqueos(fn ($q) => $this->soloMiEmpresa($q, $request))
+        $datos = $request->validate(['login' => ['required', 'string', 'max:60'], 'ip' => ['nullable', 'string', 'max:45']]);
+        $datos['ip'] ??= null;
+        $bloqueo = Seguridad::bloqueos(fn ($q) => $this->soloMiEmpresa($q, $request), $this->idEmpresa($request))
             ->first(fn ($b) => $b->login === $datos['login'] && $b->ip === $datos['ip']);
         if (! $bloqueo) {
             return back()->with('aviso', 'Ese bloqueo ya no está vigente.');
         }
 
         Seguridad::desbloquear($bloqueo->login, $bloqueo->ip);
-        Seguridad::registrar('DESBLOQUEO', $bloqueo->login, $bloqueo->id_usuario, "Por {$request->user()->username} (IP {$bloqueo->ip})");
+        $donde = $bloqueo->ip === null ? 'en todas las IPs' : "desde {$bloqueo->ip}";
+        Seguridad::registrar('DESBLOQUEO', $bloqueo->login, $bloqueo->id_usuario, "Por {$request->user()->username} ({$donde})");
 
-        return back()->with('status', "Se quitó el bloqueo de {$bloqueo->login} desde {$bloqueo->ip}.");
+        return back()->with('status', "Se quitó el bloqueo de {$bloqueo->login} {$donde}.");
     }
 
     public function exportar(Request $request): StreamedResponse

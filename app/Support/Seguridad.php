@@ -29,9 +29,6 @@ class Seguridad
 {
     private const CACHE = 'config_seguridad';
 
-    /** Minutos de la cookie de «Recordar sesión» (los mismos que usa Laravel por defecto). */
-    private const DURACION_RECORDAR = 576000;
-
     /** @return array{intentos: int, bloqueo: int, expira: int, zona: string} */
     public static function config(): array
     {
@@ -68,14 +65,24 @@ class Seguridad
      */
     public static function buscarUsuario(?string $login): ?Usuario
     {
-        $login = trim((string) $login);
+        $login = self::normalizarLogin($login);
         if ($login === '') {
             return null;
         }
 
         return Usuario::query()
-            ->where(str_contains($login, '@') ? 'email' : 'username', mb_strtolower($login))
+            ->where(str_contains($login, '@') ? 'email' : 'username', $login)
             ->first();
+    }
+
+    /**
+     * Usuario o correo tal como se guarda: sin espacios ni caracteres invisibles (ancho cero,
+     * marcas de dirección…) y en minúsculas. MySQL ignora los invisibles al comparar, así que
+     * sin esto «admin» y «admin\u{200B}» serían la misma cuenta con contadores de intentos distintos.
+     */
+    public static function normalizarLogin(?string $login): string
+    {
+        return mb_strtolower((string) preg_replace('/[\p{Cc}\p{Cf}\p{Z}]+/u', '', (string) $login));
     }
 
     /**
@@ -100,10 +107,53 @@ class Seguridad
         }
     }
 
-    /** Llave del límite de intentos de inicio de sesión: usuario/correo + IP (FortifyServiceProvider). */
+    /**
+     * Llave del límite de intentos de inicio de sesión: cuenta + IP (FortifyServiceProvider).
+     * Si el usuario existe se usa su id, así da igual que escriba el usuario o el correo
+     * (o una variante con mayúsculas o invisibles): todos los intentos cuentan para la misma cuenta.
+     */
     public static function llaveIntentos(?string $login, ?string $ip): string
     {
-        return Str::transliterate(Str::lower((string) $login).'|'.$ip);
+        $usuario = self::buscarUsuario($login);
+
+        return ($usuario ? 'usuario:'.$usuario->id_usuario : Str::transliterate(self::normalizarLogin($login))).'|'.$ip;
+    }
+
+    /**
+     * Bloqueo de la cuenta sin importar la IP (bloqueado_hasta): frena a quien prueba
+     * contraseñas desde muchas IPs. Se permite el doble de intentos que por IP para que
+     * un tercero no pueda bloquear a alguien con facilidad.
+     */
+    public static function intentosCuenta(): int
+    {
+        return self::config()['intentos'] * 2;
+    }
+
+    /** Suma un fallido a la cuenta y la bloquea si llegó al límite. Devuelve si quedó bloqueada. */
+    public static function fallidoDeCuenta(Usuario $usuario): bool
+    {
+        $c = self::config();
+        $llave = 'cuenta|'.$usuario->id_usuario;
+        $intentos = RateLimiter::hit($llave, $c['bloqueo'] * 60);
+        $bloquear = $intentos >= self::intentosCuenta();
+        $usuario->forceFill([
+            'intentos_fallidos' => min(255, $intentos),
+            'bloqueado_hasta' => $bloquear ? now()->addMinutes($c['bloqueo']) : $usuario->bloqueado_hasta,
+        ])->saveQuietly();
+        if ($bloquear) {
+            RateLimiter::clear($llave);
+        }
+
+        return $bloquear;
+    }
+
+    /** Quita el bloqueo de la cuenta y reinicia su contador (al entrar bien o al desbloquear). */
+    public static function limpiarCuenta(Usuario $usuario): void
+    {
+        RateLimiter::clear('cuenta|'.$usuario->id_usuario);
+        if ($usuario->intentos_fallidos || $usuario->bloqueado_hasta) {
+            $usuario->forceFill(['intentos_fallidos' => 0, 'bloqueado_hasta' => null])->saveQuietly();
+        }
     }
 
     /** Llave con la que ThrottleRequests guarda el contador del limitador «login». */
@@ -113,37 +163,59 @@ class Seguridad
     }
 
     /**
-     * Bloqueos vigentes: usuario/correo + IP que agotaron los intentos y siguen esperando.
-     * Los candidatos salen de los fallidos recientes del historial; el contador real está en la caché.
+     * Bloqueos vigentes: cuenta + IP que agotaron los intentos y siguen esperando, y cuentas
+     * bloqueadas en todas las IPs (bloqueado_hasta, «ip» = null). Los candidatos por IP salen
+     * de los fallidos recientes del historial; el contador real está en la caché.
      *
      * @param  \Closure(Builder): mixed|null  $filtro  para limitar a los accesos de una empresa
-     * @return Collection<int, object{login: string, ip: string, id_usuario: ?int, fallidos: int, ultimo: string, segundos: int}>
+     * @return Collection<int, object{login: string, ip: ?string, id_usuario: ?int, fallidos: int, ultimo: string, segundos: int}>
      */
-    public static function bloqueos(?\Closure $filtro = null): Collection
+    public static function bloqueos(?\Closure $filtro = null, ?int $idEmpresa = null): Collection
     {
         $c = self::config();
 
-        return AuditoriaAcceso::query()
+        $porIp = AuditoriaAcceso::query()
             ->whereIn('accion', ['LOGIN_FAIL', 'BLOQUEO'])
             ->where('created_at', '>=', now()->subMinutes($c['bloqueo']))
             ->when($filtro, $filtro)
             ->groupBy('username_intento', 'ip_address')
             ->selectRaw('username_intento AS login, ip_address AS ip, MAX(id_usuario) AS id_usuario, COUNT(*) AS fallidos, MAX(created_at) AS ultimo')
             ->toBase()->get()
-            ->filter(fn ($b) => RateLimiter::tooManyAttempts(self::llaveLimitador($b->login, $b->ip), $c['intentos']))
-            ->map(function ($b) {
-                $b->id_usuario = $b->id_usuario === null ? null : (int) $b->id_usuario;
-                $b->fallidos = (int) $b->fallidos;
-                $b->segundos = RateLimiter::availableIn(self::llaveLimitador($b->login, $b->ip));
+            // Varias formas de escribir la misma cuenta (usuario, correo…) comparten un solo contador.
+            ->groupBy(fn ($b) => self::llaveLimitador($b->login, $b->ip))
+            ->filter(fn ($grupo, $llave) => RateLimiter::tooManyAttempts($llave, $c['intentos']))
+            ->map(function (Collection $grupo, string $llave) {
+                $b = $grupo->sortByDesc('ultimo')->first();
+                $b->id_usuario = $grupo->max('id_usuario') === null ? null : (int) $grupo->max('id_usuario');
+                $b->fallidos = (int) $grupo->sum('fallidos');
+                $b->segundos = RateLimiter::availableIn($llave);
 
                 return $b;
-            })
-            ->sortByDesc('ultimo')->values();
+            });
+
+        $porCuenta = Usuario::query()
+            ->where('bloqueado_hasta', '>', now())
+            ->when($idEmpresa, fn ($q) => $q->where('id_empresa', $idEmpresa))
+            ->get()
+            ->map(fn (Usuario $u) => (object) [
+                'login' => $u->username, 'ip' => null, 'id_usuario' => (int) $u->id_usuario,
+                'fallidos' => (int) $u->intentos_fallidos, 'ultimo' => (string) $u->bloqueado_hasta,
+                'segundos' => (int) max(1, now()->diffInSeconds($u->bloqueado_hasta)),
+            ]);
+
+        return $porCuenta->concat($porIp->sortByDesc('ultimo'))->values();
     }
 
-    /** Quita el bloqueo de un usuario/correo + IP antes de que venza. */
-    public static function desbloquear(string $login, string $ip): void
+    /** Quita el bloqueo de un usuario/correo + IP, o el de la cuenta en todas las IPs si no hay IP. */
+    public static function desbloquear(string $login, ?string $ip): void
     {
+        if ($ip === null) {
+            if ($usuario = self::buscarUsuario($login)) {
+                self::limpiarCuenta($usuario);
+            }
+
+            return;
+        }
         RateLimiter::clear(self::llaveLimitador($login, $ip));
     }
 
@@ -183,7 +255,7 @@ class Seguridad
         Cookie::queue(
             $guard->getRecallerName(),
             $idUsuario.'|'.$token.'|'.$guard->hashPasswordForCookie($user->getAuthPassword()),
-            self::DURACION_RECORDAR,
+            (int) config('auth.guards.web.remember', 43200),
         );
     }
 

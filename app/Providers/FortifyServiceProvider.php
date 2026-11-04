@@ -44,8 +44,20 @@ class FortifyServiceProvider extends ServiceProvider
     private function configurarAutenticacion(): void
     {
         Fortify::authenticateUsing(function (Request $request) {
-            $usuario = Seguridad::buscarUsuario($request->input(Fortify::username()));
+            $login = $request->input(Fortify::username());
+            $usuario = Seguridad::buscarUsuario($login);
+            if ($usuario?->estaBloqueado()) {
+                // Bloqueo de la cuenta (muchos fallidos desde cualquier IP): ni se revisa la contraseña.
+                Seguridad::registrar('BLOQUEO', $login, $usuario->id_usuario, 'Intento con la cuenta bloqueada');
+                throw ValidationException::withMessages([Fortify::username() => self::mensajeBloqueo(
+                    (int) ceil(now()->diffInSeconds($usuario->bloqueado_hasta) / 60)
+                )]);
+            }
             if (! $usuario || ! Hash::check((string) $request->input('password'), (string) $usuario->password_hash)) {
+                if ($usuario && Seguridad::fallidoDeCuenta($usuario)) {
+                    Seguridad::registrar('BLOQUEO', $login, $usuario->id_usuario, 'Cuenta bloqueada en todas las IPs por intentos fallidos');
+                }
+
                 return null;
             }
             if (! $usuario->puedeEntrar()) {
@@ -84,10 +96,10 @@ class FortifyServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     // El límite de Fortify no dispara el evento Lockout: el bloqueo se registra aquí.
                     Seguridad::registrar('BLOQUEO', $request->input(Fortify::username()), null, 'Intento durante el bloqueo');
-                    $minutos = max(1, (int) ceil(((int) ($headers['Retry-After'] ?? 60)) / 60));
+                    $minutos = (int) ceil(((int) ($headers['Retry-After'] ?? 60)) / 60);
 
                     return back()->withInput($request->only(Fortify::username()))->withErrors([
-                        Fortify::username() => "Demasiados intentos fallidos. Espera {$minutos} ".($minutos === 1 ? 'minuto' : 'minutos').' e intenta de nuevo.',
+                        Fortify::username() => self::mensajeBloqueo($minutos),
                     ]);
                 });
         });
@@ -97,11 +109,20 @@ class FortifyServiceProvider extends ServiceProvider
         });
     }
 
+    /** El mismo mensaje para el bloqueo por IP y el de la cuenta: no delata cuál de los dos es. */
+    private static function mensajeBloqueo(int $minutos): string
+    {
+        $minutos = max(1, $minutos);
+
+        return "Demasiados intentos fallidos. Espera {$minutos} ".($minutos === 1 ? 'minuto' : 'minutos').' e intenta de nuevo.';
+    }
+
     /** Historial de accesos (auditoria_acceso): ingresos, fallidos y salidas. */
     private function registrarAccesos(): void
     {
         Event::listen(Login::class, function (Login $event) {
             $event->user->forceFill(['ultimo_login' => now()])->saveQuietly();
+            Seguridad::limpiarCuenta($event->user);
             Seguridad::registrar('LOGIN_OK', $event->user->username, $event->user->id_usuario, $event->remember ? 'Con «recordar sesión»' : null);
         });
         Event::listen(Failed::class, function (Failed $event) {

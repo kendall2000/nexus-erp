@@ -144,6 +144,15 @@ class UsuarioController extends Controller
         if ($esYo && (int) $datos['id_rol'] !== (int) $usuario->roles->first()?->id_rol) {
             return back()->withErrors(['id_rol' => 'No puedes cambiar tu propio rol.'])->withInput();
         }
+        // Con una sesión ajena abierta no se puede tomar la cuenta: cambiar la contraseña,
+        // el usuario o el correo propios (con el que se recupera la contraseña) pide la actual.
+        if ($esYo && (! empty($datos['password']) || $datos['email'] !== $usuario->email || $datos['username'] !== $usuario->username)) {
+            $request->validate(
+                ['password_actual' => ['required', 'string', 'current_password:web']],
+                ['password_actual.required' => 'Escribe tu contraseña actual para cambiar tu contraseña, usuario o correo.',
+                    'password_actual.current_password' => 'La contraseña actual no es correcta.'],
+            );
+        }
 
         $usuario->update([
             'id_sucursal' => $datos['id_sucursal'] ?? null,
