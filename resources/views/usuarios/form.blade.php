@@ -86,6 +86,36 @@
                     </div>
                 </div>
 
+                {{-- Acceso a otras empresas: un rol por empresa (solo el administrador lo ve) --}}
+                @if (($otrasEmpresas ?? collect())->isNotEmpty())
+                    <div class="card border border-200 shadow-none mb-4">
+                        <div class="card-header border-bottom border-200 bg-body-emphasis py-3">
+                            <h5 class="mb-0 text-1000"><span class="fas fa-building text-primary me-2"></span>Acceso a otras empresas</h5>
+                            <p class="mb-0 fs--2 text-600">Con un rol en otra empresa, el usuario puede cambiarse a ella desde la barra superior y usa los permisos de ese rol.</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                @foreach ($otrasEmpresas as $otra)
+                                    @php $idOtra = $otra['empresa']->id_empresa; @endphp
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label" for="acceso_{{ $idOtra }}">{{ $otra['empresa']->nombre_comercial }}</label>
+                                        <select class="form-select @error('accesos.'.$idOtra) is-invalid @enderror" id="acceso_{{ $idOtra }}" name="accesos[{{ $idOtra }}]">
+                                            <option value="">Sin acceso</option>
+                                            @foreach ($otra['roles'] as $rolOtra)
+                                                <option value="{{ $rolOtra->id_rol }}" @selected((int) old('accesos.'.$idOtra, $otra['actual']) === $rolOtra->id_rol)>{{ $rolOtra->nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('accesos.'.$idOtra)<div class="text-danger fs--2 mt-1">{{ $message }}</div>@enderror
+                                        @if ($otra['roles']->isEmpty())
+                                            <div class="fs--2 text-600 mt-1">Esta empresa todavía no tiene roles.</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Tarjeta 2: Seguridad y Contraseñas --}}
                 <div class="card border border-200 shadow-none mb-4">
                     <div class="card-header border-bottom border-200 bg-body-emphasis py-3">

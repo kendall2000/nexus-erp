@@ -48,16 +48,20 @@ class MatrizPermisos
             return null;
         }
 
-        return self::idsPorRoles($usuario)->merge(self::idsExtras($usuario))->unique()->values()->all();
+        // Los extras solo cuentan en su empresa principal (como en Usuario::codigosPermiso).
+        $extras = $usuario->enEmpresaPrincipal() ? self::idsExtras($usuario) : collect();
+
+        return self::idsPorRoles($usuario)->merge($extras)->unique()->values()->all();
     }
 
-    /** @return Collection<int, int> ids de permisos que dan los roles activos del usuario. */
+    /** @return Collection<int, int> ids de permisos que dan los roles activos del usuario en la empresa en la que trabaja. */
     public static function idsPorRoles(Usuario $usuario): Collection
     {
         return DB::table('rol_permiso')
             ->join('usuario_rol', 'usuario_rol.id_rol', '=', 'rol_permiso.id_rol')
             ->join('rol', 'rol.id_rol', '=', 'rol_permiso.id_rol')
             ->where('usuario_rol.id_usuario', $usuario->id_usuario)->where('rol.activo', true)
+            ->where('rol.id_empresa', (int) $usuario->id_empresa)
             ->pluck('rol_permiso.id_permiso')->map(fn ($id) => (int) $id)->unique()->values();
     }
 

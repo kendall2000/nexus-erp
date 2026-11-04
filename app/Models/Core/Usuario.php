@@ -5,6 +5,8 @@ namespace App\Models\Core;
 use App\Models\Concerns\PerteneceAEmpresa;
 use App\Support\MatrizPermisos;
 use App\Support\Sistema;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +24,12 @@ class Usuario extends Authenticatable
     private ?array $idsPermiso = null;
 
     private ?bool $esAdmin = null;
+
+    /** Empresa propia del usuario (columna id_empresa) cuando trabaja en otra; ver usarEmpresa. */
+    private ?int $empresaPrincipal = null;
+
+    /** @var Collection<int, Empresa>|null */
+    private ?Collection $empresas = null;
 
     protected $table = 'usuario';
 
@@ -148,8 +156,10 @@ class Usuario extends Authenticatable
         // Se compara en PHP con Rol::esNombreDeAccesoTotal, no en SQL: la colación de MySQL
         // ignora acentos y daría acceso total a «Súperadmin», que la validación (en PHP)
         // aceptaba como rol normal.
+        // Acceso total de su empresa principal (vale en todas) o de la empresa en la que trabaja.
         return $this->roles()
             ->where('rol.activo', true)
+            ->whereIn('rol.id_empresa', array_unique([$this->idEmpresaPrincipal(), (int) $this->id_empresa]))
             ->pluck('rol.nombre')
             ->contains(fn ($nombre) => Rol::esNombreDeAccesoTotal((string) $nombre));
     }
@@ -190,6 +200,7 @@ class Usuario extends Authenticatable
      */
     public function codigosPermiso(): array
     {
+        // Solo los roles de la empresa en la que trabaja; los extras, solo en su empresa principal.
         return $this->codigosPermiso ??= Permiso::query()
             ->join('modulo', 'modulo.id_modulo', '=', 'permiso.id_modulo')
             ->join('accion', 'accion.id_accion', '=', 'permiso.id_accion')
@@ -198,9 +209,11 @@ class Usuario extends Authenticatable
                 ->whereIn('permiso.id_permiso', fn ($s) => $s->select('rol_permiso.id_permiso')->from('rol_permiso')
                     ->join('usuario_rol', 'usuario_rol.id_rol', '=', 'rol_permiso.id_rol')
                     ->join('rol', 'rol.id_rol', '=', 'rol_permiso.id_rol')
-                    ->where('usuario_rol.id_usuario', $this->id_usuario)->where('rol.activo', true))
-                ->orWhereIn('permiso.id_permiso', fn ($s) => $s->select('id_permiso')->from('usuario_permiso')
-                    ->where('id_usuario', $this->id_usuario)))
+                    ->where('usuario_rol.id_usuario', $this->id_usuario)->where('rol.activo', true)
+                    ->where('rol.id_empresa', (int) $this->id_empresa))
+                ->when($this->enEmpresaPrincipal(), fn ($q) => $q
+                    ->orWhereIn('permiso.id_permiso', fn ($s) => $s->select('id_permiso')->from('usuario_permiso')
+                        ->where('id_usuario', $this->id_usuario))))
             ->get(['modulo.codigo as modulo', 'accion.codigo as accion'])
             ->map(fn ($p) => $p->modulo.'.'.$p->accion)->unique()->values()->all();
     }
@@ -243,6 +256,80 @@ class Usuario extends Authenticatable
         $this->codigosPermiso = null;
         $this->idsPermiso = null;
         $this->esAdmin = null;
+        $this->empresas = null;
+    }
+
+    // ── Empresa activa ──────────────────────────────────────────────────────
+
+    /** Su empresa propia (la de la columna), aunque esté trabajando en otra. */
+    public function idEmpresaPrincipal(): int
+    {
+        return $this->empresaPrincipal ?? (int) $this->getOriginal('id_empresa', $this->id_empresa);
+    }
+
+    public function enEmpresaPrincipal(): bool
+    {
+        return (int) $this->id_empresa === $this->idEmpresaPrincipal();
+    }
+
+    /**
+     * Trabaja en otra empresa durante esta petición (lo aplica el middleware EmpresaActiva).
+     * Solo cambia el valor en memoria: queda marcado como original para que un save()
+     * del usuario no lo escriba en la base. Todo lo que filtra por $user->id_empresa
+     * (deMiEmpresa, idEmpresa, Rule::exists…) pasa a usar la empresa activa.
+     */
+    public function usarEmpresa(int $idEmpresa): void
+    {
+        $this->empresaPrincipal ??= (int) $this->getOriginal('id_empresa', $this->id_empresa);
+        $this->setAttribute('id_empresa', $idEmpresa);
+        $this->syncOriginalAttribute('id_empresa');
+        $this->unsetRelation('empresa');
+        $this->olvidarPermisos();
+    }
+
+    /**
+     * Empresas en las que puede trabajar: su empresa principal y aquellas donde tiene un rol
+     * activo. Con acceso total en su empresa principal, todas las empresas activas.
+     *
+     * @return Collection<int, Empresa>
+     */
+    public function empresasDisponibles(): Collection
+    {
+        if ($this->empresas !== null) {
+            return $this->empresas;
+        }
+        $principal = $this->idEmpresaPrincipal();
+        $roles = DB::table('usuario_rol')->join('rol', 'rol.id_rol', '=', 'usuario_rol.id_rol')
+            ->where('usuario_rol.id_usuario', $this->id_usuario)->where('rol.activo', true)
+            ->get(['rol.id_empresa', 'rol.nombre']);
+        $todas = $roles->contains(fn ($r) => (int) $r->id_empresa === $principal && Rol::esNombreDeAccesoTotal((string) $r->nombre));
+        $ids = $roles->pluck('id_empresa')->map(fn ($id) => (int) $id)->push($principal)->unique()->values()->all();
+
+        return $this->empresas = Empresa::query()
+            ->when(! $todas, fn ($q) => $q->whereIn('id_empresa', $ids))
+            ->where(fn ($q) => $q->where('activo', true)->orWhere('id_empresa', $principal))
+            ->orderBy('nombre_comercial')
+            ->get();
+    }
+
+    public function puedeUsarEmpresa(int $idEmpresa): bool
+    {
+        return $this->empresasDisponibles()->contains(fn ($e) => (int) $e->id_empresa === $idEmpresa);
+    }
+
+    /** ¿Tiene el permiso en otra empresa? (reportes consolidados). Usa una copia: no cambia la sesión. */
+    public function puedeEn(int $idEmpresa, string $codigoPermiso): bool
+    {
+        if ($idEmpresa === (int) $this->id_empresa) {
+            return $this->puede($codigoPermiso);
+        }
+        if (! $this->puedeUsarEmpresa($idEmpresa)) {
+            return false;
+        }
+        $copia = clone $this;
+        $copia->usarEmpresa($idEmpresa);
+
+        return $copia->puede($codigoPermiso);
     }
 
     private function esAdministradorEnCache(): bool

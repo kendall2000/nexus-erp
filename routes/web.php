@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmpresaActivaController;
 use Illuminate\Support\Facades\Route;
 
 // Login, logout, recuperar y cambiar contraseña y verificación en dos pasos:
@@ -20,6 +21,9 @@ Route::middleware('auth')->group(function () {
 
     // ── Inicio ──────────────────────────────────────────────────────
     Route::get('/sistema/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Cambiar de empresa (cada usuario, entre las empresas a las que tiene acceso)
+    Route::post('/sistema/empresa-activa', [EmpresaActivaController::class, 'cambiar'])->name('empresa-activa.cambiar');
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')

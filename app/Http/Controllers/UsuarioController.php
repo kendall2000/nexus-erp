@@ -51,12 +51,14 @@ class UsuarioController extends Controller
             'idRol' => null,
             'roles' => $this->roles($request),
             'sucursales' => $this->sucursales($request),
+            'otrasEmpresas' => $this->otrasEmpresas($request),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $datos = $this->validar($request);
+        $accesos = $this->accesosValidados($request);
 
         $usuario = new Usuario([
             'id_empresa' => $this->idEmpresa($request),
@@ -69,7 +71,8 @@ class UsuarioController extends Controller
         ]);
         // La contraseña la pone el administrador: por defecto el usuario debe cambiarla al entrar.
         Contrasenas::cambiar($usuario, $datos['password'], $request->boolean('debe_cambiar_password'));
-        $this->asignarRol($request, $usuario, (int) $datos['id_rol']);
+        $this->asignarRol($request, $usuario, $this->idEmpresa($request), (int) $datos['id_rol']);
+        $this->asignarAccesos($request, $usuario, $accesos);
         if ($error = $this->guardarFoto($request, $usuario)) {
             return redirect()->route('usuarios.edit', $usuario->id_usuario)
                 ->with('status', "Usuario {$usuario->username} creado.")->withErrors(['foto' => $error]);
@@ -81,12 +84,14 @@ class UsuarioController extends Controller
     public function edit(Request $request, int $usuario): View
     {
         $usuario = $this->gestionable($request, $usuario, ['roles']);
+        $idRol = $this->rolEnEmpresa($usuario, $this->idEmpresa($request));
 
         return view('usuarios.form', [
             'usuario' => $usuario,
-            'idRol' => $usuario->roles->first()?->id_rol,
-            'roles' => $this->roles($request, $usuario->roles->first()?->id_rol),
+            'idRol' => $idRol,
+            'roles' => $this->roles($request, $idRol),
             'sucursales' => $this->sucursales($request),
+            'otrasEmpresas' => $this->otrasEmpresas($request, $usuario),
             // Permisos extra (además de los del rol), como en sistema-inventario.
             'matriz' => MatrizPermisos::datos(),
             'heredados' => MatrizPermisos::idsPorRoles($usuario)->all(),
@@ -140,8 +145,9 @@ class UsuarioController extends Controller
         $usuario = $this->gestionable($request, $usuario, ['roles']);
         $datos = $this->validar($request, $usuario);
         $esYo = $usuario->is($request->user());
+        $accesos = $esYo ? [] : $this->accesosValidados($request, $usuario);
 
-        if ($esYo && (int) $datos['id_rol'] !== (int) $usuario->roles->first()?->id_rol) {
+        if ($esYo && (int) $datos['id_rol'] !== $this->rolEnEmpresa($usuario, $this->idEmpresa($request))) {
             return back()->withErrors(['id_rol' => 'No puedes cambiar tu propio rol.'])->withInput();
         }
         // Con una sesión ajena abierta no se puede tomar la cuenta: cambiar la contraseña,
@@ -160,7 +166,8 @@ class UsuarioController extends Controller
             'username' => $datos['username'],
             'email' => $datos['email'],
         ]);
-        $this->asignarRol($request, $usuario, (int) $datos['id_rol']);
+        $this->asignarRol($request, $usuario, $this->idEmpresa($request), (int) $datos['id_rol']);
+        $this->asignarAccesos($request, $usuario, $accesos);
         $errorFoto = $this->guardarFoto($request, $usuario);
 
         if (! empty($datos['password'])) {
@@ -268,6 +275,9 @@ class UsuarioController extends Controller
             'id_sucursal' => ['nullable', Rule::exists('sucursal', 'id_sucursal')->where('id_empresa', $idEmpresa)->where('activo', true)],
             'password' => array_filter([$usuario ? 'nullable' : 'required', 'string', Password::default(), 'confirmed', $usuario ? $this->noRepetida($usuario) : null]),
             'debe_cambiar_password' => ['nullable', 'boolean'],
+            // Rol en otras empresas: [id_empresa => id_rol | vacío para quitar el acceso] (ver asignarAccesos).
+            'accesos' => ['nullable', 'array'],
+            'accesos.*' => ['nullable', 'integer'],
             'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'username.regex' => 'El usuario solo puede tener letras minúsculas, números, punto, guion y guion bajo (sin espacios).',
@@ -300,21 +310,92 @@ class UsuarioController extends Controller
         }
     }
 
-    /** Un rol por usuario (como en la pantalla anterior); si no cambió, se conserva su fecha de asignación. */
-    private function asignarRol(Request $request, Usuario $usuario, int $idRol): void
+    /**
+     * Un rol por usuario en cada empresa; solo se tocan los roles de $idEmpresa (los de las
+     * otras empresas se conservan). Sin $idRol se le quita el acceso a esa empresa.
+     * Si no cambió, se conserva su fecha de asignación.
+     */
+    private function asignarRol(Request $request, Usuario $usuario, int $idEmpresa, ?int $idRol): void
     {
-        $actuales = array_map('intval', $usuario->roles()->pluck('rol.id_rol')->all());
-        if ($actuales === [$idRol]) {
+        $actuales = array_map('intval', $usuario->roles()->where('rol.id_empresa', $idEmpresa)->pluck('rol.id_rol')->all());
+        $nuevos = $idRol ? [$idRol] : [];
+        if ($actuales === $nuevos) {
             return;
         }
         $nombres = fn (array $ids) => Rol::query()->whereIn('id_rol', $ids)->pluck('nombre');
-        Bitacora::registrarLista('usuario_rol', (string) $usuario->id_usuario, 'roles', $nombres($actuales), $nombres([$idRol]), $usuario->id_empresa);
-        $usuario->roles()->sync([$idRol => [
-            'fecha_asignacion' => now()->toDateString(),
-            'asignado_por' => $this->idUsuario($request),
-        ]]);
+        Bitacora::registrarLista('usuario_rol', (string) $usuario->id_usuario, 'roles', $nombres($actuales), $nombres($nuevos), $idEmpresa);
+        $usuario->roles()->detach($actuales);
+        if ($idRol) {
+            $usuario->roles()->attach($idRol, [
+                'fecha_asignacion' => now()->toDateString(),
+                'asignado_por' => $this->idUsuario($request),
+            ]);
+        }
+        $usuario->unsetRelation('roles');
     }
 
+    /** Rol del usuario en una empresa (uno por empresa). */
+    private function rolEnEmpresa(Usuario $usuario, int $idEmpresa): ?int
+    {
+        $id = $usuario->roles->first(fn ($rol) => (int) $rol->id_empresa === $idEmpresa)?->id_rol;
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
+     * Otras empresas a las que el administrador puede dar acceso (las suyas, menos la actual),
+     * con sus roles activos y el rol que ya tiene el usuario en cada una. Solo para quien tiene
+     * acceso total y nunca sobre su propia cuenta.
+     */
+    private function otrasEmpresas(Request $request, ?Usuario $usuario = null)
+    {
+        $yo = $request->user();
+        if (! $yo->esAdministrador() || ($usuario && $usuario->is($yo))) {
+            return collect();
+        }
+        $idActual = $this->idEmpresa($request);
+        $empresas = $yo->empresasDisponibles()->reject(fn ($e) => (int) $e->id_empresa === $idActual)->values();
+        $roles = Rol::query()->whereIn('id_empresa', $empresas->pluck('id_empresa'))->where('activo', true)->orderBy('nombre')->get()->groupBy('id_empresa');
+
+        return $empresas->map(fn ($e) => [
+            'empresa' => $e,
+            'roles' => $roles->get($e->id_empresa, collect()),
+            'actual' => $usuario ? $this->rolEnEmpresa($usuario, (int) $e->id_empresa) : null,
+        ]);
+    }
+
+    /**
+     * Rol pedido en cada otra empresa [id_empresa => id_rol|null], validado antes de guardar
+     * nada. Solo administrador; las empresas a las que no tiene acceso quien edita se ignoran.
+     *
+     * @return array<int, int|null>
+     */
+    private function accesosValidados(Request $request, ?Usuario $usuario = null): array
+    {
+        $otras = $this->otrasEmpresas($request, $usuario)->keyBy(fn ($o) => (int) $o['empresa']->id_empresa);
+        $accesos = [];
+        foreach ((array) $request->input('accesos', []) as $idEmpresa => $idRol) {
+            $otra = $otras->get((int) $idEmpresa);
+            if (! $otra) {
+                continue;
+            }
+            $idRol = filled($idRol) ? (int) $idRol : null;
+            if ($idRol && ! $otra['roles']->contains('id_rol', $idRol)) {
+                throw ValidationException::withMessages(["accesos.{$idEmpresa}" => 'Ese rol no es de '.$otra['empresa']->nombre_comercial.'.']);
+            }
+            $accesos[(int) $idEmpresa] = $idRol;
+        }
+
+        return $accesos;
+    }
+
+    /** @param  array<int, int|null>  $accesos */
+    private function asignarAccesos(Request $request, Usuario $usuario, array $accesos): void
+    {
+        foreach ($accesos as $idEmpresa => $idRol) {
+            $this->asignarRol($request, $usuario, $idEmpresa, $idRol);
+        }
+    }
     /** Roles que puedo asignar (más el que ya tiene el usuario, para no perderlo al guardar). */
     private function roles(Request $request, ?int $actual = null)
     {

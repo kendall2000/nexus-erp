@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ContrasenaVencida;
+use App\Http\Middleware\EmpresaActiva;
 use App\Http\Middleware\EncabezadosSeguridad;
 use App\Http\Middleware\LimitarRecuperacion;
 use App\Http\Middleware\PreventBackHistory;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             PreventBackHistory::class,
             LimitarRecuperacion::class,
             UsuarioActivo::class,
+            EmpresaActiva::class, // antes de los permisos de cada ruta: estos dependen de la empresa
             ContrasenaVencida::class,
             RequiereDosFactores::class,
         ]);

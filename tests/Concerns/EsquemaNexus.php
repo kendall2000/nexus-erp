@@ -185,6 +185,7 @@ trait EsquemaNexus
         Schema::create('empresa', function (Blueprint $t) {
             $t->increments('id_empresa');
             $t->string('nombre_comercial')->nullable();
+            $t->boolean('activo')->default(true);
         });
         DB::table('empresa')->insert(['id_empresa' => 1, 'nombre_comercial' => 'Empresa Demo']);
         foreach (['cliente' => 'id_cliente', 'empleado' => 'id_empleado', 'contrato_servicio' => 'id_contrato', 'ticket' => 'id_ticket'] as $tabla => $llave) {
@@ -1064,7 +1065,8 @@ trait EsquemaNexus
             'nombre_completo' => 'Administrador Nexus',
             'activo' => true,
         ], $datos));
-        $idRol = DB::table('rol')->insertGetId(['id_empresa' => 1, 'nombre' => $rol, 'activo' => $rolActivo]);
+        // El rol es de la empresa del usuario (los permisos se calculan por empresa).
+        $idRol = DB::table('rol')->insertGetId(['id_empresa' => $usuario->id_empresa, 'nombre' => $rol, 'activo' => $rolActivo]);
         DB::table('usuario_rol')->insert(['id_usuario' => $usuario->id_usuario, 'id_rol' => $idRol]);
 
         return $usuario;

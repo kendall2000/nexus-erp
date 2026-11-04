@@ -110,6 +110,37 @@
             </div>
 
             <ul class="navbar-nav navbar-nav-icons flex-row align-items-center">
+                {{-- Empresa en la que se trabaja (solo si tiene acceso a más de una) --}}
+                @php $empresasUsuario = $usuario->empresasDisponibles(); @endphp
+                @if ($empresasUsuario->count() > 1)
+                    @php $empresaActual = $empresasUsuario->firstWhere('id_empresa', $usuario->id_empresa); @endphp
+                    <li class="nav-item dropdown me-2">
+                        <a class="btn btn-phoenix-secondary btn-sm d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Cambiar de empresa">
+                            <span class="me-2" data-feather="briefcase" style="height:16px;width:16px;"></span>
+                            <span class="d-none d-md-inline text-truncate" style="max-width: 12rem;">{{ $empresaActual?->nombre_comercial ?? 'Empresa' }}</span>
+                            <span class="fas fa-chevron-down ms-2 fs--2"></span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end navbar-dropdown-caret py-2 shadow border border-300" style="min-width: 16rem;">
+                            <h6 class="dropdown-header text-700">Trabajar en</h6>
+                            @foreach ($empresasUsuario as $emp)
+                                <form method="POST" action="{{ route('empresa-activa.cambiar') }}">
+                                    @csrf
+                                    <input type="hidden" name="id_empresa" value="{{ $emp->id_empresa }}" />
+                                    <button type="submit" class="dropdown-item d-flex justify-content-between align-items-center {{ (int) $emp->id_empresa === (int) $usuario->id_empresa ? 'active' : '' }}">
+                                        <span>{{ $emp->nombre_comercial }}</span>
+                                        @if ((int) $emp->id_empresa === $usuario->idEmpresaPrincipal())
+                                            <span class="badge badge-phoenix badge-phoenix-secondary fs--2 ms-2">Principal</span>
+                                        @endif
+                                    </button>
+                                </form>
+                            @endforeach
+                            @if (Route::has('consolidado.index') && collect(['facturas.ver', 'ordenes_compra.ver', 'pagos.ver', 'presupuesto.ver'])->contains(fn ($p) => $usuario->puede($p)))
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('consolidado.index') }}"><span class="fas fa-layer-group me-2 text-600"></span>Reporte consolidado</a>
+                            @endif
+                        </div>
+                    </li>
+                @endif
                 <li class="nav-item">
                     <div class="theme-control-toggle fa-icon-wait px-2">
                         <input class="form-check-input ms-0 theme-control-toggle-input" type="checkbox" data-theme-control="phoenixTheme" value="dark" id="themeControlToggle" />
@@ -283,7 +314,7 @@
                                         @endif
                                     </div>
                                     <h6 class="mt-2 text-1000 mb-0">{{ $usuario->nombre_completo ?: $usuario->username }}</h6>
-                                    <p class="fs--1 text-700 mb-0">{{ $usuario->roles->pluck('nombre')->join(', ') ?: 'Sin rol' }}</p>
+                                    <p class="fs--1 text-700 mb-0">{{ $usuario->roles->where('id_empresa', $usuario->id_empresa)->pluck('nombre')->join(', ') ?: 'Sin rol' }}</p>
                                 </div>
                             </div>
                             <div class="overflow-auto scrollbar" style="max-height: 10rem;">
