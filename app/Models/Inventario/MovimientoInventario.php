@@ -3,15 +3,19 @@
 namespace App\Models\Inventario;
 
 use App\Models\Concerns\PerteneceAEmpresa;
+use App\Models\Core\Empresa;
+use App\Models\Core\Usuario;
 use Illuminate\Database\Eloquent\Model;
 
 class MovimientoInventario extends Model
 {
     use PerteneceAEmpresa;
 
-    protected $table      = 'movimiento_inventario';
+    protected $table = 'movimiento_inventario';
+
     protected $primaryKey = 'id_movimiento';
-    public $timestamps    = false;
+
+    public $timestamps = false;
 
     // Solo INSERT — el kardex es inmutable
     protected $fillable = [
@@ -32,18 +36,18 @@ class MovimientoInventario extends Model
     ];
 
     protected $casts = [
-        'cantidad'         => 'decimal:4',
-        'costo_unitario'   => 'decimal:4',
-        'costo_total'      => 'decimal:4',
-        'fecha_vencimiento'=> 'date',
-        'created_at'       => 'datetime',
+        'cantidad' => 'decimal:4',
+        'costo_unitario' => 'decimal:4',
+        'costo_total' => 'decimal:4',
+        'fecha_vencimiento' => 'date',
+        'created_at' => 'datetime',
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     public function empresa()
     {
-        return $this->belongsTo(\App\Models\Core\Empresa::class, 'id_empresa');
+        return $this->belongsTo(Empresa::class, 'id_empresa');
     }
 
     public function producto()
@@ -58,7 +62,7 @@ class MovimientoInventario extends Model
 
     public function creadoPor()
     {
-        return $this->belongsTo(\App\Models\Core\Usuario::class, 'created_by');
+        return $this->belongsTo(Usuario::class, 'created_by');
     }
 
     // ── Hooks ───────────────────────────────────────────────────────────────
@@ -67,19 +71,18 @@ class MovimientoInventario extends Model
     {
         static::creating(function (MovimientoInventario $mov) {
             // Calcula costo total automáticamente
-            if ($mov->costo_unitario && !$mov->costo_total) {
+            if ($mov->costo_unitario && ! $mov->costo_total) {
                 $mov->costo_total = round($mov->cantidad * $mov->costo_unitario, 4);
             }
         });
 
         static::created(function (MovimientoInventario $mov) {
-            $stock = StockBodega::firstOrCreate(
-                ['id_producto' => $mov->id_producto, 'id_bodega' => $mov->id_bodega],
-                ['cantidad_actual' => 0, 'costo_promedio' => 0]
-            );
+            // Fila bloqueada: el costo promedio se calcula con la existencia real del momento
+            // (las recepciones y los movimientos manuales corren dentro de una transacción).
+            $stock = StockBodega::bloqueado((int) $mov->id_producto, (int) $mov->id_bodega);
 
             $esEntrada = in_array($mov->tipo_movimiento, ['ENTRADA', 'DEVOLUCION']);
-            $esSalida  = in_array($mov->tipo_movimiento, ['SALIDA', 'BAJA']);
+            $esSalida = in_array($mov->tipo_movimiento, ['SALIDA', 'BAJA']);
 
             if ($esEntrada && $mov->costo_unitario) {
                 $stock->actualizarCostoPromedio($mov->cantidad, $mov->costo_unitario);

@@ -150,21 +150,23 @@ class OrdenCompraController extends Controller
 
     public function update(GuardarOrdenCompraRequest $request, int $orden): RedirectResponse
     {
-        $oc = $this->deMiEmpresa($request)->findOrFail($orden);
-        if ($oc->estado !== 'BORRADOR') {
-            return redirect()->route('ordenes-compra.show', $oc->id_oc)->withErrors(['orden' => 'Solo se pueden editar órdenes en borrador.']);
-        }
         $datos = $request->datosLimpios();
 
-        DB::transaction(function () use ($oc, $datos) {
+        // El estado se revisa con la orden bloqueada: si otro la aprueba al mismo tiempo,
+        // no se cambian las líneas de una orden que ya ejecutó el presupuesto.
+        return DB::transaction(function () use ($request, $orden, $datos) {
+            $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
+            if ($oc->estado !== 'BORRADOR') {
+                return redirect()->route('ordenes-compra.show', $oc->id_oc)->withErrors(['orden' => 'Solo se pueden editar órdenes en borrador.']);
+            }
             $encabezado = $datos['encabezado'];
             $encabezado['numero_oc'] ??= $oc->numero_oc;
             $oc->update($encabezado);
             $oc->detalles()->delete();
             $this->guardarLineas($oc, $datos['lineas']);
-        });
 
-        return redirect()->route('ordenes-compra.show', $oc->id_oc)->with('status', "Orden {$oc->numero_oc} actualizada.");
+            return redirect()->route('ordenes-compra.show', $oc->id_oc)->with('status', "Orden {$oc->numero_oc} actualizada.");
+        });
     }
 
     /** Aprueba (BORRADOR → ENVIADA) y ejecuta el presupuesto. Si se pasa del saldo, pide confirmación. */
@@ -212,16 +214,16 @@ class OrdenCompraController extends Controller
 
     public function destroy(Request $request, int $orden): RedirectResponse
     {
-        $oc = $this->deMiEmpresa($request)->findOrFail($orden);
-        if ($oc->estado !== 'BORRADOR') {
-            return back()->withErrors(['orden' => 'Solo se pueden eliminar órdenes en borrador. Las demás se cancelan.']);
-        }
-        DB::transaction(function () use ($oc) {
+        return DB::transaction(function () use ($request, $orden) {
+            $oc = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($orden);
+            if ($oc->estado !== 'BORRADOR') {
+                return back()->withErrors(['orden' => 'Solo se pueden eliminar órdenes en borrador. Las demás se cancelan.']);
+            }
             $oc->detalles()->delete();
             $oc->delete();
-        });
 
-        return redirect()->route('ordenes-compra.index')->with('status', "Orden {$oc->numero_oc} eliminada.");
+            return redirect()->route('ordenes-compra.index')->with('status', "Orden {$oc->numero_oc} eliminada.");
+        });
     }
 
     private function filtradas(Request $request): Builder

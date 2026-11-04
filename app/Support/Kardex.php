@@ -90,8 +90,6 @@ class Kardex
 
     private static function stockBloqueado(int $idProducto, int $idBodega): StockBodega
     {
-        StockBodega::query()->firstOrCreate(['id_producto' => $idProducto, 'id_bodega' => $idBodega], ['cantidad_actual' => 0, 'costo_promedio' => 0]);
-
-        return StockBodega::query()->where(['id_producto' => $idProducto, 'id_bodega' => $idBodega])->lockForUpdate()->firstOrFail();
+        return StockBodega::bloqueado($idProducto, $idBodega);
     }
 }

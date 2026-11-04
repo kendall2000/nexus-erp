@@ -236,4 +236,16 @@ class FacturasTest extends TestCase
         $this->artisan('presupuesto:resync')->assertSuccessful();
         $this->assertSame(700.0, $this->ejecutado($p));
     }
+
+    public function test_marcar_enviada_solo_desde_emitida(): void
+    {
+        $admin = $this->crearUsuario();
+        $this->actingAs($admin)->post(route('facturas.store'), $this->datos());
+        $id = $this->factura()->id_factura;
+
+        $this->actingAs($admin)->patch(route('facturas.enviar', $id))->assertSessionHasErrors('factura');
+        $this->actingAs($admin)->patch(route('facturas.emitir', $id));
+        $this->actingAs($admin)->patch(route('facturas.enviar', $id))->assertSessionHasNoErrors();
+        $this->assertSame('ENVIADA', $this->factura()->estado);
+    }
 }

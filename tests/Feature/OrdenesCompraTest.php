@@ -335,4 +335,19 @@ class OrdenesCompraTest extends TestCase
         $this->assertSame([200.0, 200.0], $this->ejecutado($p));
         $this->assertSame(1, DB::table('ejecucion_presupuesto')->where('id_documento', $antigua)->count());
     }
+
+    public function test_no_se_edita_ni_elimina_una_orden_ya_aprobada(): void
+    {
+        $admin = $this->crearUsuario();
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $id = $this->orden()->id_oc;
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $id));
+
+        $this->actingAs($admin)->put(route('ordenes-compra.update', $id), $this->datos(['lineas' => [
+            ['id_producto' => $this->ids['producto'], 'cantidad_pedida' => 50, 'precio_unitario' => 50, 'descuento' => 0],
+        ]]))->assertSessionHasErrors('orden');
+        $this->actingAs($admin)->delete(route('ordenes-compra.destroy', $id))->assertSessionHasErrors('orden');
+
+        $this->assertSame(2.0, (float) DB::table('detalle_orden_compra')->where('id_oc', $id)->value('cantidad_pedida'));
+    }
 }

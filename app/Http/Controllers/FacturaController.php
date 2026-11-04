@@ -11,6 +11,7 @@ use App\Models\Core\CuentaContable;
 use App\Models\Core\Empresa;
 use App\Models\Finanzas\DetalleFactura;
 use App\Models\Finanzas\Factura;
+use App\Models\Finanzas\PresupuestoAnual;
 use App\Models\Finanzas\SerieFacturacion;
 use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
@@ -20,8 +21,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -126,7 +125,7 @@ class FacturaController extends Controller
             'estado' => 'BORRADOR',
         ]);
         if ($contrato) {
-            $periodo = ucfirst(\App\Models\Finanzas\PresupuestoAnual::MESES[now()->month]).' '.now()->year;
+            $periodo = ucfirst(PresupuestoAnual::MESES[now()->month]).' '.now()->year;
             $f->setRelation('detalles', $contrato->detalles->map(fn ($d) => new DetalleFactura([
                 'id_tipo_servicio' => $d->id_tipo_servicio,
                 'descripcion' => mb_substr(trim(($d->tipoServicio?->nombre ?? 'Servicio').($d->sitio ? ' — '.$d->sitio->nombre : '').' · '.$periodo), 0, 300),
@@ -181,19 +180,21 @@ class FacturaController extends Controller
 
     public function update(GuardarFacturaRequest $request, int $factura): RedirectResponse
     {
-        $f = $this->deMiEmpresa($request)->findOrFail($factura);
-        if ($f->estado !== 'BORRADOR') {
-            return redirect()->route('facturas.show', $f->id_factura)->withErrors(['factura' => 'Solo se editan facturas en borrador.']);
-        }
         $datos = $request->datosLimpios();
 
-        DB::transaction(function () use ($f, $datos) {
+        // El estado se revisa con la factura bloqueada: si otro la emite al mismo tiempo,
+        // no se cambian las líneas de un documento ya emitido.
+        return DB::transaction(function () use ($request, $factura, $datos) {
+            $f = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($factura);
+            if ($f->estado !== 'BORRADOR') {
+                return redirect()->route('facturas.show', $f->id_factura)->withErrors(['factura' => 'Solo se editan facturas en borrador.']);
+            }
             $f->update(collect($datos['encabezado'])->except('id_serie')->all()); // la serie y el número no cambian
             $f->detalles()->delete();
             $this->guardarLineas($f, $datos['lineas']);
-        });
 
-        return redirect()->route('facturas.show', $f->id_factura)->with('status', "{$this->nombre($f)} actualizada.");
+            return redirect()->route('facturas.show', $f->id_factura)->with('status', "{$this->nombre($f)} actualizada.");
+        });
     }
 
     /** Solo el último borrador de su serie se elimina (y devuelve el número); los demás se anulan para no dejar huecos. */
@@ -232,13 +233,16 @@ class FacturaController extends Controller
     /** Marca que el documento ya se entregó al cliente (EMITIDA → ENVIADA). */
     public function enviar(Request $request, int $factura): RedirectResponse
     {
-        $f = $this->deMiEmpresa($request)->findOrFail($factura);
-        if ($f->estado !== 'EMITIDA') {
-            return back()->withErrors(['factura' => 'Solo se marcan como enviadas las facturas emitidas.']);
-        }
-        $f->update(['estado' => 'ENVIADA']);
+        // Bloqueada: un cobro o una anulación simultánea no se pisa con este cambio de estado.
+        return DB::transaction(function () use ($request, $factura) {
+            $f = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($factura);
+            if ($f->estado !== 'EMITIDA') {
+                return back()->withErrors(['factura' => 'Solo se marcan como enviadas las facturas emitidas.']);
+            }
+            $f->update(['estado' => 'ENVIADA']);
 
-        return back()->with('status', "{$this->nombre($f)} marcada como enviada.");
+            return back()->with('status', "{$this->nombre($f)} marcada como enviada.");
+        });
     }
 
     public function anular(Request $request, int $factura): RedirectResponse

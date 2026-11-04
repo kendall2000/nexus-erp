@@ -9,9 +9,9 @@ use App\Models\Inventario\MovimientoInventario;
 use App\Models\Inventario\OrdenCompra;
 use App\Models\Inventario\RecepcionMercaderia;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -115,6 +115,9 @@ class RecepcionController extends Controller
             if (! $recibir) {
                 throw ValidationException::withMessages(['lineas' => 'Indica la cantidad recibida de al menos un producto.']);
             }
+            // Siempre en el mismo orden: dos recepciones con los mismos productos bloquean
+            // su existencia en el mismo orden y no se traban entre sí.
+            usort($recibir, fn ($a, $b) => [$a[0]->id_producto, $a[0]->id_linea] <=> [$b[0]->id_producto, $b[0]->id_linea]);
 
             $recepcion = RecepcionMercaderia::create([
                 'id_empresa' => $idEmpresa,
