@@ -69,7 +69,7 @@ class AsistenciaController extends Controller
                 ->selectRaw("id_empleado, SUM(CASE WHEN estado IN ('PRESENTE','TARDE') THEN 1 ELSE 0 END) as presentes, SUM(CASE WHEN estado = 'TARDE' THEN 1 ELSE 0 END) as tardes,
                     SUM(CASE WHEN estado = 'AUSENTE' THEN 1 ELSE 0 END) as ausencias, SUM(minutos_tarde) as minutos, SUM(horas_extra) as extras")
                 ->groupBy('id_empleado')->get()->keyBy('id_empleado'),
-            'solicitudes' => SolicitudAusencia::query()->whereIn('id_empleado', $this->todosLosEmpleados($request))->with(['empleado', 'aprobadoPor'])
+            'solicitudes' => SolicitudAusencia::query()->whereIn('id_empleado', $this->todosLosEmpleados($request))->with(['empleado.cargo', 'aprobadoPor'])
                 ->where(fn ($q) => $q->where('estado', 'PENDIENTE')->orWhere('fecha_fin', '>=', today()->subDays(30)))
                 ->orderByRaw("CASE estado WHEN 'PENDIENTE' THEN 0 ELSE 1 END")->orderByDesc('fecha_inicio')->get(),
             'estados' => self::ESTADOS,

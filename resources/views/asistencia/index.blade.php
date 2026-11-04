@@ -245,13 +245,67 @@
             {{-- Tab 2: Solicitudes de Ausencia --}}
             <div class="tab-pane fade {{ $errors->solicitud->any() ? 'show active' : '' }}" id="tab-solicitudes" role="tabpanel">
                 <div class="card border border-200 shadow-none mb-4">
-                    <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-white border-bottom border-200 py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
                             <h5 class="mb-0 text-1100 fw-bold">Solicitudes de Permisos y Vacaciones</h5>
-                            <p class="mb-0 fs--2 text-600">Gestión de ausencias justificadas y autorizaciones</p>
+                            <p class="mb-0 fs--2 text-600">Gestión de ausencias justificadas y autorizaciones de gerencia / RRHH</p>
                         </div>
+                        @if ($puedeEditar)
+                            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nueva-solicitud" aria-expanded="{{ $errors->solicitud->any() ? 'true' : 'false' }}">
+                                <span class="fas fa-plus me-1"></span>Nueva solicitud
+                            </button>
+                        @endif
                     </div>
                     <div class="card-body p-4">
+                        @if ($puedeEditar)
+                            <div class="collapse {{ $errors->solicitud->any() ? 'show' : '' }} mb-4" id="nueva-solicitud">
+                                <div class="bg-100 p-3 rounded-3 border border-200">
+                                    <h6 class="mb-3 text-1000 fw-bold"><span class="fas fa-paper-plane text-primary me-2"></span>Registrar Solicitud de Ausencia</h6>
+                                    @if ($errors->solicitud->any())
+                                        <div class="alert alert-soft-danger fs--1 mb-3">{{ $errors->solicitud->first() }}</div>
+                                    @endif
+                                    <form method="POST" action="{{ route('asistencia.solicitudes.store') }}" class="row g-3">
+                                        @csrf
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fs--2 text-700" for="id_empleado">Colaborador <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" id="id_empleado" name="id_empleado" required>
+                                                <option value="">Selecciona colaborador…</option>
+                                                @foreach ($empleados as $e)
+                                                    <option value="{{ $e->id_empleado }}" @selected((int) old('id_empleado') === $e->id_empleado)>{{ $e->nombre_completo }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-3">
+                                            <label class="form-label fs--2 text-700" for="tipo_ausencia">Tipo de ausencia <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" id="tipo_ausencia" name="tipo">
+                                                @foreach ($tipos as $k => $n)
+                                                    <option value="{{ $k }}" @selected(old('tipo', 'VACACIONES') === $k)>{{ $n }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-6 col-md-2">
+                                            <label class="form-label fs--2 text-700" for="fecha_inicio">Desde <span class="text-danger">*</span></label>
+                                            <input class="form-control form-control-sm" id="fecha_inicio" type="date" name="fecha_inicio" value="{{ old('fecha_inicio') }}" required />
+                                        </div>
+                                        <div class="col-6 col-md-2">
+                                            <label class="form-label fs--2 text-700" for="fecha_fin">Hasta <span class="text-danger">*</span></label>
+                                            <input class="form-control form-control-sm" id="fecha_fin" type="date" name="fecha_fin" value="{{ old('fecha_fin') }}" required />
+                                        </div>
+                                        <div class="col-12 col-md-1 d-flex align-items-end">
+                                            <button class="btn btn-primary btn-sm w-100" type="submit">Enviar</button>
+                                        </div>
+                                        <div class="col-12">
+                                            <input class="form-control form-control-sm" name="motivo" value="{{ old('motivo') }}" maxlength="500" placeholder="Motivo o comentarios de la solicitud (opcional)" />
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($errors->has('solicitud') || $errors->has('observaciones'))
+                            <div class="alert alert-soft-danger fs--1 mb-3">{{ $errors->first('solicitud') ?: $errors->first('observaciones') }}</div>
+                        @endif
+
                         <div class="table-responsive scrollbar">
                             <table class="table table-sm fs--1 mb-0 align-middle">
                                 <thead class="bg-100">
@@ -259,26 +313,73 @@
                                         <th class="ps-3 text-700">COLABORADOR</th>
                                         <th class="text-700">TIPO</th>
                                         <th class="text-700">RANGO DE FECHAS</th>
-                                        <th class="text-end text-700">DÍAS</th>
-                                        <th class="text-end pe-3 text-700">ESTADO</th>
+                                        <th class="text-end text-700">DÍAS HÁBILES</th>
+                                        <th class="text-center text-700">ESTADO</th>
+                                        <th class="text-end pe-3 text-700">ACCIONES / GESTIÓN</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($solicitudes as $s)
                                         <tr>
-                                            <td class="ps-3 py-3 fw-semi-bold text-1000">{{ $s->empleado?->nombre_completo }}</td>
-                                            <td><span class="badge badge-tag">{{ $s->tipo }}</span></td>
-                                            <td class="text-700">{{ $s->fecha_inicio?->format('d/m/Y') }} — {{ $s->fecha_fin?->format('d/m/Y') }}</td>
-                                            <td class="text-end fw-bold text-900">{{ (float) $s->dias }}</td>
-                                            <td class="text-end pe-3">
+                                            <td class="ps-3 py-3">
+                                                <span class="fw-bold text-1000 d-block">{{ $s->empleado?->nombre_completo }}</span>
+                                                <span class="fs--2 text-600">{{ $s->empleado?->cargo?->nombre ?? 'Colaborador' }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-phoenix fs--2 badge-phoenix-{{ $s->tipo === 'VACACIONES' ? 'primary' : ($s->tipo === 'INCAPACIDAD' ? 'danger' : 'info') }}">
+                                                    {{ $tipos[$s->tipo] ?? $s->tipo }}
+                                                </span>
+                                            </td>
+                                            <td class="text-700">
+                                                <span class="fw-semi-bold">{{ $s->fecha_inicio?->format('d/m/Y') }}</span> — <span class="fw-semi-bold">{{ $s->fecha_fin?->format('d/m/Y') }}</span>
+                                                @if ($s->motivo)
+                                                    <span class="d-block fs--2 text-600 text-truncate" style="max-width: 18rem;" title="{{ $s->motivo }}">{{ $s->motivo }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end fw-bolder text-900 fs-0">{{ (int) $s->dias_habiles }}</td>
+                                            <td class="text-center">
                                                 <span class="badge badge-phoenix fs--2 badge-phoenix-{{ ['PENDIENTE' => 'warning', 'APROBADO' => 'success', 'RECHAZADO' => 'danger', 'CANCELADO' => 'secondary'][$s->estado] ?? 'secondary' }}">
                                                     {{ ucfirst(strtolower($s->estado)) }}
                                                 </span>
+                                                @if ($s->estado !== 'PENDIENTE' && $s->aprobadoPor)
+                                                    <span class="d-block fs--2 text-600 mt-1">Por {{ $s->aprobadoPor->nombre_completo }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <div class="d-flex justify-content-end align-items-center gap-1">
+                                                    @if ($s->estado === 'APROBADO')
+                                                        <a class="btn btn-phoenix-secondary btn-sm px-2" href="{{ route('asistencia.solicitudes.constancia', $s->id_solicitud) }}" target="_blank" title="Imprimir constancia">
+                                                            <span class="fas fa-print me-1"></span>Constancia
+                                                        </a>
+                                                    @endif
+                                                    @if ($s->estado === 'PENDIENTE' && $puedeAprobar)
+                                                        <form method="POST" action="{{ route('asistencia.solicitudes.resolver', [$s->id_solicitud, 'aprobar']) }}" class="d-inline">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button class="btn btn-success btn-sm px-2" type="submit" title="Aprobar solicitud">
+                                                                <span class="fas fa-check me-1"></span>Aprobar
+                                                            </button>
+                                                        </form>
+                                                        <button class="btn btn-phoenix-danger btn-sm px-2" type="button" data-bs-toggle="collapse" data-bs-target="#rechazo-{{ $s->id_solicitud }}" title="Rechazar">
+                                                            <span class="fas fa-times me-1"></span>Rechazar
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                                @if ($s->estado === 'PENDIENTE' && $puedeAprobar)
+                                                    <div class="collapse mt-2" id="rechazo-{{ $s->id_solicitud }}">
+                                                        <form method="POST" action="{{ route('asistencia.solicitudes.resolver', [$s->id_solicitud, 'rechazar']) }}" class="d-flex gap-1 justify-content-end">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <input class="form-control form-control-sm" style="max-width: 14rem;" name="observaciones" maxlength="500" placeholder="Motivo del rechazo..." required />
+                                                            <button class="btn btn-danger btn-sm" type="submit">Confirmar</button>
+                                                        </form>
+                                                    </div>
+                                                @endif
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center text-600 py-4">No hay solicitudes recientes registradas.</td>
+                                            <td colspan="6" class="text-center text-600 py-4">No hay solicitudes recientes registradas.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\EsquemaNexus;
 use Tests\TestCase;
@@ -64,6 +65,26 @@ class AsistenciaTest extends TestCase
         $this->patch(route('asistencia.solicitudes.resolver', [$s->id_solicitud, 'rechazar']), ['observaciones' => 'Tarde'])->assertSessionHasErrors('solicitud');
     }
 
+    public function test_pestana_de_solicitudes_muestra_acciones_segun_estado(): void
+    {
+        Carbon::setTestNow('2026-10-10 10:00:00');
+        $this->actingAs($this->crearUsuario());
+        $this->post(route('asistencia.solicitudes.store'), ['id_empleado' => $this->ana, 'tipo' => 'VACACIONES', 'fecha_inicio' => '2026-10-12', 'fecha_fin' => '2026-10-13', 'motivo' => 'Viaje familiar'])
+            ->assertSessionHasNoErrors();
+        $id = DB::table('solicitud_ausencia')->value('id_solicitud');
+
+        $this->get(route('asistencia.index'))->assertOk()
+            ->assertSee('Nueva solicitud')->assertSee('Viaje familiar')
+            ->assertSee(route('asistencia.solicitudes.resolver', [$id, 'aprobar']), false)
+            ->assertDontSee(route('asistencia.solicitudes.constancia', $id), false);
+
+        $this->patch(route('asistencia.solicitudes.resolver', [$id, 'aprobar']))->assertSessionHasNoErrors();
+        $this->get(route('asistencia.index'))->assertOk()
+            ->assertSee(route('asistencia.solicitudes.constancia', $id), false)
+            ->assertDontSee(route('asistencia.solicitudes.resolver', [$id, 'aprobar']), false);
+        Carbon::setTestNow();
+    }
+
     public function test_rechazo_pide_motivo(): void
     {
         $this->actingAs($this->crearUsuario());
@@ -77,7 +98,7 @@ class AsistenciaTest extends TestCase
 
     public function test_nomina_descuenta_ausencias_y_trae_horas_extra(): void
     {
-        \Illuminate\Support\Carbon::setTestNow('2026-10-20 10:00'); // las fechas de asistencia no pueden ser futuras
+        Carbon::setTestNow('2026-10-20 10:00'); // las fechas de asistencia no pueden ser futuras
         $this->actingAs($this->crearUsuario());
         DB::table('contrato_laboral')->insert(['id_empleado' => $this->ana, 'id_empresa' => 1, 'numero_contrato' => 'CL-1', 'tipo' => 'INDEFINIDO',
             'fecha_inicio' => '2025-01-01', 'salario_base' => 4000, 'estado' => 'VIGENTE']);
@@ -90,7 +111,7 @@ class AsistenciaTest extends TestCase
         $this->patch(route('nomina.procesar', DB::table('periodo_nomina')->value('id_periodo')))->assertSessionHasNoErrors();
         $d = DB::table('detalle_nomina')->sole();
         $this->assertSame([12.0, 2.0], [(float) $d->dias_trabajados, (float) $d->horas_extra]); // 15 − 1 ausencia − 2 sin goce
-        \Illuminate\Support\Carbon::setTestNow();
+        Carbon::setTestNow();
     }
 
     public function test_pantalla_y_permisos(): void
