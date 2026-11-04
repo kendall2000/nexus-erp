@@ -4,7 +4,9 @@ namespace App\Http\Requests\Finanzas;
 
 use App\Http\Controllers\SerieFacturacionController;
 use App\Models\Finanzas\SerieFacturacion;
+use App\Support\Sedes;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -29,6 +31,9 @@ class GuardarSerieFacturacionRequest extends FormRequest
             'codigo_serie' => ['required', 'string', 'max:10', 'regex:/^[A-Z0-9][A-Z0-9-]*$/'],
             'tipo' => ['required', Rule::in(array_keys(SerieFacturacionController::TIPOS))],
             'descripcion' => ['nullable', 'string', 'max:100'],
+            // Establecimiento (FEL) al que pertenece: sus facturas son siempre de esa sede.
+            'id_sucursal' => ['nullable', 'integer', Sedes::regla((int) $this->user()->id_empresa,
+                ($actual = DB::table('serie_facturacion')->where('id_serie', (int) $this->route('serie'))->value('id_sucursal')) ? (int) $actual : null)],
             'ultimo_numero' => ['required', 'integer', 'min:0', 'max:99999999'],
         ];
     }
@@ -38,6 +43,7 @@ class GuardarSerieFacturacionRequest extends FormRequest
     {
         return [
             'codigo_serie.regex' => 'El código solo puede tener letras, números y guion.',
+            'id_sucursal.exists' => 'La sucursal no es válida o está inactiva.',
         ];
     }
 
@@ -58,6 +64,6 @@ class GuardarSerieFacturacionRequest extends FormRequest
             throw ValidationException::withMessages(['codigo_serie' => 'Ya hay una serie con ese código para ese tipo de documento.']);
         }
 
-        return $datos + ['descripcion' => null, 'activo' => $this->boolean('activo')];
+        return $datos + ['descripcion' => null, 'id_sucursal' => null, 'activo' => $this->boolean('activo')];
     }
 }

@@ -90,6 +90,9 @@
                         </select>
                     </div>
                     <div class="col-md-4">
+                        @include('partials.campo-sede', ['sedes' => $sedes, 'valor' => $v('id_sucursal'), 'vacio' => 'La de la bodega de destino'])
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label" for="notas">Notas o Términos Especiales</label>
                         <input class="form-control" id="notas" name="notas" value="{{ $v('notas') }}" maxlength="2000" placeholder="Lugar de descarga, condiciones de pago..." />
                     </div>

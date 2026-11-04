@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Clientes\Cliente;
 use App\Models\Clientes\ContratoServicio;
+use App\Models\Core\Sucursal;
 use App\Models\CRM\CategoriaTicket;
 use App\Models\CRM\EscalacionTicket;
 use App\Models\CRM\EvaluacionSatisfaccion;
@@ -11,6 +12,7 @@ use App\Models\CRM\SlaConfig;
 use App\Models\CRM\Ticket;
 use App\Models\CRM\TicketComentario;
 use App\Models\RRHH\Empleado;
+use App\Support\Sedes;
 use App\Support\Sla;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +51,7 @@ class TicketController extends Controller
         $activos = $this->deMiEmpresa($request)->whereIn('estado', self::ACTIVOS);
 
         return view('tickets.index', [
-            'tickets' => $this->filtrados($request)->with(['cliente', 'categoria', 'asignadoA'])
+            'tickets' => $this->filtrados($request)->with(['cliente', 'categoria', 'asignadoA', 'sucursal'])
                 ->orderByRaw("CASE prioridad WHEN 'CRITICA' THEN 1 WHEN 'ALTA' THEN 2 WHEN 'MEDIA' THEN 3 ELSE 4 END")
                 ->orderBy('fecha_limite_resolucion')->orderByDesc('id_ticket')->paginate(25)->withQueryString(),
             'resumen' => [
@@ -61,13 +63,14 @@ class TicketController extends Controller
             'agentes' => $this->agentes($request)->get(),
             'estados' => self::ESTADOS,
             'prioridades' => self::PRIORIDADES,
-            'filtros' => $request->only(['buscar', 'estado', 'prioridad', 'cliente', 'asignado', 'vencidos']),
+            'sedes' => Sucursal::paraSelect($idEmpresa),
+            'filtros' => $request->only(['buscar', 'estado', 'prioridad', 'cliente', 'asignado', 'vencidos', 'sucursal']),
         ]);
     }
 
     public function show(Request $request, int $ticket): View
     {
-        $t = $this->deMiEmpresa($request)->with(['cliente', 'contrato', 'categoria', 'asignadoA', 'sla'])->findOrFail($ticket);
+        $t = $this->deMiEmpresa($request)->with(['cliente', 'contrato', 'categoria', 'asignadoA', 'sla', 'sucursal'])->findOrFail($ticket);
 
         return view('tickets.show', [
             't' => $t,
@@ -95,6 +98,8 @@ class TicketController extends Controller
             'tipos' => self::TIPOS,
             'canales' => self::CANALES,
             'elegido' => $request->only(['cliente', 'contrato']),
+            'sedes' => Sucursal::paraSelect($idEmpresa),
+            'sede' => Sedes::predeterminada($request->user()),
         ]);
     }
 
@@ -105,6 +110,7 @@ class TicketController extends Controller
             'id_cliente' => ['required', 'integer', Rule::exists('cliente', 'id_cliente')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')],
             'id_contrato' => ['nullable', 'integer', Rule::exists('contrato_servicio', 'id_contrato')->where('id_empresa', $idEmpresa)->where('id_cliente', $request->integer('id_cliente'))],
             'id_categoria' => ['nullable', 'integer', Rule::exists('categoria_ticket', 'id_categoria')->where('id_empresa', $idEmpresa)->where('activo', true)],
+            'id_sucursal' => ['nullable', 'integer', Sedes::regla($idEmpresa)],
             'id_asignado_a' => ['nullable', 'integer', Rule::exists('empleado', 'id_empleado')->where('id_empresa', $idEmpresa)->whereNull('deleted_at')->whereNotIn('estado', ['BAJA', 'INACTIVO'])],
             'asunto' => ['required', 'string', 'max:300'],
             'descripcion' => ['required', 'string', 'max:10000'],
@@ -115,6 +121,7 @@ class TicketController extends Controller
         ], [
             'id_contrato.exists' => 'El contrato no es de este cliente.',
             'id_asignado_a.exists' => 'El agente no es un empleado activo.',
+            'id_sucursal.exists' => 'La sucursal no es válida o está inactiva.',
         ]);
         if (! empty($datos['id_asignado_a']) && ! $request->user()->puede('tickets.asignar')) {
             throw ValidationException::withMessages(['id_asignado_a' => 'No tienes permiso para asignar tickets.']);
@@ -262,6 +269,7 @@ class TicketController extends Controller
             ->when(array_key_exists($estado, self::ESTADOS), fn ($q) => $q->where('estado', $estado), fn ($q) => $estado === 'todos' ? $q : $q->whereIn('estado', self::ACTIVOS))
             ->when(array_key_exists((string) $request->query('prioridad'), self::PRIORIDADES), fn ($q) => $q->where('prioridad', $request->query('prioridad')))
             ->when($request->filled('cliente'), fn ($q) => $q->where('id_cliente', $request->integer('cliente')))
+            ->tap(fn ($q) => Sedes::filtrar($q, $request->query('sucursal')))
             ->when($request->query('asignado') === 'ninguno', fn ($q) => $q->whereNull('id_asignado_a'))
             ->when(ctype_digit((string) $request->query('asignado')), fn ($q) => $q->where('id_asignado_a', $request->integer('asignado')))
             ->when($request->boolean('vencidos'), fn ($q) => $q->whereIn('estado', self::ACTIVOS)->whereNotNull('fecha_limite_resolucion')->where('fecha_limite_resolucion', '<', now()));

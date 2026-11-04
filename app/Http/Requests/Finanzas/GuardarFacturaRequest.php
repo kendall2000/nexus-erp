@@ -4,7 +4,9 @@ namespace App\Http\Requests\Finanzas;
 
 use App\Http\Controllers\FacturaController;
 use App\Models\Clientes\TipoServicio;
+use App\Support\Sedes;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -30,6 +32,7 @@ class GuardarFacturaRequest extends FormRequest
     {
         $idEmpresa = $this->user()->id_empresa;
         $esEdicion = (bool) $this->route('factura');
+        $sedeActual = $esEdicion ? DB::table('factura')->where('id_factura', (int) $this->route('factura'))->value('id_sucursal') : null;
         $serviciosValidos = TipoServicio::query()
             ->where('activo', true)
             ->whereHas('lineaNegocio', fn ($q) => $q->where('id_empresa', $idEmpresa))
@@ -60,6 +63,8 @@ class GuardarFacturaRequest extends FormRequest
                     ->where('id_empresa', $idEmpresa)
                     ->where('id_cliente', $this->integer('id_cliente')),
             ],
+            // Si la serie está atada a un establecimiento, el controlador usa el de la serie.
+            'id_sucursal' => ['nullable', 'integer', Sedes::regla((int) $idEmpresa, $sedeActual ? (int) $sedeActual : null)],
             'fecha_emision' => ['required', 'date'],
             'fecha_vencimiento' => ['required', 'date', 'after_or_equal:fecha_emision'],
             'periodo_servicio_inicio' => ['nullable', 'date'],
@@ -84,6 +89,7 @@ class GuardarFacturaRequest extends FormRequest
         return [
             'id_serie.required' => 'Elige la serie (define el tipo de documento).',
             'id_cliente.exists' => 'El cliente no es válido o está inactivo.',
+            'id_sucursal.exists' => 'La sucursal no es válida o está inactiva.',
             'id_contrato.exists' => 'El contrato no es de este cliente.',
             'fecha_vencimiento.after_or_equal' => 'El vencimiento no puede ser antes de la emisión.',
             'lineas.required' => 'Agrega al menos una línea.',
@@ -129,8 +135,8 @@ class GuardarFacturaRequest extends FormRequest
         }
 
         return [
-            'encabezado' => collect($datos)->only(['id_serie', 'id_cliente', 'id_contrato', 'fecha_emision', 'fecha_vencimiento', 'periodo_servicio_inicio', 'periodo_servicio_fin', 'moneda', 'notas'])->all()
-                + ['descuento' => round((float) ($datos['descuento'] ?? 0), 4), 'id_contrato' => null, 'periodo_servicio_inicio' => null, 'periodo_servicio_fin' => null, 'notas' => null],
+            'encabezado' => collect($datos)->only(['id_serie', 'id_sucursal', 'id_cliente', 'id_contrato', 'fecha_emision', 'fecha_vencimiento', 'periodo_servicio_inicio', 'periodo_servicio_fin', 'moneda', 'notas'])->all()
+                + ['descuento' => round((float) ($datos['descuento'] ?? 0), 4), 'id_sucursal' => null, 'id_contrato' => null, 'periodo_servicio_inicio' => null, 'periodo_servicio_fin' => null, 'notas' => null],
             'lineas' => $lineas,
         ];
     }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CuentaSeguridadController;
+use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\GeografiaController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\RolController;
@@ -29,6 +30,16 @@ Route::middleware('admin')->group(function () {
     Route::middleware('admin:general')->group(function () {
         Route::get('sistema/configuracion', [ConfiguracionController::class, 'edit'])->name('configuracion.edit');
         Route::put('sistema/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
+    });
+
+    // Empresas del grupo (solo el administrador general): se crean con su casa matriz y catálogos copiados
+    Route::prefix('sistema/empresas')->middleware('admin:general')->name('empresas.')->controller(EmpresaController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('nueva', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('{empresa}/editar', 'edit')->whereNumber('empresa')->name('edit');
+        Route::put('{empresa}', 'update')->whereNumber('empresa')->name('update');
+        Route::patch('{empresa}/estado', 'estado')->whereNumber('empresa')->name('estado');
     });
 
     // Sucursales

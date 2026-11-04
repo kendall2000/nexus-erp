@@ -238,7 +238,7 @@
                 <h5 class="mb-0 text-1100"><span class="fas fa-folder-open text-primary me-2"></span>Documentos del expediente</h5>
                 @if ($puedeEditar && $contaboListo)<button class="btn btn-phoenix-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#documento">Subir documento</button>@endif
             </div>
-            @if ($puedeEditar && ! $contaboListo)<p class="text-warning">La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).</p>@endif
+            @if ($puedeEditar && ! $contaboListo)<p class="text-warning">{{ \App\Support\Archivos::problema(\App\Support\Archivos::DISCO_PRIVADO) }}</p>@endif
             @if ($puedeEditar && $contaboListo)
                 <div class="collapse {{ $errors->documento->any() ? 'show' : '' }}" id="documento">
                     <form method="POST" action="{{ route('empleados.documentos.store', $e->id_empleado) }}" enctype="multipart/form-data" class="row g-2 border rounded p-2 mb-3">

@@ -148,6 +148,9 @@ trait EsquemaNexus
         Schema::create('sucursal', function (Blueprint $t) {
             $t->increments('id_sucursal');
             $t->unsignedInteger('id_empresa');
+            $t->string('tipo')->default('SUCURSAL');
+            $t->unsignedInteger('id_sucursal_padre')->nullable();
+            $t->unsignedSmallInteger('codigo_establecimiento')->nullable();
             $t->unsignedInteger('id_pais')->nullable();
             $t->unsignedInteger('id_division')->nullable();
             $t->unsignedInteger('id_municipio')->nullable();
@@ -959,6 +962,28 @@ trait EsquemaNexus
             $t->boolean('iva_incluido_en_precio')->default(false);
             $t->string('nombre_legal')->nullable();
             $t->string('nit')->nullable();
+            $t->unsignedInteger('id_pais')->nullable();
+            $t->string('moneda_base', 3)->default('GTQ');
+            $t->string('email_corporativo')->nullable();
+            $t->string('telefono')->nullable();
+            $t->string('direccion')->nullable();
+            $t->unsignedInteger('id_municipio')->nullable();
+            $t->string('logo_url')->nullable();
+            $t->date('fecha_fundacion')->nullable();
+            $t->string('regimen_fiscal')->nullable();
+            $t->string('sitio_web')->nullable();
+            $t->string('leyenda_factura', 500)->nullable();
+            $t->timestamps();
+        });
+        Schema::create('plantilla_comunicacion', function (Blueprint $t) {
+            $t->increments('id_plantilla');
+            $t->unsignedInteger('id_empresa');
+            $t->string('nombre');
+            $t->string('tipo')->default('EMAIL');
+            $t->string('asunto')->nullable();
+            $t->text('contenido');
+            $t->boolean('activo')->default(true);
+            $t->dateTime('created_at')->nullable();
         });
         Schema::create('recepcion_mercaderia', function (Blueprint $t) {
             $t->increments('id_recepcion');
@@ -1054,6 +1079,10 @@ trait EsquemaNexus
         });
         foreach (['login', 'general'] as $tipo) {
             DB::table('ConfiguracionSistema')->insert(['tipo' => $tipo, 'nombreSistema' => 'Nexus ERP', 'maxIntentosSesion' => 5, 'sesionExpiraMin' => 120]);
+        }
+        // Sucursal o agencia de los documentos (y el establecimiento de la serie).
+        foreach (['factura', 'orden_compra', 'ticket', 'serie_facturacion'] as $tabla) {
+            Schema::table($tabla, fn (Blueprint $t) => $t->unsignedInteger('id_sucursal')->nullable());
         }
     }
 

@@ -13,7 +13,12 @@ use Illuminate\Support\Facades\DB;
 class MenuLateral
 {
     /** Rutas de lo que comparten todas las empresas (ver Usuario::esAdministradorGeneral). */
-    public const SOLO_GENERAL = ['sistema/configuracion', 'sistema/modulos', 'sistema/geografia'];
+    public const SOLO_GENERAL = ['sistema/configuracion', 'sistema/modulos', 'sistema/geografia', 'sistema/empresas'];
+
+    /** Reportes que no tienen permiso propio: se ven con cualquiera de los permisos de su ruta. */
+    public const CON_PERMISOS_DE_OTROS = [
+        'sistema/por-sucursal' => ['facturas.ver', 'ordenes_compra.ver', 'tickets.ver', 'empleados.ver'],
+    ];
 
     /** @return Collection<int, array{nombre: string, items: Collection}> */
     public static function para(?Usuario $usuario): Collection
@@ -32,7 +37,8 @@ class MenuLateral
         // Las pantallas que comparten todas las empresas solo las ve el administrador general.
         $general = $esAdmin && $usuario->esAdministradorGeneral();
         $visible = fn (Modulo $m) => ($esAdmin && ($general || ! in_array(trim((string) $m->ruta, '/'), self::SOLO_GENERAL, true)))
-            || (in_array($m->id_modulo, $conVer, true) && $usuario->puede($m->codigo.'.ver'));
+            || (in_array($m->id_modulo, $conVer, true) && $usuario->puede($m->codigo.'.ver'))
+            || collect(self::CON_PERMISOS_DE_OTROS[trim((string) $m->ruta, '/')] ?? [])->contains(fn ($p) => $usuario->puede($p));
 
         $construirArbol = function (Modulo $m) use (&$construirArbol, $modulos, $visible) {
             $hijosDirectos = $modulos->where('id_modulo_padre', $m->id_modulo);

@@ -6,6 +6,12 @@
     <x-slot:encabezado>
         <h3 class="text-1100 fw-bolder mb-1">{{ mb_strtoupper($tipos[$f->tipo] ?? 'Documento') }}</h3>
         <p class="fs-0 fw-bold text-primary mb-1">{{ $f->numero_completo }}</p>
+        @if ($f->sucursal)
+            <p class="fs--1 text-800 mb-1">
+                {{ $f->sucursal->codigo_establecimiento ? 'Establecimiento '.$f->sucursal->codigo_establecimiento.' · ' : '' }}{{ $f->sucursal->nombre }}
+                @if ($f->sucursal->direccion)<br><span class="fs--2 text-600">{{ $f->sucursal->direccion }}</span>@endif
+            </p>
+        @endif
         <p class="fs--1 text-800 mb-0">
             Emisión: <span class="fw-semi-bold">{{ $f->fecha_emision?->format('d/m/Y') }}</span><br>
             Vencimiento: <span class="fw-semi-bold">{{ $f->fecha_vencimiento?->format('d/m/Y') }}</span>
@@ -87,6 +93,9 @@
         </table>
     </div>
 
+    @if ($empresa?->leyenda_factura)
+        <p class="fs--1 text-800 text-center mt-4 mb-0">{{ $empresa->leyenda_factura }}</p>
+    @endif
     <p class="fs--2 text-600 mt-4 mb-0 border-top border-200 pt-3">
         Representación interna del documento. {{ $f->uuid_fel ? 'Autorización FEL: '.$f->numero_autorizacion_fel.' · UUID '.$f->uuid_fel : 'Sin certificación FEL.' }}
     </p>

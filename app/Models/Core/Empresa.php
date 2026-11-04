@@ -25,6 +25,9 @@ class Empresa extends Model
         'activo',
         'tasa_iva',
         'iva_incluido_en_precio',
+        'regimen_fiscal',
+        'sitio_web',
+        'leyenda_factura',
     ];
 
     protected $casts = [
@@ -82,9 +85,12 @@ class Empresa extends Model
         return $query->where('activo', true);
     }
 
-    public function getLogoUrlAttribute($value)
+    /** Logo para sus documentos: el suyo o, si no tiene, el de reportes o el principal del consorcio. */
+    public function logoDocumentos(): ?string
     {
-        return $value ?? asset('images/logo-default.png');
+        $cfg = \App\Support\Sistema::config();
+
+        return $this->logo_url ?: ($cfg->imgLogoReporte ?: $cfg->imgLogo) ?: null;
     }
     public function getTasaIvaDecimalAttribute(): float
     {

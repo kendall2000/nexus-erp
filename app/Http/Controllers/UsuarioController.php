@@ -408,6 +408,6 @@ class UsuarioController extends Controller
 
     private function sucursales(Request $request)
     {
-        return Sucursal::query()->where('id_empresa', $this->idEmpresa($request))->where('activo', true)->orderBy('nombre')->get();
+        return Sucursal::paraSelect($this->idEmpresa($request));
     }
 }

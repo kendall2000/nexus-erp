@@ -116,6 +116,9 @@
                                 <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Agente Responsable</h6>
                                 <h3 class="text-primary mb-0 fw-bolder">{{ $t->asignadoA?->nombre_completo ?? 'Sin asignar' }}</h3>
                                 <p class="fs--2 text-600 mb-0 mt-1">Categoría: {{ $t->categoria?->nombre ?? 'General' }}</p>
+                                @if ($t->sucursal)
+                                    <p class="fs--2 text-600 mb-0"><span class="fas fa-store-alt me-1"></span>{{ $t->sucursal->etiqueta() }}</p>
+                                @endif
                             </div>
                             <div class="d-flex align-items-center icon-wrapper-sm shadow-primary-100" style="transform: rotate(-7.45deg);">
                                 <span class="fas fa-user-check text-primary fs-1 z-index-1 ms-2"></span>

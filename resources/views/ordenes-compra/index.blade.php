@@ -76,6 +76,7 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @include('partials.filtro-sede', ['sedes' => $sedes, 'valor' => $filtros['sucursal'] ?? ''])
                             @if (array_filter($filtros))
                                 <a class="btn btn-phoenix-danger px-3 flex-shrink-0" href="{{ route('ordenes-compra.index') }}" title="Limpiar filtros">
                                     <span class="fas fa-times me-1"></span>Limpiar
@@ -146,6 +147,7 @@
                                     </td>
                                     <td class="align-middle white-space-nowrap ps-4 text-800">
                                         <span class="badge badge-phoenix badge-phoenix-secondary">{{ $oc->bodega?->nombre ?? '—' }}</span>
+                                        @if ($oc->sucursal)<span class="d-block fs--2 text-600 mt-1"><span class="fas fa-store-alt me-1"></span>{{ $oc->sucursal->nombre }}</span>@endif
                                     </td>
                                     <td class="date align-middle white-space-nowrap text-700 ps-4">
                                         {{ $oc->fecha_emision?->format('d/m/Y') }}

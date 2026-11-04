@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Finanzas\GuardarSerieFacturacionRequest;
+use App\Models\Core\Sucursal;
 use App\Models\Finanzas\SerieFacturacion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -28,14 +29,15 @@ class SerieFacturacionController extends Controller
     public function index(Request $request): View
     {
         return view('series-facturacion.index', [
-            'series' => $this->deMiEmpresa($request)->withCount('facturas')->orderBy('tipo')->orderBy('codigo_serie')->get(),
+            'series' => $this->deMiEmpresa($request)->with('sucursal')->withCount('facturas')->orderBy('tipo')->orderBy('codigo_serie')->get(),
             'tipos' => self::TIPOS,
         ]);
     }
 
     public function create(): View
     {
-        return view('series-facturacion.form', ['serie' => new SerieFacturacion(['tipo' => 'FACTURA', 'ultimo_numero' => 0, 'activo' => true]), 'usada' => false, 'tipos' => self::TIPOS]);
+        return view('series-facturacion.form', ['serie' => new SerieFacturacion(['tipo' => 'FACTURA', 'ultimo_numero' => 0, 'activo' => true]), 'usada' => false, 'tipos' => self::TIPOS,
+            'sedes' => Sucursal::paraSelect($this->idEmpresa())]);
     }
 
     public function store(GuardarSerieFacturacionRequest $request): RedirectResponse
@@ -49,7 +51,8 @@ class SerieFacturacionController extends Controller
     {
         $serie = $this->deMiEmpresa($request)->findOrFail($serie);
 
-        return view('series-facturacion.form', ['serie' => $serie, 'usada' => $serie->facturas()->exists(), 'tipos' => self::TIPOS]);
+        return view('series-facturacion.form', ['serie' => $serie, 'usada' => $serie->facturas()->exists(), 'tipos' => self::TIPOS,
+            'sedes' => Sucursal::paraSelect($this->idEmpresa($request), $serie->id_sucursal)]);
     }
 
     public function update(GuardarSerieFacturacionRequest $request, int $serie): RedirectResponse
@@ -58,7 +61,7 @@ class SerieFacturacionController extends Controller
             $serie = $this->deMiEmpresa($request)->lockForUpdate()->findOrFail($serie);
             $datos = $request->datosLimpios($serie);
             if ($serie->facturas()->exists()) {
-                // Con documentos emitidos, el código, el tipo y el correlativo ya no cambian.
+                // Con documentos emitidos, el código, el tipo, el correlativo y el establecimiento ya no cambian.
                 $datos = collect($datos)->only(['descripcion', 'activo'])->all();
             }
             $serie->update($datos);

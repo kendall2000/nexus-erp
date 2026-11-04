@@ -124,6 +124,7 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @include('partials.filtro-sede', ['sedes' => $sedes, 'valor' => $filtros['sucursal'] ?? ''])
                             @if (array_filter($filtros))
                                 <a class="btn btn-phoenix-danger px-3 flex-shrink-0" href="{{ route('tickets.index') }}" title="Limpiar filtros">
                                     <span class="fas fa-times me-1"></span>Limpiar
@@ -189,7 +190,7 @@
                                         <a class="fw-bold text-1100 text-hover-1000 mb-0 d-block line-clamp-1" href="{{ route('tickets.show', $t->id_ticket) }}">
                                             {{ $t->asunto }}
                                         </a>
-                                        <span class="fs--2 text-600">{{ $t->categoria?->nombre ?? 'General' }}</span>
+                                        <span class="fs--2 text-600">{{ $t->categoria?->nombre ?? 'General' }}{{ $t->sucursal ? ' · '.$t->sucursal->nombre : '' }}</span>
                                     </td>
                                     <td class="customer align-middle white-space-nowrap ps-4">
                                         <span class="fw-semi-bold text-1000">{{ $t->cliente?->razon_social ?? '—' }}</span>

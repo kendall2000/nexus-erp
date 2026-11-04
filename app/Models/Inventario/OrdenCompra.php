@@ -18,6 +18,7 @@ class OrdenCompra extends Model
         'id_empresa',
         'id_proveedor',
         'id_bodega',
+        'id_sucursal',
         'numero_oc',
         'fecha_emision',
         'fecha_entrega_esperada',
@@ -44,6 +45,11 @@ class OrdenCompra extends Model
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
+    public function sucursal()
+    {
+        return $this->belongsTo(\App\Models\Core\Sucursal::class, 'id_sucursal');
+    }
+
     public function empresa()       { return $this->belongsTo(\App\Models\Core\Empresa::class, 'id_empresa'); }
     public function proveedor()     { return $this->belongsTo(Proveedor::class, 'id_proveedor'); }
     public function bodega()        { return $this->belongsTo(Bodega::class, 'id_bodega'); }

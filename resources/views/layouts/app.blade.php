@@ -138,6 +138,9 @@
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="{{ route('consolidado.index') }}"><span class="fas fa-layer-group me-2 text-600"></span>Reporte consolidado</a>
                             @endif
+                            @if (Route::has('por-sucursal.index') && collect(['facturas.ver', 'ordenes_compra.ver', 'tickets.ver', 'empleados.ver'])->contains(fn ($p) => $usuario->puede($p)))
+                                <a class="dropdown-item" href="{{ route('por-sucursal.index') }}"><span class="fas fa-store-alt me-2 text-600"></span>Resumen por sucursal</a>
+                            @endif
                         </div>
                     </li>
                 @endif

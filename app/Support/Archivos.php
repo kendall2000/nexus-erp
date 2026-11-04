@@ -22,12 +22,28 @@ class Archivos
 
     public const DISCO_PRIVADO = 'contabo_privado';
 
-    /** Hay credenciales de Contabo en el .env para ese disco. */
+    /** Se pueden subir archivos a ese disco (ver problema()). */
     public static function disponible(string $disco = self::DISCO): bool
     {
-        $c = config('filesystems.disks.'.$disco);
+        return self::problema($disco) === null;
+    }
 
-        return filled($c['key'] ?? null) && filled($c['secret'] ?? null) && filled($c['bucket'] ?? null);
+    /**
+     * Por qué no se pueden subir archivos, o null si se puede: faltan las credenciales, o en
+     * producción falta la carpeta propia de la instalación (CONTABO_CARPETA). Sin carpeta, los
+     * archivos de un cliente quedarían en las mismas rutas que los de otro (expedientes/5/…).
+     */
+    public static function problema(string $disco = self::DISCO): ?string
+    {
+        $c = config('filesystems.disks.'.$disco);
+        if (! filled($c['key'] ?? null) || ! filled($c['secret'] ?? null) || ! filled($c['bucket'] ?? null)) {
+            return 'La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).';
+        }
+        if (app()->isProduction() && trim((string) ($c['root'] ?? ''), '/') === '' && ! config('filesystems.contabo_usar_raiz')) {
+            return 'La subida de archivos está bloqueada: falta CONTABO_CARPETA en el .env (la carpeta propia de esta instalación en Contabo).';
+        }
+
+        return null;
     }
 
     /**
@@ -36,8 +52,8 @@ class Archivos
      */
     public static function subir(UploadedFile $archivo, string $carpeta, string $campo): string
     {
-        if (! self::disponible()) {
-            throw ValidationException::withMessages([$campo => 'La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).']);
+        if ($problema = self::problema()) {
+            throw ValidationException::withMessages([$campo => $problema]);
         }
 
         try {
@@ -57,8 +73,8 @@ class Archivos
      */
     public static function subirPrivado(UploadedFile $archivo, string $carpeta, string $campo): string
     {
-        if (! self::disponible(self::DISCO_PRIVADO)) {
-            throw ValidationException::withMessages([$campo => 'La subida de archivos no está configurada (faltan las credenciales de Contabo en el .env).']);
+        if ($problema = self::problema(self::DISCO_PRIVADO)) {
+            throw ValidationException::withMessages([$campo => $problema]);
         }
 
         try {

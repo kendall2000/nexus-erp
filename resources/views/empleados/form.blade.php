@@ -199,7 +199,7 @@
                                 <select class="form-select" id="id_sucursal" name="id_sucursal" data-choices='{"searchEnabled":true,"itemSelectText":""}'>
                                     <option value="">— Ninguna —</option>
                                     @foreach ($sucursales as $s)
-                                        <option value="{{ $s->id_sucursal }}" @selected((int) $v('id_sucursal') === $s->id_sucursal)>{{ $s->nombre }}</option>
+                                        <option value="{{ $s->id_sucursal }}" @selected((int) $v('id_sucursal') === $s->id_sucursal)>{{ $s->etiqueta() }}</option>
                                     @endforeach
                                 </select>
                             </div>

@@ -394,7 +394,7 @@ class EmpleadoController extends Controller
 
         return view('empleados.form', [
             'e' => $e,
-            'sucursales' => Sucursal::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
+            'sucursales' => Sucursal::paraSelect($idEmpresa),
             'departamentos' => DepartamentoOrg::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
             'cargos' => Cargo::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
             'supervisores' => $this->deMiEmpresa($request)->where('estado', '!=', 'BAJA')->when($e->exists, fn ($q) => $q->whereKeyNot($e->id_empleado))

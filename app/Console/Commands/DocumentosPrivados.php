@@ -24,7 +24,7 @@ class DocumentosPrivados extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
         if (! $dryRun && ! (Archivos::disponible() && Archivos::disponible(Archivos::DISCO_PRIVADO))) {
-            $this->error('Faltan las credenciales de Contabo en el .env.');
+            $this->error(Archivos::problema() ?? Archivos::problema(Archivos::DISCO_PRIVADO));
 
             return self::FAILURE;
         }

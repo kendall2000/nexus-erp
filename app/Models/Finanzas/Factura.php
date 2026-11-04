@@ -18,6 +18,7 @@ class Factura extends Model
         'id_cliente',
         'id_contrato',
         'id_serie',
+        'id_sucursal',
         'numero_factura',
         'numero_completo',
         'tipo',
@@ -68,6 +69,11 @@ class Factura extends Model
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
+
+    public function sucursal()
+    {
+        return $this->belongsTo(\App\Models\Core\Sucursal::class, 'id_sucursal');
+    }
 
     public function empresa()
     {

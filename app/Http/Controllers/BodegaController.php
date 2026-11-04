@@ -95,7 +95,7 @@ class BodegaController extends Controller
 
         return view('bodegas.form', [
             'bodega' => $bodega,
-            'sucursales' => Sucursal::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
+            'sucursales' => Sucursal::paraSelect($idEmpresa),
             'empleados' => Empleado::query()->where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')
                 ->orderBy('primer_nombre')->orderBy('primer_apellido')->get(),
         ]);

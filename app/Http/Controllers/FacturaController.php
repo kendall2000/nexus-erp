@@ -9,6 +9,7 @@ use App\Models\Clientes\TipoServicio;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Core\Empresa;
+use App\Models\Core\Sucursal;
 use App\Models\Finanzas\DetalleFactura;
 use App\Models\Finanzas\Factura;
 use App\Models\Finanzas\PresupuestoAnual;
@@ -16,6 +17,7 @@ use App\Models\Finanzas\SerieFacturacion;
 use App\Services\Finanzas\PresupuestoService;
 use App\Support\EjecucionPresupuesto;
 use App\Support\ExportarCsv;
+use App\Support\Sedes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,23 +65,24 @@ class FacturaController extends Controller
         $idEmpresa = $this->idEmpresa($request);
 
         return view('facturas.index', [
-            'facturas' => $this->filtradas($request)->with('cliente')->orderByDesc('fecha_emision')->orderByDesc('id_factura')->paginate(25)->withQueryString(),
+            'facturas' => $this->filtradas($request)->with(['cliente', 'sucursal'])->orderByDesc('fecha_emision')->orderByDesc('id_factura')->paginate(25)->withQueryString(),
             'cartera' => $this->cartera($idEmpresa),
             'clientes' => Cliente::query()->where('id_empresa', $idEmpresa)->orderBy('razon_social')->get(['id_cliente', 'razon_social']),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS,
-            'filtros' => $request->only(['buscar', 'estado', 'cliente', 'desde', 'hasta']),
+            'sedes' => Sucursal::paraSelect($idEmpresa),
+            'filtros' => $request->only(['buscar', 'estado', 'cliente', 'sucursal', 'desde', 'hasta']),
         ]);
     }
 
     public function exportar(Request $request): StreamedResponse
     {
-        $facturas = $this->filtradas($request)->with('cliente')->orderByDesc('fecha_emision')->cursor();
+        $facturas = $this->filtradas($request)->with(['cliente', 'sucursal'])->orderByDesc('fecha_emision')->cursor();
 
-        return ExportarCsv::descargar('facturas', ['Número', 'Tipo', 'Cliente', 'NIT', 'Emisión', 'Vencimiento', 'Moneda', 'Subtotal', 'Descuento', 'Base imponible', 'IVA', 'Total', 'Pagado', 'Saldo', 'Estado'],
+        return ExportarCsv::descargar('facturas', ['Número', 'Tipo', 'Sucursal', 'Cliente', 'NIT', 'Emisión', 'Vencimiento', 'Moneda', 'Subtotal', 'Descuento', 'Base imponible', 'IVA', 'Total', 'Pagado', 'Saldo', 'Estado'],
             (function () use ($facturas) {
                 foreach ($facturas as $f) {
-                    yield [$f->numero_completo, self::TIPOS[$f->tipo] ?? $f->tipo, $f->cliente?->razon_social, $f->cliente?->nit, $f->fecha_emision?->format('d/m/Y'),
+                    yield [$f->numero_completo, self::TIPOS[$f->tipo] ?? $f->tipo, $f->sucursal?->nombre, $f->cliente?->razon_social, $f->cliente?->nit, $f->fecha_emision?->format('d/m/Y'),
                         $f->fecha_vencimiento?->format('d/m/Y'), $f->moneda, $f->subtotal, $f->descuento, $f->base_imponible, $f->iva, $f->total, $f->total_pagado,
                         $f->saldo_pendiente, self::ESTADOS[$f->estado][0] ?? $f->estado];
                 }
@@ -114,6 +117,7 @@ class FacturaController extends Controller
         $cliente = $idCliente ? $this->clientes($request)->find($idCliente) : null;
 
         $f = new Factura([
+            'id_sucursal' => Sedes::predeterminada($request->user()),
             'id_cliente' => $cliente?->id_cliente,
             'id_contrato' => $contrato?->id_contrato,
             'fecha_emision' => now(),
@@ -150,6 +154,9 @@ class FacturaController extends Controller
                 ->whereIn('tipo', array_keys(self::TIPOS))->lockForUpdate()->findOrFail($datos['encabezado']['id_serie']);
             $numero = (int) $serie->ultimo_numero + 1;
             $serie->update(['ultimo_numero' => $numero]);
+            if ($serie->id_sucursal) {
+                $datos['encabezado']['id_sucursal'] = $serie->id_sucursal; // la serie es de ese establecimiento
+            }
 
             $factura = Factura::create($datos['encabezado'] + [
                 'id_empresa' => $idEmpresa,
@@ -189,7 +196,11 @@ class FacturaController extends Controller
             if ($f->estado !== 'BORRADOR') {
                 return redirect()->route('facturas.show', $f->id_factura)->withErrors(['factura' => 'Solo se editan facturas en borrador.']);
             }
-            $f->update(collect($datos['encabezado'])->except('id_serie')->all()); // la serie y el número no cambian
+            $encabezado = collect($datos['encabezado'])->except('id_serie')->all(); // la serie y el número no cambian
+            if ($sedeDeSerie = SerieFacturacion::query()->whereKey($f->id_serie)->value('id_sucursal')) {
+                $encabezado['id_sucursal'] = $sedeDeSerie;
+            }
+            $f->update($encabezado);
             $f->detalles()->delete();
             $this->guardarLineas($f, $datos['lineas']);
 
@@ -359,6 +370,7 @@ class FacturaController extends Controller
             ->when($estado === 'vencidas', fn ($q) => $q->whereIn('estado', Cliente::ESTADOS_CON_SALDO)->where('saldo_pendiente', '>', 0)->whereDate('fecha_vencimiento', '<', today()))
             ->when(array_key_exists($estado, self::ESTADOS), fn ($q) => $q->where('estado', $estado))
             ->when($request->filled('cliente'), fn ($q) => $q->where('id_cliente', $request->integer('cliente')))
+            ->tap(fn ($q) => Sedes::filtrar($q, $request->query('sucursal')))
             ->when($this->fecha($request->query('desde')), fn ($q, $d) => $q->whereDate('fecha_emision', '>=', $d))
             ->when($this->fecha($request->query('hasta')), fn ($q, $d) => $q->whereDate('fecha_emision', '<=', $d));
     }
@@ -375,7 +387,7 @@ class FacturaController extends Controller
     private function cargar(Request $request, int $factura): Factura
     {
         return $this->deMiEmpresa($request)
-            ->with(['cliente', 'serie', 'detalles.tipoServicio', 'detalles.centroCosto', 'detalles.cuentaContable'])
+            ->with(['cliente', 'serie.sucursal', 'sucursal', 'detalles.tipoServicio', 'detalles.centroCosto', 'detalles.cuentaContable'])
             ->findOrFail($factura);
     }
 
@@ -403,7 +415,8 @@ class FacturaController extends Controller
         return view('facturas.form', [
             'f' => $f,
             'clientes' => $this->clientes($request)->orderBy('razon_social')->get(['id_cliente', 'razon_social', 'nit', 'moneda_facturacion', 'dias_credito']),
-            'series' => SerieFacturacion::query()->where('id_empresa', $idEmpresa)->where('activo', true)->whereIn('tipo', array_keys(self::TIPOS))->orderBy('tipo')->get(),
+            'series' => SerieFacturacion::query()->where('id_empresa', $idEmpresa)->where('activo', true)->whereIn('tipo', array_keys(self::TIPOS))->with('sucursal')->orderBy('tipo')->get(),
+            'sedes' => Sucursal::paraSelect($idEmpresa, $f->id_sucursal),
             'servicios' => $this->tiposServicio($request)->with('lineaNegocio')->orderBy('nombre')->get(),
             'centros' => CentroCosto::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('codigo')->get(),
             'cuentas' => CuentaContable::query()->where('id_empresa', $idEmpresa)->where('activo', true)->where('permite_movimiento', true)->where('tipo', 'INGRESO')->orderBy('codigo')->get(),

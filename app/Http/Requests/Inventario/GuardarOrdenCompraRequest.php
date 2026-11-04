@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Inventario;
 
+use App\Support\Sedes;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -48,6 +50,9 @@ class GuardarOrdenCompraRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             'id_bodega' => ['nullable', 'integer', Rule::exists('bodega', 'id_bodega')->where('id_empresa', $idEmpresa)->where('activo', true)],
+            // Sede que compra; vacía, se toma la de la bodega de destino.
+            'id_sucursal' => ['nullable', 'integer', Sedes::regla((int) $idEmpresa,
+                $idOc && ($actual = DB::table('orden_compra')->where('id_oc', (int) $idOc)->value('id_sucursal')) ? (int) $actual : null)],
             'fecha_emision' => ['required', 'date'],
             'fecha_entrega_esperada' => ['nullable', 'date', 'after_or_equal:fecha_emision'],
             'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
@@ -67,6 +72,7 @@ class GuardarOrdenCompraRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'id_sucursal.exists' => 'La sucursal no es válida o está inactiva.',
             'numero_oc.unique' => 'Ya existe una orden con ese número.',
             'id_proveedor.exists' => 'El proveedor no es válido o está inactivo.',
             'lineas.required' => 'Agrega al menos un producto.',
@@ -99,8 +105,8 @@ class GuardarOrdenCompraRequest extends FormRequest
         }
 
         return [
-            'encabezado' => collect($datos)->only(['numero_oc', 'id_proveedor', 'id_bodega', 'fecha_emision', 'fecha_entrega_esperada', 'moneda', 'notas'])
-                ->all() + ['id_bodega' => null, 'fecha_entrega_esperada' => null, 'notas' => null],
+            'encabezado' => collect($datos)->only(['numero_oc', 'id_proveedor', 'id_bodega', 'id_sucursal', 'fecha_emision', 'fecha_entrega_esperada', 'moneda', 'notas'])
+                ->all() + ['id_bodega' => null, 'id_sucursal' => null, 'fecha_entrega_esperada' => null, 'notas' => null],
             'lineas' => $lineas,
         ];
     }

@@ -6,6 +6,7 @@ use App\Http\Requests\Inventario\GuardarOrdenCompraRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Core\Empresa;
+use App\Models\Core\Sucursal;
 use App\Models\Inventario\Bodega;
 use App\Models\Inventario\DetalleOrdenCompra;
 use App\Models\Inventario\OrdenCompra;
@@ -13,6 +14,7 @@ use App\Models\Inventario\Producto;
 use App\Models\Inventario\Proveedor;
 use App\Services\Finanzas\PresupuestoService;
 use App\Support\ExportarCsv;
+use App\Support\Sedes;
 use App\Support\Sistema;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,23 +47,24 @@ class OrdenCompraController extends Controller
     public function index(Request $request): View
     {
         return view('ordenes-compra.index', [
-            'ordenes' => $this->filtradas($request)->with(['proveedor', 'bodega'])
+            'ordenes' => $this->filtradas($request)->with(['proveedor', 'bodega', 'sucursal'])
                 ->withSum('detalles as pedido', 'cantidad_pedida')->withSum('detalles as recibido', 'cantidad_recibida')
                 ->orderByDesc('fecha_emision')->orderByDesc('id_oc')->paginate(25)->withQueryString(),
             'proveedores' => Proveedor::query()->where('id_empresa', $this->idEmpresa($request))->orderBy('razon_social')->get(['id_proveedor', 'razon_social']),
             'estados' => self::ESTADOS,
-            'filtros' => $request->only(['buscar', 'estado', 'proveedor']),
+            'sedes' => Sucursal::paraSelect($this->idEmpresa($request)),
+            'filtros' => $request->only(['buscar', 'estado', 'proveedor', 'sucursal']),
         ]);
     }
 
     public function exportar(Request $request): StreamedResponse
     {
-        $ordenes = $this->filtradas($request)->with(['proveedor', 'bodega'])->orderByDesc('fecha_emision')->cursor();
+        $ordenes = $this->filtradas($request)->with(['proveedor', 'bodega', 'sucursal'])->orderByDesc('fecha_emision')->cursor();
 
-        return ExportarCsv::descargar('ordenes_compra', ['Número', 'Proveedor', 'Bodega', 'Emisión', 'Entrega esperada', 'Moneda', 'Subtotal', 'IVA', 'Total', 'Estado'],
+        return ExportarCsv::descargar('ordenes_compra', ['Número', 'Proveedor', 'Sucursal', 'Bodega', 'Emisión', 'Entrega esperada', 'Moneda', 'Subtotal', 'IVA', 'Total', 'Estado'],
             (function () use ($ordenes) {
                 foreach ($ordenes as $oc) {
-                    yield [$oc->numero_oc, $oc->proveedor?->razon_social, $oc->bodega?->nombre, $oc->fecha_emision?->format('d/m/Y'),
+                    yield [$oc->numero_oc, $oc->proveedor?->razon_social, $oc->sucursal?->nombre, $oc->bodega?->nombre, $oc->fecha_emision?->format('d/m/Y'),
                         $oc->fecha_entrega_esperada?->format('d/m/Y'), $oc->moneda, $oc->subtotal, $oc->iva, $oc->total, self::ESTADOS[$oc->estado][0] ?? $oc->estado];
                 }
             })());
@@ -98,7 +101,7 @@ class OrdenCompraController extends Controller
             'oc' => $oc,
             'empresa' => $empresa,
             'estados' => self::ESTADOS,
-            'logo' => Sistema::logoIncrustado($empresa?->logo_url ?: Sistema::config()->imgLogo),
+            'logo' => Sistema::logoIncrustado($empresa?->logoDocumentos() ?? Sistema::config()->imgLogo),
             'color' => Sistema::colorPrimario(),
         ])->setPaper('letter');
 
@@ -113,7 +116,7 @@ class OrdenCompraController extends Controller
     public function create(Request $request): View
     {
         return $this->formulario($request, new OrdenCompra([
-            'fecha_emision' => now(), 'moneda' => 'GTQ', 'estado' => 'BORRADOR',
+            'fecha_emision' => now(), 'moneda' => 'GTQ', 'estado' => 'BORRADOR', 'id_sucursal' => Sedes::predeterminada($request->user()),
         ]));
     }
 
@@ -122,7 +125,7 @@ class OrdenCompraController extends Controller
         $datos = $request->datosLimpios();
 
         $oc = DB::transaction(function () use ($request, $datos) {
-            $encabezado = $datos['encabezado'];
+            $encabezado = $this->conSede($datos['encabezado']);
             DB::table('empresa')->where('id_empresa', $this->idEmpresa($request))->lockForUpdate()->first(); // un número a la vez
             $encabezado['numero_oc'] ??= $this->siguienteNumero($request);
             $oc = OrdenCompra::create($encabezado + [
@@ -160,7 +163,7 @@ class OrdenCompraController extends Controller
             if ($oc->estado !== 'BORRADOR') {
                 return redirect()->route('ordenes-compra.show', $oc->id_oc)->withErrors(['orden' => 'Solo se pueden editar órdenes en borrador.']);
             }
-            $encabezado = $datos['encabezado'];
+            $encabezado = $this->conSede($datos['encabezado']);
             $encabezado['numero_oc'] ??= $oc->numero_oc;
             $oc->update($encabezado);
             $oc->detalles()->delete();
@@ -234,13 +237,24 @@ class OrdenCompraController extends Controller
         return $this->deMiEmpresa($request)
             ->when($buscar !== '', fn ($q) => $q->where('numero_oc', 'like', "%{$buscar}%"))
             ->when(array_key_exists((string) $request->query('estado'), self::ESTADOS), fn ($q) => $q->where('estado', $request->query('estado')))
-            ->when($request->filled('proveedor'), fn ($q) => $q->where('id_proveedor', $request->integer('proveedor')));
+            ->when($request->filled('proveedor'), fn ($q) => $q->where('id_proveedor', $request->integer('proveedor')))
+            ->tap(fn ($q) => Sedes::filtrar($q, $request->query('sucursal')));
+    }
+
+    /** Sin sede elegida, la orden es de la sucursal de su bodega de destino. */
+    private function conSede(array $encabezado): array
+    {
+        if (! $encabezado['id_sucursal'] && $encabezado['id_bodega']) {
+            $encabezado['id_sucursal'] = Bodega::query()->whereKey($encabezado['id_bodega'])->value('id_sucursal');
+        }
+
+        return $encabezado;
     }
 
     private function cargar(Request $request, int $orden): OrdenCompra
     {
         return $this->deMiEmpresa($request)
-            ->with(['proveedor', 'bodega', 'creadoPor', 'aprobadoPor', 'detalles.producto.centroDefault', 'detalles.producto.cuentaGasto', 'detalles.centroCosto', 'detalles.cuentaContable'])
+            ->with(['proveedor', 'bodega', 'sucursal', 'creadoPor', 'aprobadoPor', 'detalles.producto.centroDefault', 'detalles.producto.cuentaGasto', 'detalles.centroCosto', 'detalles.cuentaContable'])
             ->findOrFail($orden);
     }
 
@@ -253,6 +267,7 @@ class OrdenCompraController extends Controller
             'oc' => $oc,
             'proveedores' => Proveedor::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('razon_social')->get(),
             'bodegas' => Bodega::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
+            'sedes' => Sucursal::paraSelect($idEmpresa, $oc->id_sucursal),
             'productos' => Producto::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')
                 ->get(['id_producto', 'codigo', 'nombre', 'unidad_medida', 'precio_compra', 'id_cuenta_gasto', 'id_centro_default']),
             'centros' => CentroCosto::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('codigo')->get(),

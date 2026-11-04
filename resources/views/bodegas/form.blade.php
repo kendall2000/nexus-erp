@@ -28,11 +28,11 @@
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="id_sucursal">Sucursal</label>
+                        <label class="form-label" for="id_sucursal">Sucursal o agencia</label>
                         <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_sucursal" name="id_sucursal">
                             <option value="">Sin sucursal</option>
                             @foreach ($sucursales as $s)
-                                <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $bodega->id_sucursal) === $s->id_sucursal)>{{ $s->nombre }}</option>
+                                <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $bodega->id_sucursal) === $s->id_sucursal)>{{ $s->etiqueta() }}</option>
                             @endforeach
                         </select>
                     </div>

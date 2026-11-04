@@ -4,6 +4,7 @@ use App\Http\Controllers\ConsolidadoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpresaActivaController;
 use App\Http\Controllers\ReporteCspController;
+use App\Http\Controllers\ReporteSucursalesController;
 use App\Http\Middleware\ContrasenaVencida;
 use App\Http\Middleware\EmpresaActiva;
 use App\Http\Middleware\RequiereDosFactores;
@@ -41,6 +42,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('permiso:facturas.ver|ordenes_compra.ver|pagos.ver|presupuesto.ver')->name('consolidado.index');
     Route::get('/sistema/consolidado/exportar', [ConsolidadoController::class, 'exportar'])
         ->middleware('permiso:facturas.exportar|ordenes_compra.exportar|pagos.exportar|presupuesto.exportar')->name('consolidado.exportar');
+
+    // Resumen por sucursal y agencia de la empresa activa (cada sección con el permiso de su módulo)
+    Route::get('/sistema/por-sucursal', [ReporteSucursalesController::class, 'index'])
+        ->middleware('permiso:facturas.ver|ordenes_compra.ver|tickets.ver|empleados.ver')->name('por-sucursal.index');
+    Route::get('/sistema/por-sucursal/exportar', [ReporteSucursalesController::class, 'exportar'])
+        ->middleware('permiso:facturas.exportar|ordenes_compra.exportar|tickets.exportar|empleados.exportar')->name('por-sucursal.exportar');
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')

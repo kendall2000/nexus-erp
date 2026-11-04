@@ -13,8 +13,14 @@ class Sucursal extends Model
     protected $primaryKey = 'id_sucursal';
     public $timestamps    = true;
 
+    /** Tipo => etiqueta. Una agencia depende de una sucursal. */
+    public const TIPOS = ['SUCURSAL' => 'Sucursal', 'AGENCIA' => 'Agencia'];
+
     protected $fillable = [
         'id_empresa',
+        'tipo',
+        'id_sucursal_padre',
+        'codigo_establecimiento',
         'id_pais',
         'id_division',
         'id_municipio',
@@ -51,6 +57,57 @@ class Sucursal extends Model
     public function municipio()
     {
         return $this->belongsTo(Municipio::class, 'id_municipio');
+    }
+
+    public function padre()
+    {
+        return $this->belongsTo(self::class, 'id_sucursal_padre');
+    }
+
+    public function agencias()
+    {
+        return $this->hasMany(self::class, 'id_sucursal_padre');
+    }
+
+    public function esAgencia(): bool
+    {
+        return $this->tipo === 'AGENCIA';
+    }
+
+    /** Nombre para listas: la agencia lleva la sucursal de la que depende. */
+    public function etiqueta(): string
+    {
+        return $this->esAgencia() && $this->padre ? "{$this->nombre} (agencia de {$this->padre->nombre})" : $this->nombre;
+    }
+
+    /**
+     * Sedes activas de la empresa para un select: cada sucursal seguida de sus agencias.
+     * $incluir: una sede que debe aparecer aunque esté inactiva (la que ya tiene el registro).
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function paraSelect(int $idEmpresa, ?int $incluir = null)
+    {
+        $sedes = self::query()->where('id_empresa', $idEmpresa)
+            ->where(fn ($q) => $q->where('activo', true)->when($incluir, fn ($q) => $q->orWhere('id_sucursal', $incluir)))
+            ->with('padre')->orderByDesc('es_casa_matriz')->orderBy('nombre')->get();
+
+        return self::enArbol($sedes);
+    }
+
+    /**
+     * Cada sucursal seguida de sus agencias, conservando el orden recibido; las agencias cuya
+     * sucursal no está en la lista van al final.
+     *
+     * @param  \Illuminate\Support\Collection<int, self>  $sedes
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function enArbol($sedes)
+    {
+        $agencias = $sedes->filter->esAgencia()->groupBy('id_sucursal_padre');
+
+        return $sedes->reject->esAgencia()->flatMap(fn ($s) => collect([$s])->concat($agencias->pull($s->id_sucursal) ?? []))
+            ->concat($agencias->flatten())->values();
     }
 
     public function empleados()

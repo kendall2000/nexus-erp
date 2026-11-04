@@ -63,7 +63,7 @@
                                 <option value="">Selecciona serie…</option>
                                 @foreach ($series as $s)
                                     <option value="{{ $s->id_serie }}" @selected((int) old('id_serie', $series->firstWhere('tipo', 'FACTURA')?->id_serie) === $s->id_serie)>
-                                        {{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (sigue {{ $s->formatearNumero($s->ultimo_numero + 1) }})
+                                        {{ $s->codigo_serie }} — {{ $tipos[$s->tipo] }} (sigue {{ $s->formatearNumero($s->ultimo_numero + 1) }}){{ $s->sucursal ? ' · '.$s->sucursal->nombre : '' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -93,6 +93,10 @@
                     <div class="col-md-2">
                         <label class="form-label" for="fecha_emision">Fecha Emisión</label>
                         <input class="form-control" id="fecha_emision" name="fecha_emision" type="date" value="{{ $fecha('fecha_emision') ?: today()->toDateString() }}" required />
+                    </div>
+                    <div class="col-md-4">
+                        @include('partials.campo-sede', ['sedes' => $sedes, 'valor' => $v('id_sucursal'),
+                            'ayuda' => 'Si la serie es de un establecimiento, la factura queda en esa sede.'])
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="fecha_vencimiento">Fecha Vencimiento</label>

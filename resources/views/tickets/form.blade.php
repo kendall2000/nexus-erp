@@ -70,6 +70,11 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        @if ($sedes->isNotEmpty())
+                            <div class="mb-3">
+                                @include('partials.campo-sede', ['sedes' => $sedes, 'valor' => old('id_sucursal', $sede), 'ayuda' => 'Sede que atiende el caso.'])
+                            </div>
+                        @endif
                         <div class="mb-3">
                             <label class="form-label" for="id_categoria">Categoría</label>
                             <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select" id="id_categoria" name="id_categoria">

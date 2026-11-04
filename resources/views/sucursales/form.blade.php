@@ -1,10 +1,10 @@
-@extends('layouts.app', ['titulo' => $sucursal->exists ? 'Editar sucursal' : 'Nueva sucursal'])
+@extends('layouts.app', ['titulo' => $sucursal->exists ? 'Editar sede' : 'Nueva sede'])
 
 @section('contenido')
     <x-page-header
-        :titulo="$sucursal->exists ? 'Editar sucursal' : 'Nueva sucursal'"
+        :titulo="$sucursal->exists ? 'Editar '.mb_strtolower($tipos[$sucursal->tipo] ?? 'sede') : 'Nueva sucursal o agencia'"
         icono="fas fa-store-alt"
-        subtitulo="Define sedes operativas, ubicación geográfica y condición de casa matriz."
+        subtitulo="Sucursales y agencias de la empresa: ubicación, código de establecimiento SAT y casa matriz."
         :migas="[
             ['label' => 'Sucursales', 'url' => route('sucursales.index')],
             ['label' => $sucursal->exists ? $sucursal->nombre : 'Nueva'],
@@ -18,9 +18,38 @@
                 @if ($sucursal->exists)
                     @method('PUT')
                 @endif
-                <div class="mb-3">
-                    <label class="form-label" for="nombre">Nombre</label>
-                    <input class="form-control" id="nombre" name="nombre" value="{{ old('nombre', $sucursal->nombre) }}" required maxlength="150" />
+                <script type="application/json" id="ubicacionDatos">@json(['divisiones' => $divisiones, 'municipios' => $municipios])</script>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="tipo">Tipo</label>
+                        <select class="form-select" id="tipo" name="tipo" required>
+                            @foreach ($tipos as $codigo => $nombre)
+                                <option value="{{ $codigo }}" @selected(old('tipo', $sucursal->tipo ?? 'SUCURSAL') === $codigo)>{{ $nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="nombre">Nombre</label>
+                        <input class="form-control" id="nombre" name="nombre" value="{{ old('nombre', $sucursal->nombre) }}" required maxlength="150" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8" id="bloquePadre">
+                        <label class="form-label" for="id_sucursal_padre">Depende de la sucursal</label>
+                        <select class="form-select" id="id_sucursal_padre" name="id_sucursal_padre">
+                            <option value="">—</option>
+                            @foreach ($padres as $p)
+                                <option value="{{ $p->id_sucursal }}" @selected((int) old('id_sucursal_padre', $sucursal->id_sucursal_padre) === $p->id_sucursal)>{{ $p->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Una agencia es una sede más pequeña que depende de una sucursal.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="codigo_establecimiento">Código de establecimiento SAT</label>
+                        <input class="form-control" id="codigo_establecimiento" name="codigo_establecimiento" type="number" min="1" max="9999"
+                               value="{{ old('codigo_establecimiento', $sucursal->codigo_establecimiento) }}" />
+                        <div class="form-text">El número con que la SAT registró esta sede (FEL).</div>
+                    </div>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
@@ -58,7 +87,7 @@
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" id="es_casa_matriz" name="es_casa_matriz" type="checkbox" value="1" @checked(old('es_casa_matriz', $sucursal->es_casa_matriz)) />
                     <label class="form-check-label" for="es_casa_matriz">Casa matriz</label>
-                    <div class="form-text mt-0">Solo puede haber una: al marcar esta, la anterior deja de serlo.</div>
+                    <div class="form-text mt-0">Solo puede haber una y debe ser una sucursal: al marcar esta, la anterior deja de serlo.</div>
                 </div>
                 <div class="form-check form-switch mb-4">
                     <input class="form-check-input" id="activo" name="activo" type="checkbox" value="1" @checked(old('activo', $sucursal->activo)) />
@@ -74,38 +103,6 @@
 @endsection
 
 @push('scripts')
-    <script>
-        // País → departamento → municipio, filtrando en el navegador.
-        (function () {
-            var divisiones = @json($divisiones);
-            var municipios = @json($municipios);
-            var pais = document.getElementById('id_pais');
-            var division = document.getElementById('id_division');
-            var municipio = document.getElementById('id_municipio');
-
-            function llenar(select, opciones, llave, valor) {
-                select.innerHTML = '';
-                select.appendChild(new Option('—', ''));
-                opciones.forEach(function (o) {
-                    var opcion = new Option(o.nombre, o[llave]);
-                    if (String(o[llave]) === String(valor)) opcion.selected = true;
-                    select.appendChild(opcion);
-                });
-                select.disabled = opciones.length === 0;
-                // Con buscador (Choices.js) hay que reconstruirlo para que muestre las opciones nuevas.
-                if (window.NexusSelect) window.NexusSelect.refrescar(select);
-            }
-            function cargarDivisiones(valor) {
-                llenar(division, divisiones.filter(function (d) { return String(d.id_pais) === pais.value; }), 'id_division', valor);
-            }
-            function cargarMunicipios(valor) {
-                llenar(municipio, municipios.filter(function (m) { return String(m.id_division) === division.value; }), 'id_municipio', valor);
-            }
-
-            pais.addEventListener('change', function () { cargarDivisiones(''); cargarMunicipios(''); });
-            division.addEventListener('change', function () { cargarMunicipios(''); });
-            cargarDivisiones(division.dataset.valor);
-            cargarMunicipios(municipio.dataset.valor);
-        })();
-    </script>
+    <script src="{{ \App\Support\Sistema::recurso('assets/js/ubicacion.js') }}"></script>
+    <script src="{{ \App\Support\Sistema::recurso('assets/js/sucursales.js') }}"></script>
 @endpush

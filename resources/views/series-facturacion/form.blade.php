@@ -16,7 +16,7 @@
     <div class="card border border-200 shadow-none" style="max-width: 40rem">
         <div class="card-body">
             @if ($usada)
-                <div class="alert alert-soft-info border-0 fs--1"><span class="fas fa-lock me-2"></span>La serie ya tiene documentos: el código, el tipo y el correlativo no se pueden cambiar.</div>
+                <div class="alert alert-soft-info border-0 fs--1"><span class="fas fa-lock me-2"></span>La serie ya tiene documentos: el código, el tipo, el correlativo y el establecimiento no se pueden cambiar.</div>
             @endif
             <form method="POST" action="{{ $serie->exists ? route('series-facturacion.update', $serie->id_serie) : route('series-facturacion.store') }}">
                 @csrf
@@ -41,6 +41,16 @@
                         @endif
                     </div>
                     <div class="col-12"><label class="form-label" for="descripcion">Descripción</label><input class="form-control" id="descripcion" name="descripcion" value="{{ $v('descripcion') }}" maxlength="100" /></div>
+                    <div class="col-md-6">
+                        @if ($usada)
+                            <label class="form-label">Establecimiento</label>
+                            <input class="form-control" value="{{ $serie->sucursal?->etiqueta() ?? 'Cualquier sucursal' }}" disabled />
+                            <input type="hidden" name="id_sucursal" value="{{ $serie->id_sucursal }}" />
+                        @else
+                            @include('partials.campo-sede', ['sedes' => $sedes, 'valor' => $v('id_sucursal'), 'vacio' => 'Cualquier sucursal',
+                                'ayuda' => 'Si la serie es de un establecimiento SAT, sus facturas quedan en esa sede. Vacío: se elige en cada factura.'])
+                        @endif
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label" for="ultimo_numero">Último número usado</label>
                         <input class="form-control @error('ultimo_numero') is-invalid @enderror" id="ultimo_numero" name="ultimo_numero" type="number" min="0" value="{{ $v('ultimo_numero') }}" required @readonly($usada) />

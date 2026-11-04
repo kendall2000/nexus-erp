@@ -44,7 +44,7 @@ class Bitacora
     /** Nombre legible de las tablas más comunes (las demás se muestran con su nombre). */
     public const TABLAS = [
         'usuario' => 'Usuarios', 'rol' => 'Roles', 'rol_permiso' => 'Permisos de rol', 'usuario_permiso' => 'Permisos extra de usuario',
-        'modulo' => 'Módulos', 'ConfiguracionSistema' => 'Configuración del sistema', 'sucursal' => 'Sucursales',
+        'modulo' => 'Módulos', 'ConfiguracionSistema' => 'Configuración del sistema', 'empresa' => 'Empresas', 'sucursal' => 'Sucursales',
         'division_geografica' => 'Divisiones geográficas', 'municipio' => 'Municipios', 'pais' => 'Países',
         'cliente' => 'Clientes', 'contacto_cliente' => 'Contactos de cliente', 'contrato_servicio' => 'Contratos',
         'prospecto' => 'Prospectos', 'oportunidad' => 'Oportunidades', 'propuesta' => 'Propuestas', 'campana' => 'Campañas',

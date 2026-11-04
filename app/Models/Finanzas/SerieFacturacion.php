@@ -15,6 +15,7 @@ class SerieFacturacion extends Model
 
     protected $fillable = [
         'id_empresa',
+        'id_sucursal',
         'codigo_serie',
         'tipo',
         'descripcion',
@@ -28,6 +29,11 @@ class SerieFacturacion extends Model
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
+
+    public function sucursal()
+    {
+        return $this->belongsTo(\App\Models\Core\Sucursal::class, 'id_sucursal');
+    }
 
     public function empresa()
     {

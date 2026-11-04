@@ -107,7 +107,7 @@
                     {{-- Imágenes --}}
                     <div class="tab-pane fade {{ $activa === 'imagenes' ? 'show active' : '' }}" id="tab-imagenes" role="tabpanel">
                         @unless ($contaboListo)
-                            <div class="alert alert-soft-warning fs--1" role="alert">La subida de imágenes no está configurada: faltan las credenciales de Contabo en el <code>.env</code>. Puedes guardar lo demás.</div>
+                            <div class="alert alert-soft-warning fs--1" role="alert">{{ \App\Support\Archivos::problema() }} Puedes guardar lo demás.</div>
                         @endunless
                         <p class="text-700 fs--1">JPG, PNG, WEBP o ICO de hasta 4 MB. Se guardan en Contabo.</p>
                         <div class="row g-3">

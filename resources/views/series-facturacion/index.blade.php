@@ -26,6 +26,7 @@
                     <th class="ps-0 text-uppercase text-700">Serie</th>
                     <th class="text-uppercase text-700">Tipo</th>
                     <th class="text-uppercase text-700">Descripción</th>
+                    <th class="text-uppercase text-700">Establecimiento</th>
                     <th class="text-end text-uppercase text-700">Documentos</th>
                     <th class="text-uppercase text-700">Siguiente número</th>
                     <th class="text-uppercase text-700">Estado</th>
@@ -38,6 +39,7 @@
                     <td class="ps-0 py-2"><code class="fs-0 fw-bold">{{ $s->codigo_serie }}</code></td>
                     <td class="fw-semi-bold text-900">{{ $tipos[$s->tipo] ?? $s->tipo }}</td>
                     <td class="text-800">{{ $s->descripcion ?? '—' }}</td>
+                    <td class="text-800">{{ $s->sucursal?->nombre ?? 'Cualquiera' }}</td>
                     <td class="text-end text-900">{{ $s->facturas_count }}</td>
                     <td><code>{{ $s->formatearNumero($s->ultimo_numero + 1) }}</code></td>
                     <td><span class="badge badge-phoenix badge-phoenix-{{ $s->activo ? 'success' : 'danger' }}">{{ $s->activo ? 'Activa' : 'Inactiva' }}</span></td>
@@ -60,7 +62,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-center text-700 py-5">No hay series: crea al menos una de tipo Factura para poder facturar.</td></tr>
+                <tr><td colspan="8" class="text-center text-700 py-5">No hay series: crea al menos una de tipo Factura para poder facturar.</td></tr>
             @endforelse
             </tbody>
         </table>

@@ -144,6 +144,9 @@
                                 <h6 class="text-700 fs--1 mb-1 fw-semi-bold">Bodega de Destino</h6>
                                 <h3 class="text-info mb-0 fw-bolder">{{ $oc->bodega?->nombre ?? 'Sin asignar' }}</h3>
                                 <p class="fs--2 text-600 mb-0 mt-1">Entrega esperada: {{ $oc->fecha_entrega_esperada?->format('d/m/Y') ?? 'Sin fecha' }}</p>
+                                @if ($oc->sucursal)
+                                    <p class="fs--2 text-600 mb-0"><span class="fas fa-store-alt me-1"></span>{{ $oc->sucursal->etiqueta() }}</p>
+                                @endif
                             </div>
                             <div class="d-flex align-items-center icon-wrapper-sm shadow-info-100" style="transform: rotate(-7.45deg);">
                                 <span class="fas fa-warehouse text-info fs-1 z-index-1 ms-2"></span>

@@ -120,6 +120,7 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @include('partials.filtro-sede', ['sedes' => $sedes, 'valor' => $filtros['sucursal'] ?? ''])
                             <input class="form-control btn-phoenix-secondary px-3 flex-shrink-0" style="width: 140px;" type="date" name="desde" value="{{ $filtros['desde'] ?? '' }}" title="Emitidas desde" onchange="this.form.submit()" />
                             <input class="form-control btn-phoenix-secondary px-3 flex-shrink-0" style="width: 140px;" type="date" name="hasta" value="{{ $filtros['hasta'] ?? '' }}" title="Emitidas hasta" onchange="this.form.submit()" />
                             @if (array_filter($filtros))
@@ -183,6 +184,9 @@
                                         </a>
                                         @if ($f->tipo !== 'FACTURA')
                                             <span class="d-block fs--2 text-600">{{ $tipos[$f->tipo] ?? $f->tipo }}</span>
+                                        @endif
+                                        @if ($f->sucursal)
+                                            <span class="d-block fs--2 text-600"><span class="fas fa-store-alt me-1"></span>{{ $f->sucursal->nombre }}</span>
                                         @endif
                                     </td>
                                     <td class="customer align-middle white-space-nowrap ps-4">

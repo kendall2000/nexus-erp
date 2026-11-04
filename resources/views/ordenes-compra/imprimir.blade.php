@@ -27,6 +27,7 @@
             <p class="fs--1 text-900 fw-semi-bold mb-2">
                 {{ $oc->bodega?->nombre ?? 'Por definir' }}<br>
                 <span class="fw-normal text-700">{{ $oc->bodega?->ubicacion }}</span>
+                @if ($oc->sucursal)<br><span class="fw-normal text-700">{{ $oc->sucursal->nombre }}{{ $oc->sucursal->direccion ? ' · '.$oc->sucursal->direccion : '' }}</span>@endif
             </p>
             <h6 class="text-600 text-uppercase fs--2 mb-1">Entrega esperada</h6>
             <p class="fs--1 text-900 fw-semi-bold mb-0">{{ $oc->fecha_entrega_esperada?->format('d/m/Y') ?? '—' }}</p>

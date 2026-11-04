@@ -15,6 +15,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'id_empresa',
+        'id_sucursal',
         'id_cliente',
         'id_contrato',
         'id_categoria',
@@ -56,6 +57,11 @@ class Ticket extends Model
     ];
 
     // ── Relaciones ──────────────────────────────────────────────────────────
+
+    public function sucursal()
+    {
+        return $this->belongsTo(\App\Models\Core\Sucursal::class, 'id_sucursal');
+    }
 
     public function empresa()
     {

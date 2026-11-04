@@ -91,6 +91,9 @@
                     <h6 class="text-700 fs--2 text-uppercase mb-1">Número de Factura</h6>
                     <h5 class="mb-0 text-1100 fw-bold">#{{ $f->numero_completo }}</h5>
                     <span class="fs--2 text-600">Serie {{ $f->serie?->codigo_serie }} · N.º {{ $f->numero_factura }}</span>
+                    @if ($f->sucursal)
+                        <span class="d-block fs--2 text-600"><span class="fas fa-store-alt me-1"></span>{{ $f->sucursal->etiqueta() }}</span>
+                    @endif
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
                     <h6 class="text-700 fs--2 text-uppercase mb-1">Fecha de Emisión</h6>

@@ -73,6 +73,8 @@ return [
             'url' => env('CONTABO_URL'),
             'endpoint' => env('CONTABO_ENDPOINT', 'https://usc1.contabostorage.com'),
             'use_path_style_endpoint' => true,
+            // Carpeta de ESTA instalación dentro del bucket (p. ej. clientes/acme): en producción es
+            // obligatoria, para que los archivos de un cliente nunca queden junto a los de otro.
             'root' => env('CONTABO_CARPETA', ''),
             'visibility' => 'public',
             'throw' => true,
@@ -97,6 +99,13 @@ return [
         ],
 
     ],
+
+    /*
+    | Solo para la instalación original, que ya guardaba sus archivos en la raíz del bucket:
+    | CONTABO_USAR_RAIZ=true permite producción sin CONTABO_CARPETA (sus documentos privados
+    | se guardaron como rutas sin carpeta y dejarían de abrir si se agregara una).
+    */
+    'contabo_usar_raiz' => (bool) env('CONTABO_USAR_RAIZ', false),
 
     /*
     |--------------------------------------------------------------------------

@@ -77,7 +77,7 @@
                                 <select data-choices="data-choices" data-options='{"removeItemButton":true,"placeholder":true}' class="form-select @error('id_sucursal') is-invalid @enderror" id="id_sucursal" name="id_sucursal">
                                     <option value="">Sin sucursal fija (Global)</option>
                                     @foreach ($sucursales as $s)
-                                        <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $usuario->id_sucursal) === $s->id_sucursal)>{{ $s->nombre }}</option>
+                                        <option value="{{ $s->id_sucursal }}" @selected((int) old('id_sucursal', $usuario->id_sucursal) === $s->id_sucursal)>{{ $s->etiqueta() }}</option>
                                     @endforeach
                                 </select>
                                 @error('id_sucursal')<div class="text-danger fs--2 mt-1">{{ $message }}</div>@enderror

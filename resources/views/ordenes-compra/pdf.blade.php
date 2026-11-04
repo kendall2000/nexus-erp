@@ -90,8 +90,9 @@
                 <div class="empresa-dato">
                     @if ($empresa?->nombre_comercial && $empresa->nombre_comercial !== $nombreEmpresa){{ $empresa->nombre_comercial }}<br>@endif
                     @if ($empresa?->nit)NIT: {{ $empresa->nit }}<br>@endif
+                    @if ($empresa?->regimen_fiscal){{ $empresa->regimen_fiscal }}<br>@endif
                     @if ($empresa?->direccion){{ $empresa->direccion }}<br>@endif
-                    {{ collect([$empresa?->telefono, $empresa?->email_corporativo])->filter()->implode(' · ') }}
+                    {{ collect([$empresa?->telefono, $empresa?->email_corporativo, $empresa?->sitio_web])->filter()->implode(' · ') }}
                 </div>
             </td>
             <td class="texto-derecha">
@@ -126,6 +127,7 @@
                     <p class="caja-principal">{{ $oc->bodega?->nombre ?? 'Por definir' }}</p>
                     <div class="caja-dato">
                         @if ($oc->bodega?->ubicacion){{ $oc->bodega->ubicacion }}<br>@endif
+                        @if ($oc->sucursal){{ $oc->sucursal->nombre }}{{ $oc->sucursal->direccion ? ' · '.$oc->sucursal->direccion : '' }}<br>@endif
                         Fecha de entrega: {{ $oc->fecha_entrega_esperada?->format('d/m/Y') ?? 'Por definir' }}
                     </div>
                 </div>
