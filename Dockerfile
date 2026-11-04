@@ -3,13 +3,15 @@ FROM php:8.4-apache
 # Imagen de Nexus ERP (mismo esquema que sistema-restaurante). Sin Node: la
 # plantilla Phoenix ya viene compilada en public/assets y public/vendors.
 
-# Dependencias del sistema + librerías para extensiones PHP
+# Dependencias del sistema + librerías para extensiones PHP. default-mysql-client: «migrate» en una
+# BD vacía (cliente nuevo) carga database/schema/mysql-schema.sql con el cliente de MySQL/MariaDB.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         curl \
         unzip \
         ca-certificates \
         cron \
+        default-mysql-client \
         libpng-dev \
         libjpeg62-turbo-dev \
         libfreetype6-dev \

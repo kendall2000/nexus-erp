@@ -1,0 +1,74 @@
+# .env de UN cliente de Nexus ERP. Copiar a /srv/nexus/clientes/<cliente>/.env y reemplazar todo lo que
+# está entre <…>. Nunca reutilizar la APP_KEY, el usuario de BD ni la carpeta de Contabo de otro cliente.
+# Los comentarios van siempre en su propia línea (no al final de un valor).
+
+# ── Contenedor (los usa docker-compose.cliente.yml) ─────────────────────────────
+# Nombre corto del cliente, en minúsculas y sin espacios: da nombre al contenedor y al volumen.
+NEXUS_CLIENTE=acme
+# Puerto local único por cliente (8101, 8102, …): el proxy apunta a 127.0.0.1:<puerto>.
+NEXUS_PUERTO=8101
+# Etiqueta de la imagen sistema-nexuserp-php que usa este cliente.
+NEXUS_VERSION=latest
+
+# ── Aplicación ──────────────────────────────────────────────────────────────────
+APP_NAME="Nexus ERP"
+APP_ENV=production
+# OBLIGATORIA y única por cliente. Generarla con:
+#   docker run --rm sistema-nexuserp-php php artisan key:generate --show
+# NUNCA cambiarla después: se perderían las sesiones y la verificación en dos pasos de todos.
+APP_KEY=<base64:…>
+APP_DEBUG=false
+APP_URL=https://acme.tudominio.com
+APP_LOCALE=es
+APP_FALLBACK_LOCALE=es
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_LEVEL=warning
+
+# ── Base de datos propia del cliente ────────────────────────────────────────────
+DB_CONNECTION=mysql
+DB_HOST=<host-mysql>
+DB_PORT=3306
+DB_DATABASE=nexus_acme
+DB_USERNAME=nexus_acme
+DB_PASSWORD=<contraseña-larga-y-única>
+
+# ── Sesiones, caché y colas (en la BD del cliente) ──────────────────────────────
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+
+# ── Correo saliente ─────────────────────────────────────────────────────────────
+MAIL_MAILER=smtp
+MAIL_HOST=<smtp.servidor.com>
+MAIL_PORT=587
+MAIL_USERNAME=<usuario>
+MAIL_PASSWORD=<contraseña>
+MAIL_FROM_ADDRESS=no-responder@acme.com
+MAIL_FROM_NAME="Nexus ERP"
+
+# ── Archivos en Contabo ─────────────────────────────────────────────────────────
+CONTABO_KEY=<key>
+CONTABO_SECRET=<secret>
+CONTABO_REGION=US-central
+CONTABO_BUCKET=<bucket-publico>
+CONTABO_BUCKET_PRIVADO=<bucket-privado>
+CONTABO_ENDPOINT=https://usc1.contabostorage.com
+CONTABO_URL=https://usc1.contabostorage.com/<id-de-cuenta>:<bucket-publico>
+# OBLIGATORIA en producción: la carpeta de ESTE cliente. Sin ella el sistema no sube archivos.
+CONTABO_CARPETA=clientes/acme
+# Solo la instalación original (que ya guardaba en la raíz del bucket) usa true.
+CONTABO_USAR_RAIZ=false
+
+# ── Seguridad ───────────────────────────────────────────────────────────────────
+CSP_MODO=reportar
+# IP o red del proxy que publica el subdominio (para ver la IP real de los usuarios).
+TRUSTED_PROXIES=<ip-del-proxy>
+
+# ── Arranque del contenedor ─────────────────────────────────────────────────────
+# true: cada arranque aplica las migraciones nuevas de ESTA BD (así se actualiza cada cliente).
+RUN_MIGRATIONS=true
+ENABLE_SCHEDULER=false

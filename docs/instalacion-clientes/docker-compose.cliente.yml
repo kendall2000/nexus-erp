@@ -1,0 +1,36 @@
+# Contenedor de UN cliente de Nexus ERP. Copiar a /srv/nexus/clientes/<cliente>/docker-compose.yml
+# junto a su .env (ver env-cliente.example). Docker toma NEXUS_CLIENTE, NEXUS_PUERTO y NEXUS_VERSION
+# de ese mismo .env, así que este archivo es idéntico para todos los clientes.
+#
+#   cd /srv/nexus/clientes/acme && docker compose up -d
+#
+# Cada cliente queda con su propio contenedor (nexus-acme), su propio volumen de storage
+# (nexus-acme_storage) y su propio puerto local; el proxy publica su subdominio.
+
+name: nexus-${NEXUS_CLIENTE:?Falta NEXUS_CLIENTE en el .env}
+
+services:
+  app:
+    image: sistema-nexuserp-php:${NEXUS_VERSION:-latest}
+    container_name: nexus-${NEXUS_CLIENTE}
+    restart: always
+    env_file:
+      - .env
+    # Solo en la máquina (el proxy lo publica con HTTPS). Si el proxy es un contenedor de
+    # red-external-network, se puede quitar «ports» y apuntar el proxy a nexus-<cliente>:80.
+    ports:
+      - "127.0.0.1:${NEXUS_PUERTO:?Falta NEXUS_PUERTO en el .env}:80"
+    volumes:
+      # .env del cliente (para cambiar configuración sin reconstruir la imagen)
+      - ./.env:/var/www/nexuserp/.env
+      # logs, sesiones y caché de Laravel entre reinicios
+      - storage:/var/www/nexuserp/storage
+    networks:
+      - red-external-network
+
+volumes:
+  storage:
+
+networks:
+  red-external-network:
+    external: true
