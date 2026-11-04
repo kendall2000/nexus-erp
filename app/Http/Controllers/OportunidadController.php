@@ -50,6 +50,9 @@ class OportunidadController extends Controller
                     ->filter(fn ($o) => $o->fecha_cierre_real && $o->fecha_cierre_real->isSameMonth(now()))->sum('valor_estimado'),
             ],
             'vendedores' => $this->vendedores($request)->get(),
+            'clientes' => Cliente::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('razon_social')->get(['id_cliente', 'razon_social']),
+            'lineas' => LineaNegocio::query()->where('id_empresa', $idEmpresa)->where('activo', true)->orderBy('nombre')->get(),
+            'monedas' => DB::table('moneda')->where('activo', true)->orderBy('codigo')->get(),
             'filtros' => $request->only(['responsable']),
         ]);
     }
@@ -93,6 +96,11 @@ class OportunidadController extends Controller
     {
         $o = $this->deMiEmpresa($request)->findOrFail($oportunidad);
         $o->update($request->datosLimpios($o));
+
+        // Desde la edición rápida del embudo se vuelve al embudo (con sus filtros).
+        if ($request->input('volver') === 'embudo') {
+            return back()->with('status', "Oportunidad «{$o->nombre}» actualizada.");
+        }
 
         return redirect()->route('oportunidades.show', $o->id_oportunidad)->with('status', 'Oportunidad actualizada.');
     }

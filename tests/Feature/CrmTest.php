@@ -104,6 +104,39 @@ class CrmTest extends TestCase
         $this->get(route('oportunidades.show', $o->id_oportunidad))->assertOk()->assertSee('Registrar contrato');
     }
 
+    public function test_edicion_rapida_desde_el_embudo_conserva_el_prospecto_y_vuelve(): void
+    {
+        $this->actingAs($this->crearUsuario());
+        $this->prospecto()->assertSessionHasNoErrors();
+        $prospecto = $this->ultimo('prospecto', 'id_prospecto')->id_prospecto;
+        $this->get(route('oportunidades.index'))->assertOk()->assertSee('id="formMoverEtapa"', false); // con editar se puede arrastrar
+        $etapa = DB::table('etapa_funnel')->where('nombre', 'Calificado')->value('id_etapa');
+        $this->post(route('oportunidades.store'), ['nombre' => 'Limpieza hotel', 'id_etapa' => $etapa, 'id_responsable' => $this->ids['vendedora'], 'valor_estimado' => 5000, 'moneda' => 'GTQ', 'id_prospecto' => $prospecto])
+            ->assertSessionHasNoErrors();
+        $o = $this->ultimo('oportunidad', 'id_oportunidad')->id_oportunidad;
+
+        // El modal envía el prospecto oculto y «volver=embudo»: regresa al tablero, no a la ficha.
+        $this->from(route('oportunidades.index'))->put(route('oportunidades.update', $o), [
+            'volver' => 'embudo', 'nombre' => 'Limpieza hotel (2 sedes)', 'id_cliente' => '', 'id_prospecto' => $prospecto,
+            'id_responsable' => $this->ids['vendedora'], 'valor_estimado' => 8000, 'moneda' => 'GTQ',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('oportunidades.index'));
+        $fila = DB::table('oportunidad')->where('id_oportunidad', $o)->first();
+        $this->assertSame(['Limpieza hotel (2 sedes)', $prospecto, 8000.0], [$fila->nombre, (int) $fila->id_prospecto, (float) $fila->valor_estimado]);
+
+        // Desde el formulario completo sigue yendo a la ficha.
+        $this->put(route('oportunidades.update', $o), ['nombre' => 'Limpieza hotel', 'id_prospecto' => $prospecto, 'id_responsable' => $this->ids['vendedora'], 'valor_estimado' => 8000, 'moneda' => 'GTQ'])
+            ->assertRedirect(route('oportunidades.show', $o));
+    }
+
+    public function test_embudo_sin_permiso_de_editar_es_solo_lectura(): void
+    {
+        $usuario = $this->crearUsuario(['username' => 'consulta', 'email' => 'consulta@nexus.test'], 'Consulta');
+        $this->darPermisos($usuario, ['oportunidades.ver']);
+        $this->actingAs($usuario)->get(route('oportunidades.index'))->assertOk()
+            ->assertDontSee('id="formMoverEtapa"', false);
+        $this->patch(route('oportunidades.mover', 1), ['id_etapa' => 1])->assertForbidden();
+    }
+
     public function test_propuestas_con_version_y_estados(): void
     {
         $this->actingAs($this->crearUsuario());

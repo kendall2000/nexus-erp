@@ -10,6 +10,7 @@
 <script src="{{ asset('vendors/dayjs/dayjs.min.js') }}"></script>
 <script src="{{ asset('vendors/choices/choices.min.js') }}"></script>
 <script src="{{ \App\Support\Sistema::recurso('assets/js/selects-buscables.js') }}"></script>
+<script src="{{ asset('vendors/sortablejs/sortable.min.js') }}"></script>
 <script src="{{ \App\Support\Sistema::recurso('assets/js/phoenix.js') }}"></script>
 <script src="{{ asset('vendors/vue/vue.global.prod.js') }}"></script>
 <script src="{{ \App\Support\Sistema::recurso('assets/js/app-vue.js') }}"></script>
