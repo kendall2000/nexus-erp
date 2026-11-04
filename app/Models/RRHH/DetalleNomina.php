@@ -20,7 +20,9 @@ class DetalleNomina extends Model
         'cargo_snapshot',
         'salario_base',
         'dias_trabajados',
+        'dias_manual',
         'horas_extra',
+        'horas_manual',
         'total_ingresos',
         'total_deducciones',
         'liquido_pagar',
@@ -35,6 +37,8 @@ class DetalleNomina extends Model
     ];
 
     protected $casts = [
+        'dias_manual'       => 'boolean',
+        'horas_manual'      => 'boolean',
         'salario_base'      => 'decimal:4',
         'dias_trabajados'   => 'decimal:2',
         'horas_extra'       => 'decimal:2',

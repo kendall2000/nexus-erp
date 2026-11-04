@@ -699,7 +699,9 @@ trait EsquemaNexus
             $t->string('cargo_snapshot')->nullable();
             $t->decimal('salario_base', 15, 4);
             $t->decimal('dias_trabajados', 5, 2)->default(0);
+            $t->boolean('dias_manual')->default(false);
             $t->decimal('horas_extra', 8, 2)->default(0);
+            $t->boolean('horas_manual')->default(false);
             foreach (['total_ingresos', 'total_deducciones', 'liquido_pagar', 'cuota_igss_emp', 'cuota_igss_pat', 'isr_retenido'] as $c) {
                 $t->decimal($c, 15, 4)->default(0);
             }

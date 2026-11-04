@@ -135,10 +135,10 @@ class Nomina
             'id_empresa' => $p->id_empresa,
             'cargo_snapshot' => $e->cargo?->nombre,
             'salario_base' => $salarioMensual,
-            // La primera vez se descuentan las ausencias y se traen las horas extra de Asistencia;
-            // después se respetan los ajustes hechos a mano.
-            'dias_trabajados' => $detalle->exists ? $detalle->dias_trabajados : ($salarioMensual > 0 ? max(0, self::diasTrabajados($p, $e) - self::diasNoPagados($p, $e)) : 0),
-            'horas_extra' => $detalle->exists ? $detalle->horas_extra : (float) Asistencia::query()->where('id_empleado', $e->id_empleado)
+            // Cada proceso vuelve a descontar ausencias, bajas y permisos y a traer las horas extra
+            // de Asistencia; solo se respeta lo que alguien ajustó a mano (dias_manual, horas_manual).
+            'dias_trabajados' => $detalle->dias_manual ? $detalle->dias_trabajados : ($salarioMensual > 0 ? max(0, self::diasTrabajados($p, $e) - self::diasNoPagados($p, $e)) : 0),
+            'horas_extra' => $detalle->horas_manual ? $detalle->horas_extra : (float) Asistencia::query()->where('id_empleado', $e->id_empleado)
                 ->whereBetween('fecha', [$p->fecha_inicio->toDateString(), $p->fecha_fin->toDateString().' 23:59:59'])->sum('horas_extra'),
             'estado_pago' => 'CALCULADO',
         ])->save();
@@ -225,9 +225,18 @@ class Nomina
         ]);
     }
 
-    /** Aplica (+1) o revierte (−1) los descuentos de préstamos del periodo sobre su saldo. */
-    public static function aplicarPrestamos(PeriodoNomina $p, int $signo): void
+    /**
+     * Aplica (+1) o revierte (−1) los descuentos de préstamos del periodo sobre su saldo.
+     *
+     * Al aplicar, cada línea se limita al saldo del préstamo en ese momento (bloqueado): si otro
+     * periodo ya lo descontó, la línea baja o desaparece y el líquido del empleado se corrige.
+     * Así la línea queda igual a lo descontado y revertir devuelve exactamente eso.
+     *
+     * @return int empleados a los que se les corrigió el descuento
+     */
+    public static function aplicarPrestamos(PeriodoNomina $p, int $signo): int
     {
+        $corregidos = [];
         $idPrestamo = ConceptoNomina::query()->where('id_empresa', $p->id_empresa)->where('codigo', 'PRESTAMO')->value('id_concepto');
         $lineas = DetalleNominaConcepto::query()->where('id_concepto', $idPrestamo)
             ->whereIn('id_detalle', $p->detalles()->pluck('id_detalle'))->get();
@@ -239,9 +248,35 @@ class Nomina
             if (! $prestamo) {
                 continue;
             }
-            $pendiente = round((float) $prestamo->monto_pendiente - $signo * (float) $l->monto, 4);
+            $monto = (float) $l->monto;
+            if ($signo > 0) {
+                $aplicado = round(min($monto, max(0.0, (float) $prestamo->monto_pendiente)), 2);
+                if ($aplicado < $monto) {
+                    $aplicado > 0 ? $l->update(['monto' => $aplicado]) : $l->delete();
+                    $corregidos[$l->id_detalle] = true;
+                }
+                $monto = $aplicado;
+            }
+            $pendiente = round((float) $prestamo->monto_pendiente - $signo * $monto, 4);
             $prestamo->update(['monto_pendiente' => max(0, $pendiente), 'estado' => $pendiente <= 0.009 ? 'LIQUIDADO' : 'ACTIVO']);
         }
+        foreach (DetalleNomina::query()->whereIn('id_detalle', array_keys($corregidos))->get() as $d) {
+            self::totalesDetalle($d);
+        }
+        if ($corregidos) {
+            self::totalesPeriodo($p);
+        }
+
+        return count($corregidos);
+    }
+
+    /** Ingresos, deducciones y líquido del detalle desde sus líneas (sin tocar IGSS ni ISR). */
+    public static function totalesDetalle(DetalleNomina $d): void
+    {
+        $lineas = DetalleNominaConcepto::query()->where('id_detalle', $d->id_detalle)->get();
+        $ingresos = round((float) $lineas->where('tipo', 'INGRESO')->sum('monto'), 2);
+        $deducciones = round((float) $lineas->where('tipo', 'DEDUCCION')->sum('monto'), 2);
+        $d->update(['total_ingresos' => $ingresos, 'total_deducciones' => $deducciones, 'liquido_pagar' => round($ingresos - $deducciones, 2)]);
     }
 
     /** Nombre sugerido del periodo («Quincena 2 de octubre 2026»). */

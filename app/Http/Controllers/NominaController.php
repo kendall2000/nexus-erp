@@ -94,13 +94,20 @@ class NominaController extends Controller
             'nombre' => ['nullable', 'string', 'max:100'],
             'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
         ]);
-        $traslape = $this->periodos($request)->where('tipo', $datos['tipo'])
-            ->where('fecha_inicio', '<=', $datos['fecha_fin'])->where('fecha_fin', '>=', $datos['fecha_inicio'])->exists();
-        if ($traslape) {
-            throw ValidationException::withMessages(['fecha_inicio' => 'Ya hay un periodo '.strtolower(self::TIPOS[$datos['tipo']]).' que se cruza con esas fechas.']);
-        }
         $datos['nombre'] ??= Nomina::nombreSugerido($datos['tipo'], Carbon::parse($datos['fecha_inicio']));
-        $p = PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $this->idUsuario($request)]);
+
+        // Cada periodo procesa a toda la planilla: dos periodos que se cruzan (de cualquier tipo)
+        // le pagarían dos veces los mismos días. Bloquea la empresa para que un doble clic no cree dos.
+        $p = DB::transaction(function () use ($request, $idEmpresa, $datos) {
+            DB::table('empresa')->where('id_empresa', $idEmpresa)->lockForUpdate()->first();
+            $cruce = $this->periodos($request)
+                ->where('fecha_inicio', '<=', $datos['fecha_fin'])->where('fecha_fin', '>=', $datos['fecha_inicio'])->first();
+            if ($cruce) {
+                throw ValidationException::withMessages(['fecha_inicio' => "Esas fechas se cruzan con el periodo «{$cruce->nombre}»: se pagarían dos veces los mismos días."]);
+            }
+
+            return PeriodoNomina::create($datos + ['id_empresa' => $idEmpresa, 'estado' => 'ABIERTO', 'created_by' => $this->idUsuario($request)]);
+        });
 
         return redirect()->route('nomina.show', $p->id_periodo)->with('status', "Periodo «{$p->nombre}» creado. Procésalo para calcular la nómina.");
     }
@@ -119,6 +126,7 @@ class NominaController extends Controller
 
             $procesados = 0;
             $sinContrato = [];
+            $incluidos = [];
             foreach ($empleados as $e) {
                 // Contrato que cubre el periodo (el vigente, o el rescindido si la baja cae dentro).
                 $contrato = $e->contratos->filter(fn ($c) => $c->fecha_inicio->lte($p->fecha_fin) && (! $c->fecha_fin || $c->fecha_fin->gte($p->fecha_inicio)))
@@ -134,12 +142,22 @@ class NominaController extends Controller
                     continue;
                 }
                 Nomina::procesarEmpleado($p, $e, (float) ($contrato?->salario_base ?? 0));
+                $incluidos[] = $e->id_empleado;
                 $procesados++;
+            }
+            // Quien ya no califica (cobertura anulada, contrato que ya no cubre el periodo, baja
+            // anterior) sale de la nómina: si no, se le pagaría lo calculado antes.
+            $obsoletos = $p->detalles()->whereNotIn('id_empleado', $incluidos)->pluck('id_detalle');
+            if ($obsoletos->isNotEmpty()) {
+                DetalleNominaConcepto::query()->whereIn('id_detalle', $obsoletos)->delete();
+                DetalleNomina::query()->whereIn('id_detalle', $obsoletos)->delete();
             }
             Nomina::totalesPeriodo($p);
             $p->update(['estado' => 'EN_PROCESO']);
 
-            return back()->with('status', "Nómina calculada para {$procesados} empleados.".($sinContrato ? ' Sin contrato vigente (no incluidos): '.implode(', ', $sinContrato).'.' : ''));
+            return back()->with('status', "Nómina calculada para {$procesados} empleados."
+                .($obsoletos->isNotEmpty() ? " Se quitaron {$obsoletos->count()} que ya no corresponden a este periodo." : '')
+                .($sinContrato ? ' Sin contrato vigente (no incluidos): '.implode(', ', $sinContrato).'.' : ''));
         });
     }
 
@@ -161,8 +179,19 @@ class NominaController extends Controller
             'descripcion' => ['nullable', 'string', 'max:200'],
         ], ['dias_trabajados.max' => "Un periodo {$p->tipo} tiene como máximo {$diasPeriodo} días."]);
 
-        DB::transaction(function () use ($p, $d, $datos) {
-            $d->update(array_filter(['dias_trabajados' => $datos['dias_trabajados'] ?? null, 'horas_extra' => $datos['horas_extra'] ?? null], fn ($v) => $v !== null));
+        $error = DB::transaction(function () use ($p, $d, $datos) {
+            if (! in_array(PeriodoNomina::query()->lockForUpdate()->whereKey($p->id_periodo)->value('estado'), self::EDITABLES, true)) {
+                return 'El periodo ya está cerrado.';
+            }
+            // Lo que se ajusta a mano queda marcado: al reprocesar se respeta en vez de recalcularse.
+            $cambios = [];
+            if (isset($datos['dias_trabajados'])) {
+                $cambios += ['dias_trabajados' => $datos['dias_trabajados'], 'dias_manual' => true];
+            }
+            if (isset($datos['horas_extra'])) {
+                $cambios += ['horas_extra' => $datos['horas_extra'], 'horas_manual' => true];
+            }
+            $d->update($cambios);
             if (! empty($datos['id_concepto'])) {
                 $concepto = ConceptoNomina::query()->findOrFail($datos['id_concepto']);
                 DetalleNominaConcepto::create(['id_detalle' => $d->id_detalle, 'id_concepto' => $concepto->id_concepto, 'tipo' => $concepto->tipo,
@@ -170,7 +199,12 @@ class NominaController extends Controller
             }
             Nomina::recalcular($d->fresh(), $p);
             Nomina::totalesPeriodo($p);
+
+            return null;
         });
+        if ($error) {
+            return back()->withErrors(['periodo' => $error]);
+        }
 
         return back()->with('status', 'Ajuste aplicado a '.$d->empleado?->nombre_completo.'.');
     }
@@ -185,12 +219,20 @@ class NominaController extends Controller
         $automatico = ConceptoNomina::query()->whereKey($l->id_concepto)->whereIn('codigo', Nomina::AUTOMATICOS)->exists();
         abort_if($automatico, 403, 'Los conceptos automáticos se recalculan solos.');
 
-        DB::transaction(function () use ($p, $l) {
+        $error = DB::transaction(function () use ($p, $l) {
+            if (! in_array(PeriodoNomina::query()->lockForUpdate()->whereKey($p->id_periodo)->value('estado'), self::EDITABLES, true)) {
+                return 'El periodo ya está cerrado.';
+            }
             $d = DetalleNomina::query()->findOrFail($l->id_detalle);
             $l->delete();
             Nomina::recalcular($d, $p);
             Nomina::totalesPeriodo($p);
+
+            return null;
         });
+        if ($error) {
+            return back()->withErrors(['periodo' => $error]);
+        }
 
         return back()->with('status', 'Concepto quitado.');
     }
@@ -201,8 +243,11 @@ class NominaController extends Controller
             if (! $p->detalles()->exists()) {
                 return 'El periodo no tiene empleados calculados.';
             }
-            Nomina::aplicarPrestamos($p, 1);
+            $corregidos = Nomina::aplicarPrestamos($p, 1);
             $p->detalles()->update(['estado_pago' => 'APROBADO']);
+            if ($corregidos) {
+                session()->flash('aviso', "A {$corregidos} empleado(s) se les bajó el descuento del préstamo: otro periodo ya había descontado parte del saldo.");
+            }
 
             return null;
         }, 'cerrado: se descontaron las cuotas de los préstamos.');
