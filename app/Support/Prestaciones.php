@@ -64,28 +64,52 @@ class Prestaciones
         return $dias >= $diasPeriodo ? round($salario, 2) : round($salario * $dias / 365, 2);
     }
 
-    /** Salario del contrato que regía en esa fecha (el más reciente que ya había empezado). */
+    /**
+     * Salario del contrato que regía en esa fecha (el más reciente que ya había empezado). Un
+     * contrato rescindido no rige después de su fin: un reactivado sin contrato nuevo no tiene salario.
+     */
     public static function salario(Empleado $e, Carbon $fecha): ?float
     {
-        $contrato = $e->contratos->filter(fn ($c) => $c->fecha_inicio->lte($fecha))->sortByDesc('fecha_inicio')->first();
+        $contrato = $e->contratos
+            ->filter(fn ($c) => $c->fecha_inicio->lte($fecha) && ! ($c->estado === 'RESCINDIDO' && $c->fecha_fin && $c->fecha_fin->lt($fecha->copy()->startOfDay())))
+            ->sortByDesc('fecha_inicio')->first();
 
         return $contrato ? (float) $contrato->salario_base : null;
     }
 
     /**
-     * Aguinaldo o bono 14 del año para todos los empleados activos con contrato.
+     * Aguinaldo o bono 14 del año para todos los que trabajaron en el periodo, también los que ya
+     * están de baja (el periodo cumplido se les debe, hasta su fecha de baja). A quien se liquidó
+     * dentro del periodo no se le calcula: ese periodo lo paga su liquidación. Solo periodos ya
+     * terminados: antes de que termine nadie lo ha devengado completo.
      *
-     * @return array{calculados: int, conservados: int, sinContrato: list<string>}
+     * @return array{calculados: int, conservados: int, liquidados: int, sinContrato: list<string>}
      */
     public static function calcularAnual(int $idEmpresa, string $tipo, int $anio): array
     {
         [$desde, $hasta] = self::periodo($tipo, $anio);
-        $empleados = Empleado::query()->where('id_empresa', $idEmpresa)->where('estado', '!=', 'BAJA')->with('contratos')
-            ->whereDate('fecha_ingreso', '<=', $hasta)->get();
+        if ($hasta->gte(today())) {
+            throw ValidationException::withMessages(['anio' => self::TIPOS[$tipo]." {$anio} cubre del {$desde->format('d/m/Y')} al {$hasta->format('d/m/Y')}: se calcula cuando ese periodo haya terminado."]);
+        }
+        $empleados = Empleado::query()->where('id_empresa', $idEmpresa)->with('contratos')
+            ->whereDate('fecha_ingreso', '<=', $hasta)
+            ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhereDate('fecha_baja', '>=', $desde))->get();
 
-        $resultado = ['calculados' => 0, 'conservados' => 0, 'sinContrato' => []];
+        $resultado = ['calculados' => 0, 'conservados' => 0, 'liquidados' => 0, 'sinContrato' => []];
         foreach ($empleados as $e) {
-            $salario = self::salario($e, $hasta);
+            $liquidacion = self::salidaLiquidada($e);
+            if ($liquidacion && $liquidacion->between($desde, $hasta)) {
+                // Lo paga la liquidación; un cálculo anual sin aprobar que hubiera quedado se quita.
+                PrestacionLaboral::query()->where(['id_empleado' => $e->id_empleado, 'tipo' => $tipo, 'periodo_calculo' => (string) $anio, 'estado' => 'CALCULADO'])->delete();
+                $resultado['liquidados']++;
+
+                continue;
+            }
+            $fin = collect([$hasta, $e->fecha_baja, $liquidacion])->filter()->min();
+            if ($fin->lt($desde)) {
+                continue; // salió antes del periodo
+            }
+            $salario = self::salario($e, $fin);
             if ($salario === null) {
                 // Un rotativo sin contrato cobra por día: no genera prestaciones.
                 if (! $e->es_rotativo) {
@@ -94,7 +118,7 @@ class Prestaciones
 
                 continue;
             }
-            $dias = self::dias($e->fecha_ingreso->max($desde), $hasta);
+            $dias = self::dias($e->fecha_ingreso->max($desde), $fin);
             $guardada = self::guardar($e, $tipo, (string) $anio, $salario, self::proporcional($salario, $dias, self::dias($desde, $hasta)), $dias);
             $resultado[$guardada ? 'calculados' : 'conservados']++;
         }
@@ -115,7 +139,10 @@ class Prestaciones
         if ($salario === null) {
             throw ValidationException::withMessages(['id_empleado' => 'El empleado no tiene contrato a esa fecha: no hay salario para liquidar.']);
         }
-        $anteriores = PrestacionLaboral::query()->where('id_empleado', $e->id_empleado)->where('periodo_calculo', 'like', self::PREFIJO_LIQUIDACION.'%')->get();
+        // Solo cuenta la relación laboral vigente: un reactivado (con nueva fecha de ingreso) se
+        // puede volver a liquidar aunque tenga aprobada la de su relación anterior.
+        $anteriores = PrestacionLaboral::query()->where('id_empleado', $e->id_empleado)->where('periodo_calculo', 'like', self::PREFIJO_LIQUIDACION.'%')->get()
+            ->filter(fn ($p) => ($f = self::fechaLiquidacion($p->periodo_calculo)) && $f->gte($e->fecha_ingreso));
         if ($anteriores->where('estado', '!=', 'CALCULADO')->isNotEmpty()) {
             throw ValidationException::withMessages(['id_empleado' => 'El empleado ya tiene una liquidación aprobada o pagada.']);
         }
@@ -124,7 +151,15 @@ class Prestaciones
         $periodo = self::PREFIJO_LIQUIDACION.$salida->format('Ymd');
         $lineas = [];
         foreach (self::ANUALES as $tipo) {
-            $dias = self::dias($e->fecha_ingreso->max(self::inicioPeriodo($tipo, $salida)), $salida);
+            // El periodo que corre a la salida lo paga la liquidación, salvo que su cálculo anual
+            // ya esté aprobado o pagado (no se paga dos veces); uno sin aprobar se reemplaza.
+            $inicio = self::inicioPeriodo($tipo, $salida);
+            $anual = PrestacionLaboral::query()->where(['id_empleado' => $e->id_empleado, 'tipo' => $tipo, 'periodo_calculo' => (string) ($inicio->year + 1)])->first();
+            if ($anual && $anual->estado !== 'CALCULADO') {
+                continue;
+            }
+            $anual?->delete();
+            $dias = self::dias($e->fecha_ingreso->max($inicio), $salida);
             $lineas[] = self::guardar($e, $tipo, $periodo, $salario, self::proporcional($salario, $dias), $dias);
         }
         if ($diasVacaciones > 0) {
@@ -137,6 +172,20 @@ class Prestaciones
         }
 
         return array_values(array_filter($lineas));
+    }
+
+    /** Fecha de salida de una liquidación a partir de su periodo («LIQ-20261003»). */
+    public static function fechaLiquidacion(string $periodo): ?Carbon
+    {
+        return preg_match('/^'.self::PREFIJO_LIQUIDACION.'(\d{8})$/', $periodo, $m) ? Carbon::createFromFormat('Ymd', $m[1])->startOfDay() : null;
+    }
+
+    /** Salida de la liquidación de su relación laboral vigente (la más reciente), si la tiene. */
+    public static function salidaLiquidada(Empleado $e): ?Carbon
+    {
+        return PrestacionLaboral::query()->where('id_empleado', $e->id_empleado)->where('periodo_calculo', 'like', self::PREFIJO_LIQUIDACION.'%')
+            ->pluck('periodo_calculo')->map(fn ($p) => self::fechaLiquidacion($p))
+            ->filter(fn ($f) => $f && $f->gte($e->fecha_ingreso))->sortDesc()->first();
     }
 
     /** Crea o recalcula la prestación; si ya está aprobada o pagada la deja como está (devuelve null). */

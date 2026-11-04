@@ -34,11 +34,14 @@
                 <button class="btn btn-phoenix-danger" type="button" data-bs-toggle="collapse" data-bs-target="#baja">Dar de baja</button>
             @endif
             @if ($puedeEditar && $deBaja)
-                <form method="POST" action="{{ route('empleados.reactivar', $e->id_empleado) }}">
+                <form method="POST" action="{{ route('empleados.reactivar', $e->id_empleado) }}" class="d-flex gap-2 align-items-center">
                     @csrf
                     @method('PATCH')
-                    <button class="btn btn-phoenix-success" type="submit">Reactivar</button>
+                    <label class="fs--1 text-700 text-nowrap mb-0" for="fecha_reingreso">Reingreso</label>
+                    <input class="form-control form-control-sm @error('fecha_reingreso') is-invalid @enderror" id="fecha_reingreso" name="fecha_reingreso" type="date" value="{{ old('fecha_reingreso', today()->toDateString()) }}" required title="Nueva fecha de ingreso: la antigüedad cuenta desde aquí" />
+                    <button class="btn btn-phoenix-success text-nowrap" type="submit">Reactivar</button>
                 </form>
+                @error('fecha_reingreso')<div class="text-danger fs--1 w-100">{{ $message }}</div>@enderror
             @endif
             @if ($yo->puede('empleados.eliminar'))
                 <form method="POST" action="{{ route('empleados.destroy', $e->id_empleado) }}" onsubmit="return confirm(@js('¿Eliminar a '.$e->nombre_completo.'? Solo se permite si nunca estuvo en nómina ni asistencia.'))">

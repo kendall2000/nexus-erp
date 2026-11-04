@@ -102,7 +102,7 @@ class EmpleadosTest extends TestCase
         $this->actingAs($admin)->get(route('empleados.index'))->assertDontSee('EMP-0001'); // por defecto no lista bajas
         $this->actingAs($admin)->get(route('empleados.index', ['estado' => 'BAJA']))->assertSee('EMP-0001');
 
-        $this->actingAs($admin)->patch(route('empleados.reactivar', $jefe))->assertSessionHasNoErrors();
+        $this->actingAs($admin)->patch(route('empleados.reactivar', $jefe), ['fecha_reingreso' => now()->addDay()->toDateString()])->assertSessionHasNoErrors();
         $this->assertSame('ACTIVO', DB::table('empleado')->where('id_empleado', $jefe)->value('estado'));
     }
 

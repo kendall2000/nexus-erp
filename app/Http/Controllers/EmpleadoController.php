@@ -19,6 +19,7 @@ use App\Support\Referencias;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -201,9 +202,15 @@ class EmpleadoController extends Controller
         if ($e->estado !== 'BAJA') {
             return back()->withErrors(['empleado' => 'Solo se reactivan empleados de baja.']);
         }
-        $e->update(['estado' => 'ACTIVO', 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $this->idUsuario($request)]);
+        // Es una relación laboral nueva: su antigüedad (indemnización, vacaciones, aguinaldo y
+        // bono 14) cuenta desde el reingreso; lo de la relación anterior ya se liquidó.
+        $datos = $request->validate([
+            'fecha_reingreso' => ['required', 'date', 'after:'.$e->fecha_baja?->toDateString()],
+        ], ['fecha_reingreso.after' => 'El reingreso debe ser después de la baja ('.$e->fecha_baja?->format('d/m/Y').').']);
+        $anterior = $e->fecha_ingreso->format('d/m/Y').' a '.$e->fecha_baja?->format('d/m/Y');
+        $e->update(['estado' => 'ACTIVO', 'fecha_ingreso' => $datos['fecha_reingreso'], 'fecha_baja' => null, 'motivo_baja' => null, 'updated_by' => $this->idUsuario($request)]);
 
-        return back()->with('status', "{$e->nombre_completo} reactivado. Registra un contrato nuevo.");
+        return back()->with('status', "{$e->nombre_completo} reactivado con ingreso el ".Carbon::parse($datos['fecha_reingreso'])->format('d/m/Y')." (relación anterior: {$anterior}). Registra un contrato nuevo.");
     }
 
     /** Borrado lógico, solo si nunca participó en nómina, asistencia ni contratos de servicio. */

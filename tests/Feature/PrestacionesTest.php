@@ -52,10 +52,12 @@ class PrestacionesTest extends TestCase
         $luis = $this->empleado('Luis', 'Pérez', 3650, '2026-06-01');
         $this->empleado('Sin', 'Contrato', null);
         $this->empleado('Rita', 'Rotativa', null, '2025-01-01', ['es_rotativo' => true, 'tarifa_dia' => 120]);
-        $this->empleado('De', 'Baja', 3000, '2025-01-01', ['estado' => 'BAJA', 'fecha_baja' => '2026-03-01']);
+        $deBaja = $this->empleado('De', 'Baja', 3000, '2025-01-01', ['estado' => 'BAJA', 'fecha_baja' => '2026-03-01']);
 
         $this->post(route('prestaciones.calcular'), ['tipo' => 'AGUINALDO', 'anio' => 2026])->assertSessionHasNoErrors()->assertSessionHas('status', fn ($m) => str_contains($m, 'Sin Contrato') && ! str_contains($m, 'Rita'));
-        $this->assertSame(2, DB::table('prestacion_laboral')->count());
+        $this->assertSame(3, DB::table('prestacion_laboral')->count());
+        // Quien ya se fue también cobra lo que trabajó del periodo: 1 dic 2025 – 1 mar 2026 = 91 días.
+        $this->assertSame([747.95, 91.0], [(float) $this->prestacion($deBaja, 'AGUINALDO')->monto_calculado, (float) $this->prestacion($deBaja, 'AGUINALDO')->dias_calculados]);
         // Ana trabajó el periodo completo (dic 2025 – nov 2026): un salario. Luis entró el 1 de junio: 183 días.
         $this->assertSame([4000.0, 365.0, '2026'], [(float) $this->prestacion($this->ana, 'AGUINALDO')->monto_calculado, (float) $this->prestacion($this->ana, 'AGUINALDO')->dias_calculados, $this->prestacion($this->ana, 'AGUINALDO')->periodo_calculo]);
         $this->assertSame([1830.0, 183.0], [(float) $this->prestacion($luis, 'AGUINALDO')->monto_calculado, (float) $this->prestacion($luis, 'AGUINALDO')->dias_calculados]);

@@ -85,6 +85,7 @@ class PrestacionController extends Controller
         return redirect()->route('prestaciones.index', ['anio' => $datos['anio'], 'tipo' => $datos['tipo']])
             ->with('status', Prestaciones::TIPOS[$datos['tipo']]." {$datos['anio']}: {$r['calculados']} empleados calculados."
                 .($r['conservados'] ? " {$r['conservados']} ya aprobados o pagados se conservaron." : '')
+                .($r['liquidados'] ? " {$r['liquidados']} con liquidación en el periodo (la liquidación lo paga)." : '')
                 .($r['sinContrato'] ? ' Sin contrato (no incluidos): '.implode(', ', $r['sinContrato']).'.' : ''));
     }
 
