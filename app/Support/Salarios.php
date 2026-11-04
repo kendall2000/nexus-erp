@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\RRHH\Empleado;
+use App\Models\RRHH\HistorialSalarial;
 use Illuminate\Support\Carbon;
 
 /**
@@ -40,6 +41,21 @@ class Salarios
         $primero = $cambios->sortBy('id_historial')->first();
 
         return (float) ($primero?->salario_anterior ?? $contrato->salario_base);
+    }
+
+    /** Salario que rige hoy; si no hay contrato que rija, el del contrato vigente (o null). */
+    public static function hoy(Empleado $e): ?float
+    {
+        return self::vigente($e, today()) ?? ($e->contratoVigente ? (float) $e->contratoVigente->salario_base : null);
+    }
+
+    /** Próximo cambio de salario ya registrado con fecha efectiva futura, si lo hay. */
+    public static function proximoCambio(Empleado $e): ?HistorialSalarial
+    {
+        $e->loadMissing('historialSalarial');
+
+        return $e->historialSalarial->filter(fn ($h) => $h->tipo_cambio !== 'CONTRATACION' && $h->fecha_efectiva->gt(today()))
+            ->sortBy([['fecha_efectiva', 'asc'], ['id_historial', 'asc']])->first();
     }
 
     /**

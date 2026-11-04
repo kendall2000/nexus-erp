@@ -60,7 +60,7 @@
 
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
-            <x-stat-card etiqueta="Salario Base" :valor="$cv ? $cv->moneda.' '.$dinero($cv->salario_base) : 'Sin contrato'" icono="fas fa-money-check-alt" color="primary" :subtexto="$cv ? $cv->numero_contrato.' · '.($tipos[$cv->tipo] ?? $cv->tipo) : 'Pendiente de registro'" />
+            <x-stat-card etiqueta="Salario Base" :valor="$cv ? $cv->moneda.' '.$dinero($salarioHoy) : 'Sin contrato'" icono="fas fa-money-check-alt" color="primary" :subtexto="$cv ? ($proximoSalario ? 'Cambia a '.$dinero($proximoSalario->salario_nuevo).' el '.$proximoSalario->fecha_efectiva->format('d/m/Y') : $cv->numero_contrato.' · '.($tipos[$cv->tipo] ?? $cv->tipo)) : 'Pendiente de registro'" />
         </div>
         <div class="col-sm-6 col-xl-3">
             <x-stat-card etiqueta="Antigüedad" :valor="$e->antiguedad_anios.' años'" icono="fas fa-calendar-check" color="info" :subtexto="'Ingreso: '.($e->fecha_ingreso?->format('d/m/Y') ?? '—')" />
@@ -165,8 +165,9 @@
 
                     @if ($cv)
                         <dl class="row mb-3">
-                            <dt class="col-5 text-700">Salario base</dt><dd class="col-7 fs-0 fw-bold">{{ $cv->moneda }} {{ $dinero($cv->salario_base) }}
+                            <dt class="col-5 text-700">Salario base</dt><dd class="col-7 fs-0 fw-bold">{{ $cv->moneda }} {{ $dinero($salarioHoy) }}
                                 @if ($rango)<span class="badge badge-phoenix badge-phoenix-{{ $rango['dentro'] ? 'success' : 'warning' }} fs--2 align-middle ms-1">{{ $rango['dentro'] ? 'En rango del cargo' : 'Fuera de rango' }}</span>@endif</dd>
+                            @if ($proximoSalario)<dt class="col-5 text-700">Cambio programado</dt><dd class="col-7"><span class="badge badge-phoenix badge-phoenix-info fs--2">{{ $cv->moneda }} {{ $dinero($proximoSalario->salario_nuevo) }} desde el {{ $proximoSalario->fecha_efectiva->format('d/m/Y') }}</span></dd>@endif
                             @if ($rango)<dt class="col-5 text-700">Rango del cargo</dt><dd class="col-7">{{ $rango['min'] !== null ? $dinero($rango['min']) : '—' }} – {{ $rango['max'] !== null ? $dinero($rango['max']) : '—' }}</dd>@endif
                             <dt class="col-5 text-700">Contrato</dt><dd class="col-7">{{ $cv->numero_contrato }} · {{ $tipos[$cv->tipo] ?? $cv->tipo }}</dd>
                             <dt class="col-5 text-700">Vigencia</dt><dd class="col-7">{{ $cv->fecha_inicio?->format('d/m/Y') }} – {{ $cv->fecha_fin?->format('d/m/Y') ?? 'indefinido' }}</dd>

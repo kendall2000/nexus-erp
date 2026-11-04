@@ -7,6 +7,7 @@ use App\Models\RRHH\Cargo;
 use App\Models\RRHH\DepartamentoOrg;
 use App\Models\RRHH\Empleado;
 use App\Support\Referencias;
+use App\Support\Salarios;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,8 +32,8 @@ class OrganizacionController extends Controller
 
         // Empleados vigentes con salario fuera del rango de su cargo.
         $fueraDeRango = Empleado::query()->where('id_empresa', $idEmpresa)->where('estado', '!=', 'BAJA')->whereNotNull('id_cargo')
-            ->with(['cargo', 'contratoVigente'])->get()
-            ->filter(fn ($e) => $e->contratoVigente && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max) && ! $e->cargo->salarioEnRango((float) $e->contratoVigente->salario_base))
+            ->with(['cargo', 'contratoVigente', 'contratos', 'historialSalarial'])->get()
+            ->filter(fn ($e) => $e->contratoVigente && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max) && ! $e->cargo->salarioEnRango((float) Salarios::hoy($e)))
             ->values();
 
         return view('organizacion.index', [

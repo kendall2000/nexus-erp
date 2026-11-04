@@ -222,7 +222,7 @@
                                                 {{ $e->fecha_ingreso?->format('d/m/Y') }}
                                             </td>
                                             <td class="total align-middle text-end white-space-nowrap fw-bold text-1000 ps-4">
-                                                {{ $e->contratoVigente ? $e->contratoVigente->moneda.' '.number_format((float) $e->contratoVigente->salario_base, 2) : ($e->es_rotativo && $e->tarifa_dia ? number_format((float) $e->tarifa_dia, 2).' / día' : 'Sin contrato') }}
+                                                {{ $e->contratoVigente ? $e->contratoVigente->moneda.' '.number_format((float) \App\Support\Salarios::hoy($e), 2) : ($e->es_rotativo && $e->tarifa_dia ? number_format((float) $e->tarifa_dia, 2).' / día' : 'Sin contrato') }}
                                             </td>
                                             <td class="payment_status align-middle white-space-nowrap ps-4">
                                                 <span class="badge badge-phoenix fs--2 badge-phoenix-{{ $color }}">{{ $nombreEstado }}</span>

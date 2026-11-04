@@ -38,7 +38,7 @@
                     <li>
                         <a href="{{ route('empleados.show', $fe->id_empleado) }}" class="fw-semi-bold">{{ $fe->nombre_completo }}</a>:
                         {{ $fe->cargo->nombre }} (Rango: {{ $fe->cargo->moneda }} {{ number_format((float) $fe->cargo->salario_min, 2) }} – {{ number_format((float) $fe->cargo->salario_max, 2) }}) —
-                        Salario actual: <strong>{{ $fe->contratoVigente->moneda }} {{ number_format((float) $fe->contratoVigente->salario_base, 2) }}</strong>
+                        Salario actual: <strong>{{ $fe->contratoVigente->moneda }} {{ number_format((float) \App\Support\Salarios::hoy($fe), 2) }}</strong>
                     </li>
                 @endforeach
             </ul>

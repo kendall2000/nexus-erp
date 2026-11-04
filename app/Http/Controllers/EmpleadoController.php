@@ -16,6 +16,7 @@ use App\Support\Archivos;
 use App\Support\ExportarCsv;
 use App\Support\Prestaciones;
 use App\Support\Referencias;
+use App\Support\Salarios;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,7 +62,7 @@ class EmpleadoController extends Controller
         $ids = $vigentes->pluck('id_empleado')->all();
 
         return view('empleados.index', [
-            'empleados' => $this->filtrados($request)->with(['cargo', 'departamento', 'contratoVigente'])->orderBy('primer_apellido')->orderBy('primer_nombre')->paginate(25)->withQueryString(),
+            'empleados' => $this->filtrados($request)->with(['cargo', 'departamento', 'contratoVigente', 'contratos', 'historialSalarial'])->orderBy('primer_apellido')->orderBy('primer_nombre')->paginate(25)->withQueryString(),
             'kpis' => [
                 'activos' => $vigentes->where('estado', 'ACTIVO')->count(),
                 'vigentes' => $vigentes->count(),
@@ -86,7 +87,7 @@ class EmpleadoController extends Controller
                 foreach ($empleados as $e) {
                     yield [$e->codigo_empleado, $e->nombre_completo, $e->tipo_doc_id.' '.$e->dpi_nit, $e->cargo?->nombre, $e->departamento?->nombre, $e->sucursal?->nombre,
                         $e->supervisor?->nombre_completo, $e->fecha_ingreso?->format('d/m/Y'), self::TIPOS_CONTRATO[$e->tipo_contrato] ?? $e->tipo_contrato,
-                        $e->contratoVigente?->salario_base, $e->contratoVigente?->moneda, $e->email_corporativo ?: $e->email_personal, $e->telefono_personal, self::ESTADOS[$e->estado][0] ?? $e->estado];
+                        $e->contratoVigente ? Salarios::hoy($e) : null, $e->contratoVigente?->moneda, $e->email_corporativo ?: $e->email_personal, $e->telefono_personal, self::ESTADOS[$e->estado][0] ?? $e->estado];
                 }
             })());
     }
@@ -104,7 +105,8 @@ class EmpleadoController extends Controller
             $visto[] = $jefe->id_empleado;
         }
         $cv = $e->contratoVigente;
-        $salario = $cv ? (float) $cv->salario_base : null;
+        // El que rige hoy: un aumento registrado con fecha futura todavía no cuenta (se muestra aparte).
+        $salario = $cv ? Salarios::hoy($e) : null;
         $rango = null;
         if ($salario !== null && $e->cargo && ($e->cargo->salario_min || $e->cargo->salario_max)) {
             $rango = [
@@ -118,6 +120,8 @@ class EmpleadoController extends Controller
             'e' => $e,
             'cadena' => $cadena,
             'rango' => $rango,
+            'salarioHoy' => $salario,
+            'proximoSalario' => $cv ? Salarios::proximoCambio($e) : null,
             'venceContrato' => $cv?->fecha_fin ? (int) round(today()->diffInDays($cv->fecha_fin, false)) : null,
             'vacaciones' => $e->estado !== 'BAJA' ? Prestaciones::saldoVacaciones($e) : null,
             'contratos' => $e->contratos()->orderByDesc('fecha_inicio')->get(),

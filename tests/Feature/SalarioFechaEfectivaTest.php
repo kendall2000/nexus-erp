@@ -93,4 +93,17 @@ class SalarioFechaEfectivaTest extends TestCase
         // Y la vista de vacaciones de hoy usa el salario vigente hoy (5,000), no el de diciembre.
         $this->assertSame(round(5000 / 30, 2), Prestaciones::saldoVacaciones(Empleado::query()->find($this->ana))['salario_diario']);
     }
+    public function test_la_ficha_y_el_listado_muestran_el_salario_de_hoy_y_el_cambio_programado(): void
+    {
+        $this->aumento(5000, '2026-10-10');
+        $this->aumento(6000, '2026-12-01');
+
+        $this->get(route('empleados.show', $this->ana))->assertOk()
+            ->assertSee('GTQ 5,000.00')->assertSee('Cambio programado')->assertSee('6,000.00 desde el 01/12/2026')
+            ->assertSee('Cambia a 6,000.00 el 01/12/2026');
+        $this->get(route('empleados.index'))->assertOk()->assertSee('GTQ 5,000.00')->assertDontSee('GTQ 6,000.00');
+        $csv = $this->get(route('empleados.exportar'))->assertOk()->streamedContent();
+        $this->assertStringContainsString('5000', $csv);
+        $this->assertStringNotContainsString('6000', $csv);
+    }
 }
