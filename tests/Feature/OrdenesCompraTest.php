@@ -248,4 +248,91 @@ class OrdenesCompraTest extends TestCase
     {
         $this->actingAs($this->crearUsuario())->getJson('/api/v1/inventario/ordenes-compra')->assertNotFound();
     }
+
+    public function test_cancelar_revierte_lo_ejecutado_aunque_el_presupuesto_se_haya_cerrado(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto(1000);
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $id = $this->orden()->id_oc;
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $id))->assertSessionHasNoErrors();
+        $this->assertSame([100.0, 100.0], $this->ejecutado($p));
+
+        // Antes buscaba solo presupuestos APROBADOS al revertir: con el presupuesto cerrado no restaba nada.
+        DB::table('presupuesto_anual')->update(['estado' => 'CERRADO']);
+        $this->actingAs($admin)->patch(route('ordenes-compra.cancelar', $id))->assertSessionHasNoErrors();
+
+        $this->assertSame([0.0, 0.0], $this->ejecutado($p));
+        $this->assertSame(1, DB::table('ejecucion_presupuesto')->whereNotNull('revertido_at')->count());
+    }
+
+    public function test_cancelar_no_resta_si_al_aprobar_no_habia_presupuesto_aprobado(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto(1000, 'CERRADO');
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $id = $this->orden()->id_oc;
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $id));
+        $this->assertSame([0.0, 0.0], $this->ejecutado($p));
+
+        // Se reabre con lo ejecutado por otras órdenes; cancelar esta no debe restarle nada.
+        DB::table('presupuesto_anual')->update(['estado' => 'APROBADO', 'eje_'.PresupuestoAnual::MESES[now()->month] => 300, 'total_ejecutado' => 300]);
+        $this->actingAs($admin)->patch(route('ordenes-compra.cancelar', $id))->assertSessionHasNoErrors();
+
+        $this->assertSame([300.0, 300.0], $this->ejecutado($p));
+    }
+
+    public function test_cancelar_resta_de_la_partida_original_aunque_el_producto_cambie_de_centro(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto(1000);
+        $otroCentro = DB::table('centro_costo')->insertGetId(['id_empresa' => 1, 'codigo' => 'CC2', 'nombre' => 'Ventas']);
+        $otro = DB::table('presupuesto_anual')->insertGetId(['id_empresa' => 1, 'id_centro' => $otroCentro, 'id_cuenta' => $this->ids['cuenta'],
+            'anio' => now()->year, 'total_presupuestado' => 1000, 'estado' => 'APROBADO']);
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $id = $this->orden()->id_oc;
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $id));
+
+        DB::table('producto')->update(['id_centro_default' => $otroCentro]);
+        $this->actingAs($admin)->patch(route('ordenes-compra.cancelar', $id))->assertSessionHasNoErrors();
+
+        $this->assertSame([0.0, 0.0], $this->ejecutado($p));
+        $this->assertSame([0.0, 0.0], $this->ejecutado($otro)); // antes quedaba en -100
+    }
+
+    public function test_orden_aprobada_antes_del_registro_se_revierte_como_antes(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto(1000);
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $id = $this->orden()->id_oc;
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $id));
+        DB::table('ejecucion_presupuesto')->delete(); // como si se hubiera aprobado con el código anterior
+
+        $this->actingAs($admin)->patch(route('ordenes-compra.cancelar', $id))->assertSessionHasNoErrors();
+
+        $this->assertSame([0.0, 0.0], $this->ejecutado($p));
+    }
+
+    public function test_resync_rehace_el_ejecutado_desde_lo_registrado(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto(1000);
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $this->orden()->id_oc));
+        // Una orden aprobada antes del registro y otra cancelada.
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $this->actingAs($admin)->patch(route('ordenes-compra.aprobar', $antigua = $this->orden()->id_oc));
+        DB::table('ejecucion_presupuesto')->where('id_documento', $antigua)->delete();
+        $this->actingAs($admin)->post(route('ordenes-compra.store'), $this->datos());
+        $this->actingAs($admin)->patch(route('ordenes-compra.cancelar', $this->orden()->id_oc));
+        DB::table('presupuesto_anual')->update(['total_ejecutado' => 999]); // descuadrado a mano
+
+        $this->artisan('presupuesto:resync', ['--dry-run' => true])->assertSuccessful();
+        $this->assertSame(999.0, $this->ejecutado($p)[1]);
+
+        $this->artisan('presupuesto:resync')->assertSuccessful();
+        $this->assertSame([200.0, 200.0], $this->ejecutado($p));
+        $this->assertSame(1, DB::table('ejecucion_presupuesto')->where('id_documento', $antigua)->count());
+    }
 }

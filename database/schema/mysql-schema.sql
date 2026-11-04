@@ -758,6 +758,24 @@ CREATE TABLE `division_geografica` (
   CONSTRAINT `fk_division_pais` FOREIGN KEY (`id_pais`) REFERENCES `pais` (`id_pais`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Departamentos, estados o provincias por país';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ejecucion_presupuesto`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ejecucion_presupuesto` (
+  `id_ejecucion` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_empresa` tinyint(3) unsigned NOT NULL,
+  `documento` enum('ORDEN_COMPRA','FACTURA') NOT NULL,
+  `id_documento` int(10) unsigned NOT NULL,
+  `id_presupuesto` int(10) unsigned DEFAULT NULL,
+  `mes` tinyint(3) unsigned DEFAULT NULL,
+  `monto` decimal(15,4) NOT NULL DEFAULT 0.0000,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `revertido_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_ejecucion`),
+  KEY `idx_ejecucion_documento` (`documento`,`id_documento`),
+  KEY `idx_ejecucion_presupuesto` (`id_presupuesto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `empleado`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2210,5 +2228,6 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (17,'2026_09_30_000
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (18,'2026_10_03_000001_personal_rotativo',17);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (19,'2026_10_03_000002_modulo_prestaciones',18);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (21,'2026_11_03_000001_indices_bitacora_y_referencias',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (22,'2026_11_04_000001_ejecucion_presupuesto_por_documento',20);
 COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;

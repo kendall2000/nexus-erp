@@ -216,4 +216,24 @@ class FacturasTest extends TestCase
     {
         $this->actingAs($this->crearUsuario())->getJson('/api/v1/finanzas/facturas')->assertNotFound();
     }
+
+    public function test_resync_usa_las_mismas_reglas_que_emitir(): void
+    {
+        $admin = $this->crearUsuario();
+        $p = $this->presupuesto();
+        // Factura con descuento global: 1120 − 112 = 1008 con IVA → 900 de base.
+        $this->actingAs($admin)->post(route('facturas.store'), $this->datos(['descuento' => 112]));
+        $this->actingAs($admin)->patch(route('facturas.emitir', $this->factura()->id_factura))->assertSessionHasNoErrors();
+        // Nota de crédito de 224 con IVA → resta 200.
+        $this->actingAs($admin)->post(route('facturas.store'), $this->datos(['id_serie' => $this->ids['nc'], 'lineas' => [
+            ['id_tipo_servicio' => $this->ids['servicio'], 'descripcion' => 'Devolución', 'cantidad' => 1, 'precio_unitario' => 224, 'descuento' => 0, 'es_afecto_iva' => '1'],
+        ]]));
+        $this->actingAs($admin)->patch(route('facturas.emitir', $this->factura()->id_factura))->assertSessionHasNoErrors();
+        $this->assertSame(700.0, $this->ejecutado($p));
+
+        // Antes el resync sumaba la nota de crédito e ignoraba el descuento: 1000 + 200 = 1200.
+        DB::table('ejecucion_presupuesto')->delete();
+        $this->artisan('presupuesto:resync')->assertSuccessful();
+        $this->assertSame(700.0, $this->ejecutado($p));
+    }
 }

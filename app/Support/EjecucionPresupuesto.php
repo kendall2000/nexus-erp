@@ -16,33 +16,42 @@ use Illuminate\Support\Facades\DB;
  *  - Factura: se ejecuta al EMITIRLA y se revierte al ANULARLA (solo si se había emitido);
  *    una nota de crédito resta.
  *  - Solo cuenta en presupuestos APROBADOS del mismo centro de costo, cuenta y año.
- *  - Va la base sin IVA (el IVA no es gasto) al mes de la fecha de emisión.
+ *  - Va la base sin IVA (el IVA no es gasto) al mes de la fecha de emisión; en facturas,
+ *    después de repartir el descuento global entre las líneas.
  *  - Se actualizan juntos el mes (eje_*) y total_ejecutado.
+ *
+ * Lo que se sumó queda en ejecucion_presupuesto (por documento, presupuesto y mes) y al
+ * revertir se resta exactamente eso: no se vuelve a calcular, así que no se descuadra si
+ * el presupuesto cambió de estado o el producto o servicio cambió de centro o de cuenta.
  */
 class EjecucionPresupuesto
 {
+    public const ORDEN = 'ORDEN_COMPRA';
+
+    public const FACTURA = 'FACTURA';
+
     /** Registra la orden en el presupuesto (al aprobarla). */
     public static function registrarOrden(OrdenCompra $oc): void
     {
-        self::aplicar($oc, 1);
+        self::registrar(self::ORDEN, $oc->id_oc, $oc->id_empresa, $oc->fecha_emision, self::partidasOrden($oc), [PresupuestoAnual::ESTADO_APROBADO]);
     }
 
     /** Revierte lo que la orden sumó (al cancelarla). */
     public static function revertirOrden(OrdenCompra $oc): void
     {
-        self::aplicar($oc, -1);
+        self::revertir(self::ORDEN, $oc->id_oc, fn () => self::registrarOrdenAntigua($oc));
     }
 
     /** Registra la factura en el presupuesto (al emitirla). */
     public static function registrarFactura(Factura $factura): void
     {
-        self::aplicarFactura($factura, 1);
+        self::registrar(self::FACTURA, $factura->id_factura, $factura->id_empresa, $factura->fecha_emision, self::partidasFactura($factura), [PresupuestoAnual::ESTADO_APROBADO]);
     }
 
     /** Revierte lo que la factura sumó (al anular una factura que ya se había emitido). */
     public static function revertirFactura(Factura $factura): void
     {
-        self::aplicarFactura($factura, -1);
+        self::revertir(self::FACTURA, $factura->id_factura, fn () => self::registrarFacturaAntigua($factura));
     }
 
     /**
@@ -53,8 +62,8 @@ class EjecucionPresupuesto
     public static function sobregiros(OrdenCompra $oc): array
     {
         $resultado = [];
-        foreach (self::montosPorPartida($oc) as [$idCentro, $idCuenta, $monto]) {
-            $presupuesto = self::presupuesto($oc, $idCentro, $idCuenta);
+        foreach (self::partidasOrden($oc) as [$idCentro, $idCuenta, $monto]) {
+            $presupuesto = self::presupuesto($oc->id_empresa, $idCentro, $idCuenta, $oc->fecha_emision->year, [PresupuestoAnual::ESTADO_APROBADO]);
             if (! $presupuesto) {
                 continue; // sin presupuesto aprobado no se valida
             }
@@ -82,83 +91,166 @@ class EjecucionPresupuesto
         return round($subtotal / (1 + $tasaIva), 4);
     }
 
-    private static function aplicar(OrdenCompra $oc, int $signo): void
+    /**
+     * Base sin IVA de la orden por partida.
+     *
+     * @return list<array{0: int, 1: int, 2: float}> [centro, cuenta, monto neto]
+     */
+    public static function partidasOrden(OrdenCompra $oc): array
     {
-        foreach (self::montosPorPartida($oc) as [$idCentro, $idCuenta, $monto]) {
-            self::sumar(self::presupuesto($oc, $idCentro, $idCuenta), $oc->fecha_emision->month, $signo * $monto);
+        $oc->loadMissing('detalles.producto');
+        [$tasaIva, $ivaIncluido] = self::fiscal($oc->id_empresa);
+
+        $partidas = [];
+        foreach ($oc->detalles as $linea) {
+            self::acumular($partidas, $linea->centro_efectivo, $linea->cuenta_efectiva,
+                self::montoNeto((float) $linea->subtotal, true, $tasaIva, $ivaIncluido));
         }
+
+        return self::redondear($partidas);
     }
 
-    private static function aplicarFactura(Factura $factura, int $signo): void
+    /**
+     * Base sin IVA de la factura por partida, con el descuento global repartido en proporción
+     * al importe de cada línea. Las notas de crédito salen en negativo.
+     *
+     * @return list<array{0: int, 1: int, 2: float}> [centro, cuenta, monto neto]
+     */
+    public static function partidasFactura(Factura $factura): array
     {
         $factura->loadMissing('detalles.tipoServicio');
-        $empresa = Empresa::find($factura->id_empresa);
-        $tasaIva = $empresa ? (float) $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : true;
-        $signo *= $factura->tipo === 'NOTA_CREDITO' ? -1 : 1;
-        // El descuento global se reparte en proporción al importe de cada línea.
+        [$tasaIva, $ivaIncluido] = self::fiscal($factura->id_empresa);
+        $signo = $factura->tipo === 'NOTA_CREDITO' ? -1 : 1;
         $subtotal = (float) $factura->detalles->sum('subtotal');
         $factor = $subtotal > 0 ? 1 - min((float) $factura->descuento, $subtotal) / $subtotal : 1;
 
         $partidas = [];
         foreach ($factura->detalles as $linea) {
-            [$idCentro, $idCuenta] = [$linea->centro_efectivo, $linea->cuenta_efectiva];
-            if (! $idCentro || ! $idCuenta) {
+            self::acumular($partidas, $linea->centro_efectivo, $linea->cuenta_efectiva,
+                $signo * self::montoNeto((float) $linea->subtotal * $factor, (bool) $linea->es_afecto_iva, $tasaIva, $ivaIncluido));
+        }
+
+        return self::redondear($partidas);
+    }
+
+    /**
+     * Suma el documento a los presupuestos y deja constancia de cada monto. Si no cae en
+     * ningún presupuesto, deja una marca vacía para saber que ya se registró con estas reglas.
+     *
+     * @param  list<array{0: int, 1: int, 2: float}>  $partidas
+     * @param  list<string>  $estados  estados del presupuesto que cuentan (en vivo, solo APROBADO)
+     */
+    public static function registrar(string $documento, int $idDocumento, int $idEmpresa, \DateTimeInterface $fecha, array $partidas, array $estados): void
+    {
+        $mes = (int) $fecha->format('n');
+        $filas = [];
+        foreach ($partidas as [$idCentro, $idCuenta, $monto]) {
+            $presupuesto = self::presupuesto($idEmpresa, $idCentro, $idCuenta, (int) $fecha->format('Y'), $estados);
+            if (! $presupuesto || abs($monto) < 0.00005) {
                 continue;
             }
-            $partidas["{$idCentro}-{$idCuenta}"] ??= [(int) $idCentro, (int) $idCuenta, 0.0];
-            $partidas["{$idCentro}-{$idCuenta}"][2] += self::montoNeto((float) $linea->subtotal * $factor, (bool) $linea->es_afecto_iva, $tasaIva, $ivaIncluido);
+            self::sumar($presupuesto->id_presupuesto, $mes, $monto);
+            $filas[] = ['id_presupuesto' => $presupuesto->id_presupuesto, 'mes' => $mes, 'monto' => $monto];
         }
+        $filas = $filas ?: [['id_presupuesto' => null, 'mes' => null, 'monto' => 0]];
+
+        DB::table('ejecucion_presupuesto')->insert(array_map(fn ($f) => $f + [
+            'id_empresa' => $idEmpresa, 'documento' => $documento, 'id_documento' => $idDocumento, 'created_at' => now(),
+        ], $filas));
+    }
+
+    /**
+     * Resta lo que el documento sumó y lo marca como revertido. Documentos aprobados o
+     * emitidos antes de que existiera el registro: se calculan como antes ($antiguo).
+     */
+    private static function revertir(string $documento, int $idDocumento, \Closure $antiguo): void
+    {
+        $vigentes = fn () => DB::table('ejecucion_presupuesto')->where('documento', $documento)
+            ->where('id_documento', $idDocumento)->whereNull('revertido_at');
+        if (! DB::table('ejecucion_presupuesto')->where('documento', $documento)->where('id_documento', $idDocumento)->exists()) {
+            $antiguo();
+        }
+
+        foreach ($vigentes()->lockForUpdate()->get() as $fila) {
+            if ($fila->id_presupuesto) {
+                self::sumar((int) $fila->id_presupuesto, (int) $fila->mes, -1 * (float) $fila->monto);
+            }
+        }
+        $vigentes()->update(['revertido_at' => now()]);
+    }
+
+    /**
+     * Para revertir un documento sin registro: lo que se le habría sumado con la regla de
+     * entonces (presupuestos aprobados hoy), anotado sin volver a sumarlo.
+     */
+    private static function registrarOrdenAntigua(OrdenCompra $oc): void
+    {
+        self::anotarSinSumar(self::ORDEN, $oc->id_oc, $oc->id_empresa, $oc->fecha_emision, self::partidasOrden($oc));
+    }
+
+    private static function registrarFacturaAntigua(Factura $factura): void
+    {
+        self::anotarSinSumar(self::FACTURA, $factura->id_factura, $factura->id_empresa, $factura->fecha_emision, self::partidasFactura($factura));
+    }
+
+    /** @param  list<array{0: int, 1: int, 2: float}>  $partidas */
+    private static function anotarSinSumar(string $documento, int $idDocumento, int $idEmpresa, \DateTimeInterface $fecha, array $partidas): void
+    {
+        $mes = (int) $fecha->format('n');
         foreach ($partidas as [$idCentro, $idCuenta, $monto]) {
-            $presupuesto = PresupuestoAnual::query()->where('id_empresa', $factura->id_empresa)->where('id_centro', $idCentro)->where('id_cuenta', $idCuenta)
-                ->where('anio', $factura->fecha_emision->year)->where('estado', PresupuestoAnual::ESTADO_APROBADO)->first();
-            self::sumar($presupuesto, $factura->fecha_emision->month, $signo * round($monto, 4));
+            $presupuesto = self::presupuesto($idEmpresa, $idCentro, $idCuenta, (int) $fecha->format('Y'), [PresupuestoAnual::ESTADO_APROBADO]);
+            if ($presupuesto) {
+                DB::table('ejecucion_presupuesto')->insert([
+                    'id_empresa' => $idEmpresa, 'documento' => $documento, 'id_documento' => $idDocumento,
+                    'id_presupuesto' => $presupuesto->id_presupuesto, 'mes' => $mes, 'monto' => $monto, 'created_at' => now(),
+                ]);
+            }
         }
     }
 
     /** Suma (o resta) al mes y al total_ejecutado juntos. */
-    private static function sumar(?PresupuestoAnual $presupuesto, int $mes, float $monto): void
+    private static function sumar(int $idPresupuesto, int $mes, float $monto): void
     {
-        if (! $presupuesto) {
-            return;
-        }
         $columnaMes = 'eje_'.PresupuestoAnual::MESES[$mes];
-        DB::table('presupuesto_anual')->where('id_presupuesto', $presupuesto->id_presupuesto)->update([
+        $monto = round($monto, 4);
+        DB::table('presupuesto_anual')->where('id_presupuesto', $idPresupuesto)->update([
             $columnaMes => DB::raw("{$columnaMes} + ".$monto),
             'total_ejecutado' => DB::raw('total_ejecutado + '.$monto),
         ]);
     }
 
-    /** @return list<array{0: int, 1: int, 2: float}> [centro, cuenta, monto neto] agrupado por partida. */
-    private static function montosPorPartida(OrdenCompra $oc): array
-    {
-        $oc->loadMissing('detalles.producto');
-        $empresa = Empresa::find($oc->id_empresa);
-        $tasaIva = $empresa ? (float) $empresa->tasa_iva_decimal : 0.12;
-        $ivaIncluido = $empresa ? (bool) $empresa->iva_incluido_en_precio : false;
-
-        $partidas = [];
-        foreach ($oc->detalles as $linea) {
-            [$idCentro, $idCuenta] = [$linea->centro_efectivo, $linea->cuenta_efectiva];
-            if (! $idCentro || ! $idCuenta) {
-                continue;
-            }
-            $clave = "{$idCentro}-{$idCuenta}";
-            $partidas[$clave] ??= [(int) $idCentro, (int) $idCuenta, 0.0];
-            $partidas[$clave][2] += self::montoNeto((float) $linea->subtotal, true, $tasaIva, $ivaIncluido);
-        }
-
-        return array_values($partidas);
-    }
-
-    private static function presupuesto(OrdenCompra $oc, int $idCentro, int $idCuenta): ?PresupuestoAnual
+    /** @param  list<string>  $estados */
+    private static function presupuesto(int $idEmpresa, int $idCentro, int $idCuenta, int $anio, array $estados): ?PresupuestoAnual
     {
         return PresupuestoAnual::query()
-            ->where('id_empresa', $oc->id_empresa)
+            ->where('id_empresa', $idEmpresa)
             ->where('id_centro', $idCentro)
             ->where('id_cuenta', $idCuenta)
-            ->where('anio', $oc->fecha_emision->year)
-            ->where('estado', PresupuestoAnual::ESTADO_APROBADO)
+            ->where('anio', $anio)
+            ->whereIn('estado', $estados)
             ->first();
+    }
+
+    /** @return array{0: float, 1: bool} [tasa de IVA, ¿el precio incluye IVA?] */
+    private static function fiscal(int $idEmpresa): array
+    {
+        $empresa = Empresa::find($idEmpresa);
+
+        return [$empresa ? (float) $empresa->tasa_iva_decimal : 0.12, $empresa ? (bool) $empresa->iva_incluido_en_precio : false];
+    }
+
+    private static function acumular(array &$partidas, mixed $idCentro, mixed $idCuenta, float $monto): void
+    {
+        if (! $idCentro || ! $idCuenta) {
+            return;
+        }
+        $partidas["{$idCentro}-{$idCuenta}"] ??= [(int) $idCentro, (int) $idCuenta, 0.0];
+        $partidas["{$idCentro}-{$idCuenta}"][2] += $monto;
+    }
+
+    /** @return list<array{0: int, 1: int, 2: float}> */
+    private static function redondear(array $partidas): array
+    {
+        return array_values(array_map(fn ($p) => [$p[0], $p[1], round($p[2], 4)], $partidas));
     }
 }
