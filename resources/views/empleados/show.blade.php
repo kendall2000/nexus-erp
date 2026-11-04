@@ -255,7 +255,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom border-200 py-2">
                     <div>
                         <span class="badge badge-phoenix badge-phoenix-secondary me-1">{{ $tiposDocumento[$d->tipo_documento] ?? $d->tipo_documento }}</span>
-                        <a class="fw-semi-bold text-decoration-none" href="{{ $d->url_archivo }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
+                        <a class="fw-semi-bold text-decoration-none" href="{{ route('empleados.documentos.show', [$e->id_empleado, $d->id_doc]) }}" target="_blank" rel="noopener noreferrer">{{ $d->nombre }}</a>
                         @if ($vence !== null && $vence < 0)<span class="badge badge-phoenix badge-phoenix-danger ms-1">Vencido</span>
                         @elseif ($vence !== null && $vence <= 30)<span class="badge badge-phoenix badge-phoenix-warning ms-1">Vence en {{ $vence }} días</span>@endif
                         <span class="d-block text-600">{{ collect([$d->fecha_emision ? 'Emitido el '.$d->fecha_emision->format('d/m/Y') : null, $d->fecha_vencimiento ? 'vence el '.$d->fecha_vencimiento->format('d/m/Y') : null, $d->observaciones, 'subido el '.$d->created_at?->format('d/m/Y')])->filter()->implode(' · ') }}</span>

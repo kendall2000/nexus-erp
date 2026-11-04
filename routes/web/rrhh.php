@@ -15,6 +15,7 @@ Route::prefix('sistema/empleados')->name('empleados.')->controller(EmpleadoContr
     Route::get('nuevo', 'create')->middleware('permiso:empleados.crear')->name('create');
     Route::post('/', 'store')->middleware('permiso:empleados.crear')->name('store');
     Route::get('{empleado}', 'show')->whereNumber('empleado')->middleware('permiso:empleados.ver')->name('show');
+    Route::get('{empleado}/documentos/{documento}', 'verDocumento')->whereNumber(['empleado', 'documento'])->middleware('permiso:empleados.ver')->name('documentos.show');
     Route::middleware('permiso:empleados.editar')->group(function () {
         Route::get('{empleado}/editar', 'edit')->whereNumber('empleado')->name('edit');
         Route::put('{empleado}', 'update')->whereNumber('empleado')->name('update');

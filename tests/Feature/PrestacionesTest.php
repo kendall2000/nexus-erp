@@ -136,17 +136,22 @@ class PrestacionesTest extends TestCase
 
     public function test_documentos_del_expediente(): void
     {
-        config(['filesystems.disks.contabo' => array_merge(config('filesystems.disks.contabo'), ['key' => 'k', 'secret' => 's', 'bucket' => 'b', 'url' => 'https://cdn.test/nexus'])]);
+        foreach (['contabo', 'contabo_privado'] as $disco) {
+            config(["filesystems.disks.{$disco}" => array_merge(config("filesystems.disks.{$disco}"), ['key' => 'k', 'secret' => 's', 'bucket' => 'b', 'url' => 'https://cdn.test/nexus'])]);
+        }
         Storage::fake('contabo', ['url' => 'https://cdn.test/nexus']);
+        Storage::fake('contabo_privado');
         $this->actingAs($this->crearUsuario());
 
         $this->post(route('empleados.documentos.store', $this->ana), ['tipo_documento' => 'ANTECEDENTES', 'archivo' => UploadedFile::fake()->create('antecedentes penales.pdf', 200, 'application/pdf'),
             'fecha_emision' => '2026-11-20', 'fecha_vencimiento' => '2026-12-20'])->assertSessionHasNoErrors();
         $d = DB::table('empleado_documento')->sole();
         $this->assertSame(['antecedentes penales', 'ANTECEDENTES'], [$d->nombre, $d->tipo_documento]);
-        $this->assertStringStartsWith("https://cdn.test/nexus/empleados/{$this->ana}/", $d->url_archivo);
-        $ruta = substr($d->url_archivo, strlen('https://cdn.test/nexus/'));
-        Storage::disk('contabo')->assertExists($ruta);
+        // Va al disco privado y en la BD queda la ruta, no una URL pública.
+        $this->assertMatchesRegularExpression("#^expedientes/{$this->ana}/[A-Za-z0-9]{40}\\.pdf$#", $d->url_archivo);
+        $ruta = $d->url_archivo;
+        Storage::disk('contabo_privado')->assertExists($ruta);
+        $this->assertSame([], Storage::disk('contabo')->allFiles());
         $this->get(route('empleados.show', $this->ana))->assertOk()->assertSee('antecedentes penales')->assertSee('Vence en 15 días');
 
         // Solo PDF, imagen o Word; el vencimiento no puede ser antes de la emisión.
@@ -159,7 +164,7 @@ class PrestacionesTest extends TestCase
         $this->delete(route('empleados.documentos.destroy', [$luis, $d->id_doc]))->assertNotFound();
         $this->delete(route('empleados.documentos.destroy', [$this->ana, $d->id_doc]))->assertSessionHasNoErrors();
         $this->assertSame(0, DB::table('empleado_documento')->count());
-        Storage::disk('contabo')->assertMissing($ruta);
+        Storage::disk('contabo_privado')->assertMissing($ruta);
 
         $lector = $this->crearUsuario(['username' => 'l', 'email' => 'l@nexus.test'], 'Lector');
         $this->darPermisos($lector, ['empleados.ver']);

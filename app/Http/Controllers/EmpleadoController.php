@@ -123,7 +123,7 @@ class EmpleadoController extends Controller
             'historial' => $e->historialSalarial()->with('cargo')->orderByDesc('id_historial')->get(),
             'documentos' => $e->documentos()->orderBy('tipo_documento')->orderByDesc('id_doc')->get(),
             'tiposDocumento' => self::TIPOS_DOCUMENTO,
-            'contaboListo' => Archivos::disponible(),
+            'contaboListo' => Archivos::disponible(Archivos::DISCO_PRIVADO),
             'estados' => self::ESTADOS,
             'tipos' => self::TIPOS_CONTRATO,
             'jornadas' => self::JORNADAS,
@@ -303,7 +303,7 @@ class EmpleadoController extends Controller
 
     // ── Documentos del expediente ────────────────────────────────────────
 
-    /** Sube un documento (DPI, contrato firmado, antecedentes…) a Contabo y lo deja en la ficha. */
+    /** Sube un documento (DPI, contrato firmado, antecedentes…) al disco privado de Contabo y lo deja en la ficha. */
     public function guardarDocumento(Request $request, int $empleado): RedirectResponse
     {
         $e = $this->deMiEmpresa($request)->findOrFail($empleado);
@@ -322,14 +322,22 @@ class EmpleadoController extends Controller
         $archivo = $request->file('archivo');
         $datos['nombre'] ??= mb_substr(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME), 0, 200) ?: self::TIPOS_DOCUMENTO[$datos['tipo_documento']];
         try {
-            $url = Archivos::subir($archivo, 'empleados/'.$e->id_empleado, 'archivo');
+            $ruta = Archivos::subirPrivado($archivo, 'expedientes/'.$e->id_empleado, 'archivo');
         } catch (ValidationException $ex) {
             throw $ex->errorBag('documento');
         }
         unset($datos['archivo']);
-        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $url, 'created_by' => $this->idUsuario($request)]);
+        EmpleadoDocumento::create($datos + ['id_empleado' => $e->id_empleado, 'url_archivo' => $ruta, 'created_by' => $this->idUsuario($request)]);
 
         return back()->with('status', "Documento «{$datos['nombre']}» guardado.");
+    }
+
+    /** Abre un documento del expediente: solo con permiso de ver empleados y de un empleado de su empresa. */
+    public function verDocumento(Request $request, int $empleado, int $documento): StreamedResponse|RedirectResponse
+    {
+        $d = $this->deMiEmpresa($request)->findOrFail($empleado)->documentos()->findOrFail($documento);
+
+        return Archivos::respuesta($d->url_archivo, $d->nombre);
     }
 
     public function eliminarDocumento(Request $request, int $empleado, int $documento): RedirectResponse

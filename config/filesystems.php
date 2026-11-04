@@ -79,6 +79,23 @@ return [
             'report' => false,
         ],
 
+        // Documentos privados (expediente de empleados): solo se abren a través del sistema, con
+        // permiso. Mismas credenciales; usar un bucket SIN acceso público en CONTABO_BUCKET_PRIVADO.
+        // Sin esa variable se usa el bucket público con los archivos marcados como privados.
+        'contabo_privado' => [
+            'driver' => 's3',
+            'key' => env('CONTABO_KEY'),
+            'secret' => env('CONTABO_SECRET'),
+            'region' => env('CONTABO_REGION', 'US-central'),
+            'bucket' => env('CONTABO_BUCKET_PRIVADO') ?: env('CONTABO_BUCKET'),
+            'endpoint' => env('CONTABO_ENDPOINT', 'https://usc1.contabostorage.com'),
+            'use_path_style_endpoint' => true,
+            'root' => env('CONTABO_CARPETA', ''),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*
