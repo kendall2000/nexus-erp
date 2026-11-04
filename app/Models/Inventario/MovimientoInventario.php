@@ -33,6 +33,7 @@ class MovimientoInventario extends Model
         'fecha_vencimiento',
         'observaciones',
         'created_by',
+        'created_at', // fecha del movimiento: la de la recepción, no la de captura
     ];
 
     protected $casts = [

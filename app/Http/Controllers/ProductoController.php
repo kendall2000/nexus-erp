@@ -6,6 +6,7 @@ use App\Http\Requests\Inventario\GuardarProductoRequest;
 use App\Models\Core\CentroCosto;
 use App\Models\Core\CuentaContable;
 use App\Models\Inventario\CategoriaProducto;
+use App\Models\Inventario\MovimientoInventario;
 use App\Models\Inventario\Producto;
 use App\Support\ExportarCsv;
 use App\Support\Referencias;
@@ -73,7 +74,20 @@ class ProductoController extends Controller
     public function update(GuardarProductoRequest $request, int $producto): RedirectResponse
     {
         $producto = $this->deMiEmpresa($request)->findOrFail($producto);
-        $producto->update($request->datosLimpios());
+        $datos = $request->datosLimpios();
+        if ($producto->activo && empty($datos['activo']) && $error = $this->conExistencias($producto)) {
+            return back()->withErrors(['activo' => $error])->withInput();
+        }
+        // Con movimientos en el kardex, la unidad y la moneda quedan fijas: cambiarlas
+        // reinterpretaría las existencias y el costo sin dejar rastro.
+        if (MovimientoInventario::query()->where('id_producto', $producto->id_producto)->exists()) {
+            foreach (['unidad_medida' => 'la unidad de medida', 'moneda' => 'la moneda'] as $campo => $nombre) {
+                if (isset($datos[$campo]) && $datos[$campo] !== $producto->{$campo}) {
+                    return back()->withErrors([$campo => "El producto ya tiene movimientos de inventario: no se puede cambiar {$nombre}."])->withInput();
+                }
+            }
+        }
+        $producto->update($datos);
 
         return redirect()->route('productos.index')->with('status', "Producto «{$producto->nombre}» actualizado.");
     }
@@ -81,6 +95,9 @@ class ProductoController extends Controller
     public function estado(Request $request, int $producto): RedirectResponse
     {
         $producto = $this->deMiEmpresa($request)->findOrFail($producto);
+        if ($producto->activo && $error = $this->conExistencias($producto)) {
+            return back()->withErrors(['producto' => $error]);
+        }
         $producto->update(['activo' => ! $producto->activo]);
 
         return back()->with('status', "Producto «{$producto->nombre}» ".($producto->activo ? 'activado.' : 'desactivado.'));
@@ -143,5 +160,13 @@ class ProductoController extends Controller
     {
         return CategoriaProducto::query()->where('id_empresa', $this->idEmpresa($request))
             ->when($soloActivas, fn ($q) => $q->where('activo', true))->orderBy('nombre')->get();
+    }
+
+    /** Un producto con existencias no se desactiva: después no se podría trasladar ni sacar. */
+    private function conExistencias(Producto $producto): ?string
+    {
+        return $producto->stocks()->where('cantidad_actual', '>', 0)->exists()
+            ? "«{$producto->nombre}» tiene existencias en bodega: dales salida antes de desactivarlo."
+            : null;
     }
 }

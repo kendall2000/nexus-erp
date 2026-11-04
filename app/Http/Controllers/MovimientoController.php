@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -101,6 +102,9 @@ class MovimientoController extends Controller
 
         // Entradas de productos con lote o perecederos: lote y vencimiento obligatorios.
         $producto = Producto::query()->findOrFail($datos['id_producto']);
+        if ($producto->unidad_medida === 'SERV') {
+            throw ValidationException::withMessages(['id_producto' => 'Un servicio no tiene existencias: no lleva movimientos de inventario.']);
+        }
         if ($datos['tipo'] === 'AJUSTE_ENTRADA') {
             $request->validate([
                 'numero_lote' => [Rule::requiredIf((bool) $producto->requiere_lote)],

@@ -47,7 +47,11 @@ class BodegaController extends Controller
     public function update(GuardarBodegaRequest $request, int $bodega): RedirectResponse
     {
         $bodega = $this->deMiEmpresa($request)->findOrFail($bodega);
-        $bodega->update($request->datosLimpios());
+        $datos = $request->datosLimpios();
+        if ($bodega->activo && empty($datos['activo']) && $error = $this->conExistencias($bodega)) {
+            return back()->withErrors(['activo' => $error])->withInput();
+        }
+        $bodega->update($datos);
 
         return redirect()->route('bodegas.index')->with('status', "Bodega «{$bodega->nombre}» actualizada.");
     }
@@ -55,6 +59,9 @@ class BodegaController extends Controller
     public function estado(Request $request, int $bodega): RedirectResponse
     {
         $bodega = $this->deMiEmpresa($request)->findOrFail($bodega);
+        if ($bodega->activo && $error = $this->conExistencias($bodega)) {
+            return back()->withErrors(['bodega' => $error]);
+        }
         $bodega->update(['activo' => ! $bodega->activo]);
 
         return back()->with('status', "Bodega «{$bodega->nombre}» ".($bodega->activo ? 'activada.' : 'desactivada.'));
@@ -97,5 +104,13 @@ class BodegaController extends Controller
     private function deMiEmpresa(Request $request)
     {
         return $this->consultaEmpresa(Bodega::class, $request);
+    }
+
+    /** Una bodega con existencias no se desactiva: después no se podría trasladar ni sacar nada de ella. */
+    private function conExistencias(\App\Models\Inventario\Bodega $bodega): ?string
+    {
+        return $bodega->stocks()->where('cantidad_actual', '>', 0)->exists()
+            ? "La bodega «{$bodega->nombre}» tiene existencias: trasládalas o dales salida antes de desactivarla."
+            : null;
     }
 }

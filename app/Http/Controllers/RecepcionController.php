@@ -79,6 +79,8 @@ class RecepcionController extends Controller
             'lineas' => ['required', 'array', 'max:200'],
             'lineas.*.cantidad' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'lineas.*.costo' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'lineas.*.lote' => ['nullable', 'string', 'max:50'],
+            'lineas.*.vencimiento' => ['nullable', 'date'],
         ], [
             'numero_recepcion.unique' => 'Ya existe una recepción con ese número.',
             'id_bodega.exists' => 'La bodega no es válida o está inactiva.',
@@ -86,8 +88,10 @@ class RecepcionController extends Controller
         ]);
 
         $recepcion = DB::transaction(function () use ($request, $datos, $idEmpresa) {
+            // Un número de recepción a la vez por empresa (dos simultáneas no sacan el mismo).
+            DB::table('empresa')->where('id_empresa', $idEmpresa)->lockForUpdate()->first();
             // Se bloquea la orden para que dos recepciones simultáneas no reciban dos veces lo pendiente.
-            $oc = $this->recibibles($request)->lockForUpdate()->with('detalles')->find($datos['id_oc']);
+            $oc = $this->recibibles($request)->lockForUpdate()->with('detalles.producto')->find($datos['id_oc']);
             if (! $oc) {
                 throw ValidationException::withMessages(['id_oc' => 'La orden no existe o ya no admite recepciones (debe estar aprobada o recibida en parte).']);
             }
@@ -110,7 +114,18 @@ class RecepcionController extends Controller
                 if ($cantidad > $pendiente) {
                     throw ValidationException::withMessages(["lineas.{$idLinea}.cantidad" => 'No se puede recibir más de lo pendiente ('.rtrim(rtrim(number_format($pendiente, 4), '0'), '.').').']);
                 }
-                $recibir[] = [$linea, $cantidad, round((float) ($l['costo'] ?? $this->costoLinea($linea)), 4)];
+                // Lote y vencimiento, igual que en un ajuste de entrada (no aplica a servicios).
+                $producto = $linea->producto;
+                $esServicio = $producto?->unidad_medida === 'SERV';
+                $lote = trim((string) ($l['lote'] ?? '')) ?: null;
+                $vence = $l['vencimiento'] ?? null;
+                if (! $esServicio && $producto?->requiere_lote && ! $lote) {
+                    throw ValidationException::withMessages(["lineas.{$idLinea}.lote" => "«{$producto->nombre}» se controla por lote: indica el lote recibido."]);
+                }
+                if (! $esServicio && $producto?->es_perecedero && ! $vence) {
+                    throw ValidationException::withMessages(["lineas.{$idLinea}.vencimiento" => "«{$producto->nombre}» es perecedero: indica el vencimiento."]);
+                }
+                $recibir[] = [$linea, $cantidad, round((float) ($l['costo'] ?? $this->costoLinea($linea)), 4), $lote, $vence, $esServicio];
             }
             if (! $recibir) {
                 throw ValidationException::withMessages(['lineas' => 'Indica la cantidad recibida de al menos un producto.']);
@@ -129,7 +144,9 @@ class RecepcionController extends Controller
                 'created_by' => $this->idUsuario($request),
             ]);
 
-            foreach ($recibir as [$linea, $cantidad, $costo]) {
+            // El kardex lleva la fecha de la recepción (no la de captura) para que el saldo de cada mes cuadre.
+            $fechaKardex = Carbon::parse($datos['fecha_recepcion'])->isToday() ? now() : Carbon::parse($datos['fecha_recepcion'])->setTimeFrom(now());
+            foreach ($recibir as [$linea, $cantidad, $costo, $lote, $vence, $esServicio]) {
                 DetalleRecepcion::create([
                     'id_recepcion' => $recepcion->id_recepcion,
                     'id_linea' => $linea->id_linea,
@@ -139,6 +156,9 @@ class RecepcionController extends Controller
                     'subtotal' => round($cantidad * $costo, 4),
                 ]);
                 $linea->increment('cantidad_recibida', $cantidad);
+                if ($esServicio) {
+                    continue; // un servicio se recibe pero no tiene existencias
+                }
 
                 // Kardex: la ENTRADA actualiza stock_bodega y el costo promedio (hook del modelo).
                 MovimientoInventario::create([
@@ -152,7 +172,10 @@ class RecepcionController extends Controller
                     'referencia_tipo' => 'COMPRA',
                     'referencia_id' => $recepcion->id_recepcion,
                     'observaciones' => "Recepción {$recepcion->numero_recepcion} · OC {$oc->numero_oc}",
+                    'numero_lote' => $lote,
+                    'fecha_vencimiento' => $vence,
                     'created_by' => $this->idUsuario($request),
+                    'created_at' => $fechaKardex,
                 ]);
             }
 
@@ -188,10 +211,21 @@ class RecepcionController extends Controller
         ]);
     }
 
-    /** Costo sugerido: precio de la línea ya con su descuento. */
+    /**
+     * Costo sugerido: precio de la línea ya con su descuento y sin IVA. Si la empresa registra
+     * los precios con IVA incluido, se le quita: el IVA de compra es crédito fiscal, no costo.
+     */
     public static function costoLinea($linea): float
     {
-        return (float) $linea->cantidad_pedida > 0 ? round((float) $linea->subtotal / (float) $linea->cantidad_pedida, 4) : (float) $linea->precio_unitario;
+        static $ivaPorOrden = [];
+        $costo = (float) $linea->cantidad_pedida > 0 ? (float) $linea->subtotal / (float) $linea->cantidad_pedida : (float) $linea->precio_unitario;
+        $iva = $ivaPorOrden[$linea->id_oc] ??= (function () use ($linea) {
+            $empresa = Empresa::find(OrdenCompra::query()->whereKey($linea->id_oc)->value('id_empresa'));
+
+            return $empresa?->iva_incluido_en_precio ? (float) $empresa->tasa_iva_decimal : 0.0;
+        })();
+
+        return round($costo / (1 + $iva), 4);
     }
 
     private function cargar(Request $request, int $recepcion): RecepcionMercaderia

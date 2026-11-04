@@ -53,6 +53,14 @@ class Kardex
     public static function registrar(int $idEmpresa, int $idUsuario, string $moneda, array $d): array
     {
         [, $tipoMovimiento, $referencia, $suma] = self::MANUALES[$d['tipo']];
+        if ($d['tipo'] === 'TRASLADO') {
+            // Siempre en el mismo orden (por bodega): un A→B y un B→A simultáneos no se traban.
+            $bodegas = [(int) $d['id_bodega'], (int) $d['id_bodega_destino']];
+            sort($bodegas);
+            foreach ($bodegas as $idBodega) {
+                self::stockBloqueado($d['id_producto'], $idBodega);
+            }
+        }
         $origen = self::stockBloqueado($d['id_producto'], $d['id_bodega']);
         $cantidad = round((float) $d['cantidad'], 4);
         $costoActual = (float) $origen->costo_promedio;

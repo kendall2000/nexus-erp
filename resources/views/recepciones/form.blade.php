@@ -93,6 +93,21 @@
                                             <input class="form-control form-control-sm text-end @error('lineas.'.$d->id_linea.'.cantidad') is-invalid @enderror" type="number" step="any" min="0" max="{{ $pendiente }}"
                                                    name="lineas[{{ $d->id_linea }}][cantidad]" value="{{ old('lineas.'.$d->id_linea.'.cantidad', $cantidad($pendiente)) }}" />
                                             @error('lineas.'.$d->id_linea.'.cantidad')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                            @if ($d->producto?->unidad_medida !== 'SERV' && ($d->producto?->requiere_lote || $d->producto?->es_perecedero))
+                                                {{-- Igual que en un ajuste de entrada: lote y vencimiento de lo que llegó. --}}
+                                                <div class="d-flex gap-1 mt-1">
+                                                    @if ($d->producto->requiere_lote)
+                                                        <input class="form-control form-control-sm @error('lineas.'.$d->id_linea.'.lote') is-invalid @enderror" type="text" maxlength="50" placeholder="Lote" title="Lote recibido"
+                                                               name="lineas[{{ $d->id_linea }}][lote]" value="{{ old('lineas.'.$d->id_linea.'.lote') }}" />
+                                                    @endif
+                                                    @if ($d->producto->es_perecedero)
+                                                        <input class="form-control form-control-sm @error('lineas.'.$d->id_linea.'.vencimiento') is-invalid @enderror" type="date" title="Fecha de vencimiento"
+                                                               name="lineas[{{ $d->id_linea }}][vencimiento]" value="{{ old('lineas.'.$d->id_linea.'.vencimiento') }}" />
+                                                    @endif
+                                                </div>
+                                                @error('lineas.'.$d->id_linea.'.lote')<div class="text-danger fs--2">{{ $message }}</div>@enderror
+                                                @error('lineas.'.$d->id_linea.'.vencimiento')<div class="text-danger fs--2">{{ $message }}</div>@enderror
+                                            @endif
                                         </td>
                                         <td><input class="form-control form-control-sm text-end" type="number" step="any" min="0" name="lineas[{{ $d->id_linea }}][costo]" value="{{ old('lineas.'.$d->id_linea.'.costo', \App\Http\Controllers\RecepcionController::costoLinea($d)) }}" /></td>
                                     @else
@@ -103,7 +118,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="fs--2 text-600 mt-2 mb-0">Deja en 0 lo que no llegó; quedará pendiente para otra recepción. El costo sugerido es el precio de la orden con su descuento.</p>
+                    <p class="fs--2 text-600 mt-2 mb-0">Deja en 0 lo que no llegó; quedará pendiente para otra recepción. El costo sugerido es el precio de la orden con su descuento y sin IVA (el IVA de compra es crédito fiscal, no costo).</p>
                 </div>
             </div>
 

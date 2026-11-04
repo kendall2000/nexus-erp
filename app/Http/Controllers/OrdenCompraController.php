@@ -123,6 +123,7 @@ class OrdenCompraController extends Controller
 
         $oc = DB::transaction(function () use ($request, $datos) {
             $encabezado = $datos['encabezado'];
+            DB::table('empresa')->where('id_empresa', $this->idEmpresa($request))->lockForUpdate()->first(); // un número a la vez
             $encabezado['numero_oc'] ??= $this->siguienteNumero($request);
             $oc = OrdenCompra::create($encabezado + [
                 'id_empresa' => $this->idEmpresa($request),
