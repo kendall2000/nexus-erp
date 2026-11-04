@@ -12,6 +12,7 @@ use App\Models\RRHH\PrestamoEmpleado;
 use App\Services\RRHH\NominaService;
 use App\Support\ExportarCsv;
 use App\Support\Nomina;
+use App\Support\Salarios;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -120,7 +121,7 @@ class NominaController extends Controller
             if (! in_array($p->estado, self::EDITABLES, true)) {
                 return back()->withErrors(['periodo' => 'El periodo ya está cerrado.']);
             }
-            $empleados = Empleado::query()->where('id_empresa', $p->id_empresa)->with(['cargo', 'contratos'])
+            $empleados = Empleado::query()->where('id_empresa', $p->id_empresa)->with(['cargo', 'contratos', 'historialSalarial'])
                 ->where('fecha_ingreso', '<=', $p->fecha_fin)
                 ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhere('fecha_baja', '>=', $p->fecha_inicio))->get();
 
@@ -141,7 +142,15 @@ class NominaController extends Controller
 
                     continue;
                 }
-                Nomina::procesarEmpleado($p, $e, (float) ($contrato?->salario_base ?? 0));
+                // Salario según la fecha efectiva de cada cambio: un aumento a mitad del periodo
+                // se prorratea por días y uno con fecha futura todavía no cuenta.
+                $salario = 0.0;
+                if ($contrato) {
+                    $desde = $e->fecha_ingreso && $e->fecha_ingreso->gt($p->fecha_inicio) ? $e->fecha_ingreso : $p->fecha_inicio;
+                    $hasta = $e->fecha_baja && $e->fecha_baja->lt($p->fecha_fin) ? $e->fecha_baja : $p->fecha_fin;
+                    $salario = Salarios::promedio($e, $desde, $hasta) ?? (float) $contrato->salario_base;
+                }
+                Nomina::procesarEmpleado($p, $e, $salario);
                 $incluidos[] = $e->id_empleado;
                 $procesados++;
             }

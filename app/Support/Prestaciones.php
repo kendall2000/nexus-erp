@@ -65,16 +65,13 @@ class Prestaciones
     }
 
     /**
-     * Salario del contrato que regía en esa fecha (el más reciente que ya había empezado). Un
-     * contrato rescindido no rige después de su fin: un reactivado sin contrato nuevo no tiene salario.
+     * Salario que regía en esa fecha (contrato vigente y cambios con su fecha efectiva, ver
+     * Salarios::vigente). Un contrato rescindido no rige después de su fin: un reactivado sin
+     * contrato nuevo no tiene salario.
      */
     public static function salario(Empleado $e, Carbon $fecha): ?float
     {
-        $contrato = $e->contratos
-            ->filter(fn ($c) => $c->fecha_inicio->lte($fecha) && ! ($c->estado === 'RESCINDIDO' && $c->fecha_fin && $c->fecha_fin->lt($fecha->copy()->startOfDay())))
-            ->sortByDesc('fecha_inicio')->first();
-
-        return $contrato ? (float) $contrato->salario_base : null;
+        return Salarios::vigente($e, $fecha);
     }
 
     /**
@@ -91,7 +88,7 @@ class Prestaciones
         if ($hasta->gte(today())) {
             throw ValidationException::withMessages(['anio' => self::TIPOS[$tipo]." {$anio} cubre del {$desde->format('d/m/Y')} al {$hasta->format('d/m/Y')}: se calcula cuando ese periodo haya terminado."]);
         }
-        $empleados = Empleado::query()->where('id_empresa', $idEmpresa)->with('contratos')
+        $empleados = Empleado::query()->where('id_empresa', $idEmpresa)->with(['contratos', 'historialSalarial'])
             ->whereDate('fecha_ingreso', '<=', $hasta)
             ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhereDate('fecha_baja', '>=', $desde))->get();
 
