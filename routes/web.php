@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConsolidadoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpresaActivaController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,12 @@ Route::middleware('auth')->group(function () {
 
     // Cambiar de empresa (cada usuario, entre las empresas a las que tiene acceso)
     Route::post('/sistema/empresa-activa', [EmpresaActivaController::class, 'cambiar'])->name('empresa-activa.cambiar');
+
+    // Reporte consolidado de todas sus empresas (cada sección filtra por el permiso de su módulo en cada empresa)
+    Route::get('/sistema/consolidado', [ConsolidadoController::class, 'index'])
+        ->middleware('permiso:facturas.ver|ordenes_compra.ver|pagos.ver|presupuesto.ver')->name('consolidado.index');
+    Route::get('/sistema/consolidado/exportar', [ConsolidadoController::class, 'exportar'])
+        ->middleware('permiso:facturas.exportar|ordenes_compra.exportar|pagos.exportar|presupuesto.exportar')->name('consolidado.exportar');
 
     // ── Pantallas del menú que aún no existen (DEBE ir SIEMPRE al final) ──
     Route::get('/sistema/{any}', fn () => redirect()->route('dashboard')
