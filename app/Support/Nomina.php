@@ -104,8 +104,9 @@ class Nomina
         $calendario = (int) round(abs($p->fecha_inicio->diffInDays($p->fecha_fin))) + 1;
         $contratado = (int) round(abs($desde->diffInDays($hasta))) + 1;
 
-        // Mes o quincena completos cuentan como 30 o 15 días aunque el mes tenga 31 o 28.
-        return $contratado >= $calendario ? (float) $diasPeriodo : round(min($diasPeriodo, $contratado), 2);
+        // Mes o quincena completos cuentan como 30 o 15 días aunque el mes tenga 31 o 28; una parte
+        // se escala a esa base (14 de 28 días de febrero = 15 de 30, la mitad).
+        return $contratado >= $calendario ? (float) $diasPeriodo : round($contratado * $diasPeriodo / $calendario, 2);
     }
 
     /** Ausencias injustificadas y días hábiles de permisos sin goce aprobados dentro del periodo. */
@@ -168,8 +169,13 @@ class Nomina
         $horas = (float) $d->horas_extra;
         $linea('HEXTRA', $horas * (float) $d->salario_base / 30 / 8 * self::RECARGO_HORA_EXTRA, rtrim(rtrim(number_format($horas, 2), '0'), '.').' h al 150 %');
 
+        $baja = Empleado::query()->whereKey($d->id_empleado)->value('fecha_baja');
+        $finCobertura = $baja && Carbon::parse($baja)->lt($p->fecha_fin) ? Carbon::parse($baja) : $p->fecha_fin;
         foreach (self::coberturas($p, $d->id_empleado) as $c) {
-            $dias = $c->diasEn($p->fecha_inicio, $p->fecha_fin);
+            $dias = $c->diasEn($p->fecha_inicio, $finCobertura); // nada después de la baja del rotativo
+            if ($dias <= 0) {
+                continue;
+            }
             $linea('ROTATIVO', $dias * (float) $c->tarifa_dia, $dias.' días × '.number_format((float) $c->tarifa_dia, 2)
                 .' · '.($c->titular ? 'cubre a '.$c->titular->nombre_completo : 'puesto vacante'));
         }
@@ -185,7 +191,8 @@ class Nomina
         $linea('ISR', $isr);
 
         // Préstamos activos: la cuota registrada es quincenal.
-        foreach (PrestamoEmpleado::query()->where('id_empleado', $d->id_empleado)->where('estado', 'ACTIVO')->where('monto_pendiente', '>', 0)->get() as $prestamo) {
+        foreach (PrestamoEmpleado::query()->where('id_empleado', $d->id_empleado)->where('estado', 'ACTIVO')->where('monto_pendiente', '>', 0)
+            ->whereDate('fecha_otorgamiento', '<=', $p->fecha_fin)->get() as $prestamo) {
             $cuota = min((float) $prestamo->monto_pendiente, (float) $prestamo->cuota_quincenal * 24 / $periodosAnio);
             $linea('PRESTAMO', $cuota, "Préstamo #{$prestamo->id_prestamo}");
         }

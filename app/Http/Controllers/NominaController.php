@@ -38,6 +38,9 @@ class NominaController extends Controller
 
     private const EDITABLES = ['ABIERTO', 'EN_PROCESO'];
 
+    /** Días que puede abarcar cada tipo de periodo (mínimo, máximo). */
+    private const DURACIONES = ['MENSUAL' => [28, 31], 'QUINCENAL' => [13, 16], 'CATORCENAL' => [14, 14], 'SEMANAL' => [7, 7]];
+
     public function index(Request $request): View
     {
         // Resumen del último periodo calculado: líquido, cuota patronal y costo total con provisiones.
@@ -95,6 +98,12 @@ class NominaController extends Controller
             'nombre' => ['nullable', 'string', 'max:100'],
             'moneda' => ['required', Rule::exists('moneda', 'codigo')->where('activo', true)],
         ]);
+        // La duración debe corresponder al tipo: un «mensual» de 15 días pagaría un mes completo.
+        $largo = (int) Carbon::parse($datos['fecha_inicio'])->diffInDays(Carbon::parse($datos['fecha_fin'])) + 1;
+        [$minimo, $maximo] = self::DURACIONES[$datos['tipo']];
+        if ($largo < $minimo || $largo > $maximo) {
+            throw ValidationException::withMessages(['fecha_fin' => 'Un periodo '.strtolower(self::TIPOS[$datos['tipo']])." dura de {$minimo} a {$maximo} días; estas fechas abarcan {$largo}."]);
+        }
         $datos['nombre'] ??= Nomina::nombreSugerido($datos['tipo'], Carbon::parse($datos['fecha_inicio']));
 
         // Cada periodo procesa a toda la planilla: dos periodos que se cruzan (de cualquier tipo)
@@ -121,55 +130,67 @@ class NominaController extends Controller
             if (! in_array($p->estado, self::EDITABLES, true)) {
                 return back()->withErrors(['periodo' => 'El periodo ya está cerrado.']);
             }
-            $empleados = Empleado::query()->where('id_empresa', $p->id_empresa)->with(['cargo', 'contratos', 'historialSalarial'])
-                ->where('fecha_ingreso', '<=', $p->fecha_fin)
-                ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhere('fecha_baja', '>=', $p->fecha_inicio))->get();
-
-            $procesados = 0;
-            $sinContrato = [];
-            $incluidos = [];
-            foreach ($empleados as $e) {
-                // Contrato que cubre el periodo (el vigente, o el rescindido si la baja cae dentro).
-                $contrato = $e->contratos->filter(fn ($c) => $c->fecha_inicio->lte($p->fecha_fin) && (! $c->fecha_fin || $c->fecha_fin->gte($p->fecha_inicio)))
-                    ->sortByDesc('fecha_inicio')->first();
-                // Un rotativo sin contrato entra solo si cubrió a alguien en el periodo: cobra por día.
-                if (! $contrato && $e->es_rotativo) {
-                    if (Nomina::coberturas($p, $e->id_empleado)->isEmpty()) {
-                        continue;
-                    }
-                } elseif (! $contrato) {
-                    $sinContrato[] = $e->nombre_completo;
-
-                    continue;
-                }
-                // Salario según la fecha efectiva de cada cambio: un aumento a mitad del periodo
-                // se prorratea por días y uno con fecha futura todavía no cuenta.
-                $salario = 0.0;
-                if ($contrato) {
-                    $desde = $e->fecha_ingreso && $e->fecha_ingreso->gt($p->fecha_inicio) ? $e->fecha_ingreso : $p->fecha_inicio;
-                    $hasta = $e->fecha_baja && $e->fecha_baja->lt($p->fecha_fin) ? $e->fecha_baja : $p->fecha_fin;
-                    $salario = Salarios::promedio($e, $desde, $hasta) ?? (float) $contrato->salario_base;
-                }
-                Nomina::procesarEmpleado($p, $e, $salario);
-                $incluidos[] = $e->id_empleado;
-                $procesados++;
-            }
-            // Quien ya no califica (cobertura anulada, contrato que ya no cubre el periodo, baja
-            // anterior) sale de la nómina: si no, se le pagaría lo calculado antes.
-            $obsoletos = $p->detalles()->whereNotIn('id_empleado', $incluidos)->pluck('id_detalle');
-            if ($obsoletos->isNotEmpty()) {
-                DetalleNominaConcepto::query()->whereIn('id_detalle', $obsoletos)->delete();
-                DetalleNomina::query()->whereIn('id_detalle', $obsoletos)->delete();
-            }
-            Nomina::totalesPeriodo($p);
+            [$procesados, $sinContrato, $obsoletos] = $this->calcularPeriodo($p);
             $p->update(['estado' => 'EN_PROCESO']);
 
             return back()->with('status', "Nómina calculada para {$procesados} empleados."
-                .($obsoletos->isNotEmpty() ? " Se quitaron {$obsoletos->count()} que ya no corresponden a este periodo." : '')
+                .($obsoletos ? " Se quitaron {$obsoletos} que ya no corresponden a este periodo." : '')
                 .($sinContrato ? ' Sin contrato vigente (no incluidos): '.implode(', ', $sinContrato).'.' : ''));
         });
     }
 
+    /**
+     * Calcula (o recalcula) a todos los empleados con contrato vigente en el periodo, quita a
+     * quien ya no corresponde y actualiza los totales. Respeta los ajustes manuales.
+     *
+     * @return array{0: int, 1: list<string>, 2: int} procesados, sin contrato, quitados
+     */
+    private function calcularPeriodo(PeriodoNomina $p): array
+    {
+        $empleados = Empleado::query()->where('id_empresa', $p->id_empresa)->with(['cargo', 'contratos', 'historialSalarial'])
+            ->where('fecha_ingreso', '<=', $p->fecha_fin)
+            ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhere('fecha_baja', '>=', $p->fecha_inicio))->get();
+
+        $procesados = 0;
+        $sinContrato = [];
+        $incluidos = [];
+        foreach ($empleados as $e) {
+            // Contrato que cubre el periodo (el vigente, o el rescindido si la baja cae dentro).
+            $contrato = $e->contratos->filter(fn ($c) => $c->fecha_inicio->lte($p->fecha_fin) && (! $c->fecha_fin || $c->fecha_fin->gte($p->fecha_inicio)))
+                ->sortByDesc('fecha_inicio')->first();
+            // Un rotativo sin contrato entra solo si cubrió a alguien en el periodo: cobra por día.
+            if (! $contrato && $e->es_rotativo) {
+                if (Nomina::coberturas($p, $e->id_empleado)->isEmpty()) {
+                    continue;
+                }
+            } elseif (! $contrato) {
+                $sinContrato[] = $e->nombre_completo;
+
+                continue;
+            }
+            // Salario según la fecha efectiva de cada cambio: un aumento a mitad del periodo
+            // se prorratea por días y uno con fecha futura todavía no cuenta.
+            $salario = 0.0;
+            if ($contrato) {
+                $desde = $e->fecha_ingreso && $e->fecha_ingreso->gt($p->fecha_inicio) ? $e->fecha_ingreso : $p->fecha_inicio;
+                $hasta = $e->fecha_baja && $e->fecha_baja->lt($p->fecha_fin) ? $e->fecha_baja : $p->fecha_fin;
+                $salario = Salarios::promedio($e, $desde, $hasta) ?? (float) $contrato->salario_base;
+            }
+            Nomina::procesarEmpleado($p, $e, $salario);
+            $incluidos[] = $e->id_empleado;
+            $procesados++;
+        }
+        // Quien ya no califica (cobertura anulada, contrato que ya no cubre el periodo, baja
+        // anterior) sale de la nómina: si no, se le pagaría lo calculado antes.
+        $obsoletos = $p->detalles()->whereNotIn('id_empleado', $incluidos)->pluck('id_detalle');
+        if ($obsoletos->isNotEmpty()) {
+            DetalleNominaConcepto::query()->whereIn('id_detalle', $obsoletos)->delete();
+            DetalleNomina::query()->whereIn('id_detalle', $obsoletos)->delete();
+        }
+        Nomina::totalesPeriodo($p);
+
+        return [$procesados, $sinContrato, $obsoletos->count()];
+    }
     /** Ajustes por empleado: días trabajados y conceptos manuales (horas extra, bonos, descuentos). */
     public function ajustar(Request $request, int $periodo, int $detalle): RedirectResponse
     {
@@ -252,6 +273,22 @@ class NominaController extends Controller
             if (! $p->detalles()->exists()) {
                 return 'El periodo no tiene empleados calculados.';
             }
+            // Se cierra lo mismo que se revisó: si algo cambió desde el último cálculo (coberturas,
+            // préstamos, ausencias, bajas…) se avisa y no se cierra. La excepción deshace el recálculo.
+            $antes = $p->detalles()->pluck('liquido_pagar', 'id_empleado')->map(fn ($v) => round((float) $v, 2))->all();
+            $this->calcularPeriodo($p);
+            $despues = $p->detalles()->pluck('liquido_pagar', 'id_empleado')->map(fn ($v) => round((float) $v, 2))->all();
+            ksort($antes);
+            ksort($despues);
+            if ($antes !== $despues) {
+                $nombres = Empleado::query()->whereIn('id_empleado', array_keys(array_diff_assoc($despues, $antes) + array_diff_assoc($antes, $despues)))
+                    ->get()->map(fn ($e) => $e->nombre_completo)->take(5)->implode(', ');
+                throw ValidationException::withMessages(['periodo' => "Hubo cambios desde el último cálculo ({$nombres}). Vuelve a procesar el periodo, revísalo y ciérralo."]);
+            }
+            $negativos = $p->detalles()->where('liquido_pagar', '<', 0)->with('empleado')->get();
+            if ($negativos->isNotEmpty()) {
+                throw ValidationException::withMessages(['periodo' => 'El líquido queda negativo para '.$negativos->map(fn ($d) => $d->empleado?->nombre_completo)->implode(', ').': ajusta sus descuentos antes de cerrar.']);
+            }
             $corregidos = Nomina::aplicarPrestamos($p, 1);
             $p->detalles()->update(['estado_pago' => 'APROBADO']);
             if ($corregidos) {
@@ -274,7 +311,7 @@ class NominaController extends Controller
 
     public function pagar(Request $request, int $periodo): RedirectResponse
     {
-        $fecha = $request->validate(['fecha_pago' => ['required', 'date']])['fecha_pago'];
+        $fecha = $request->validate(['fecha_pago' => ['required', 'date', 'before_or_equal:today']], ['fecha_pago.before_or_equal' => 'La fecha de pago no puede ser futura.'])['fecha_pago'];
 
         return $this->transicion($request, $periodo, 'CERRADO', 'PAGADO', function (PeriodoNomina $p) use ($fecha) {
             $p->update(['fecha_pago' => $fecha]);

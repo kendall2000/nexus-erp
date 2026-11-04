@@ -79,7 +79,7 @@ class PrestacionesTest extends TestCase
         $idLuis = $this->prestacion($luis, 'AGUINALDO')->id_prestacion;
 
         // No se paga sin aprobar; aprobada ya no se elimina.
-        $this->patch(route('prestaciones.pagar', $idAna), ['fecha_pago' => '2026-12-15'])->assertSessionHasErrors('prestacion');
+        $this->patch(route('prestaciones.pagar', $idAna), ['fecha_pago' => '2026-12-05'])->assertSessionHasErrors('prestacion');
         $this->patch(route('prestaciones.aprobar', $idAna))->assertSessionHasNoErrors();
         $this->delete(route('prestaciones.destroy', $idAna))->assertSessionHasErrors('prestacion');
 
@@ -90,9 +90,9 @@ class PrestacionesTest extends TestCase
 
         // Por lote: aprobar las calculadas y pagar las aprobadas del grupo.
         $this->patch(route('prestaciones.lote.aprobar'), ['periodo' => '2026', 'tipo' => 'AGUINALDO'])->assertSessionHasNoErrors();
-        $this->patch(route('prestaciones.lote.pagar'), ['periodo' => '2026', 'tipo' => 'AGUINALDO', 'fecha_pago' => '2026-12-15'])->assertSessionHasNoErrors();
+        $this->patch(route('prestaciones.lote.pagar'), ['periodo' => '2026', 'tipo' => 'AGUINALDO', 'fecha_pago' => '2026-12-05'])->assertSessionHasNoErrors();
         $this->assertSame(['PAGADO', 'PAGADO'], DB::table('prestacion_laboral')->orderBy('id_prestacion')->pluck('estado')->all());
-        $this->assertSame('2026-12-15', substr(DB::table('prestacion_laboral')->where('id_prestacion', $idLuis)->value('fecha_pago'), 0, 10));
+        $this->assertSame('2026-12-05', substr(DB::table('prestacion_laboral')->where('id_prestacion', $idLuis)->value('fecha_pago'), 0, 10));
         $this->patch(route('prestaciones.lote.aprobar'), ['periodo' => '2026', 'tipo' => 'AGUINALDO'])->assertSessionHasErrors('prestacion');
     }
 

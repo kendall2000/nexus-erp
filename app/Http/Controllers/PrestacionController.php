@@ -120,7 +120,7 @@ class PrestacionController extends Controller
 
     public function pagar(Request $request, int $prestacion): RedirectResponse
     {
-        $fecha = $request->validate(['fecha_pago' => ['required', 'date']])['fecha_pago'];
+        $fecha = $request->validate(['fecha_pago' => ['required', 'date', 'before_or_equal:today']], ['fecha_pago.before_or_equal' => 'La fecha de pago no puede ser futura.'])['fecha_pago'];
 
         return $this->transicion($this->deMiEmpresa($request)->whereKey($prestacion), 'APROBADO', ['estado' => 'PAGADO', 'fecha_pago' => $fecha], 'pagada', true);
     }
@@ -134,7 +134,7 @@ class PrestacionController extends Controller
     /** Paga todas las aprobadas de un grupo. */
     public function pagarLote(Request $request): RedirectResponse
     {
-        $fecha = $request->validate(['fecha_pago' => ['required', 'date']])['fecha_pago'];
+        $fecha = $request->validate(['fecha_pago' => ['required', 'date', 'before_or_equal:today']], ['fecha_pago.before_or_equal' => 'La fecha de pago no puede ser futura.'])['fecha_pago'];
 
         return $this->transicion($this->lote($request), 'APROBADO', ['estado' => 'PAGADO', 'fecha_pago' => $fecha], 'pagadas');
     }

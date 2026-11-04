@@ -256,7 +256,11 @@ class EmpleadoController extends Controller
         ]);
 
         DB::transaction(function () use ($e, $datos, $request, $idEmpresa) {
+            Empleado::query()->whereKey($e->id_empleado)->lockForUpdate()->first(); // dos clics no crean dos contratos vigentes
             $anterior = $e->contratos()->where('estado', 'VIGENTE')->lockForUpdate()->first();
+            if ($anterior && $datos['fecha_inicio'] <= $anterior->fecha_inicio->toDateString()) {
+                throw ValidationException::withMessages(['fecha_inicio' => 'El contrato nuevo debe empezar después del vigente ('.$anterior->fecha_inicio->format('d/m/Y').').'])->errorBag('contrato');
+            }
             $anterior?->update(['estado' => 'RENOVADO', 'fecha_fin' => $anterior->fecha_fin ?? $datos['fecha_inicio']]);
             $datos['numero_contrato'] ??= $this->siguienteNumero($request, 'contrato');
             ContratoLaboral::create($datos + [

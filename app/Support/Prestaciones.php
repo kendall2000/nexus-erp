@@ -6,6 +6,7 @@ use App\Models\RRHH\Empleado;
 use App\Models\RRHH\PrestacionLaboral;
 use App\Models\RRHH\SolicitudAusencia;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -61,7 +62,8 @@ class Prestaciones
     /** Parte del salario que corresponde a los días laborados (el periodo completo es un salario). */
     public static function proporcional(float $salario, int $dias, int $diasPeriodo = 365): float
     {
-        return $dias >= $diasPeriodo ? round($salario, 2) : round($salario * $dias / 365, 2);
+        // Se divide entre los días del periodo (366 si tiene un 29 de febrero).
+        return $dias >= $diasPeriodo ? round($salario, 2) : round($salario * $dias / $diasPeriodo, 2);
     }
 
     /**
@@ -88,6 +90,7 @@ class Prestaciones
         if ($hasta->gte(today())) {
             throw ValidationException::withMessages(['anio' => self::TIPOS[$tipo]." {$anio} cubre del {$desde->format('d/m/Y')} al {$hasta->format('d/m/Y')}: se calcula cuando ese periodo haya terminado."]);
         }
+        DB::table('empresa')->where('id_empresa', $idEmpresa)->lockForUpdate()->first(); // un cálculo a la vez por empresa
         $empleados = Empleado::query()->where('id_empresa', $idEmpresa)->with(['contratos', 'historialSalarial'])
             ->whereDate('fecha_ingreso', '<=', $hasta)
             ->where(fn ($q) => $q->whereNull('fecha_baja')->orWhereDate('fecha_baja', '>=', $desde))->get();
@@ -131,10 +134,16 @@ class Prestaciones
      */
     public static function liquidar(Empleado $e, Carbon $salida, bool $indemnizacion, float $diasVacaciones): array
     {
+        Empleado::query()->whereKey($e->id_empleado)->lockForUpdate()->first(); // una liquidación a la vez por empleado
         $e->loadMissing('contratos');
         $salario = self::salario($e, $salida);
         if ($salario === null) {
             throw ValidationException::withMessages(['id_empleado' => 'El empleado no tiene contrato a esa fecha: no hay salario para liquidar.']);
+        }
+        // Vacaciones: no más días que los que tiene disponibles a la salida.
+        $disponible = self::saldoVacaciones($e, $salida)['disponible'];
+        if ($diasVacaciones > $disponible + 0.005) {
+            throw ValidationException::withMessages(['dias_vacaciones' => 'A la salida tiene '.rtrim(rtrim(number_format($disponible, 2), '0'), '.').' días de vacaciones disponibles: no se pueden pagar más.']);
         }
         // Solo cuenta la relación laboral vigente: un reactivado (con nueva fecha de ingreso) se
         // puede volver a liquidar aunque tenga aprobada la de su relación anterior.
@@ -157,7 +166,7 @@ class Prestaciones
             }
             $anual?->delete();
             $dias = self::dias($e->fecha_ingreso->max($inicio), $salida);
-            $lineas[] = self::guardar($e, $tipo, $periodo, $salario, self::proporcional($salario, $dias), $dias);
+            $lineas[] = self::guardar($e, $tipo, $periodo, $salario, self::proporcional($salario, $dias, self::dias($inicio, $inicio->copy()->addYear()->subDay())), $dias);
         }
         if ($diasVacaciones > 0) {
             $lineas[] = self::guardar($e, 'VACACIONES_DINERO', $periodo, $salario, round($salario / 30 * $diasVacaciones, 2), $diasVacaciones);

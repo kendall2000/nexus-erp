@@ -49,24 +49,6 @@ class PrestacionLaboral extends Model
         return $this->belongsTo(PeriodoNomina::class, 'id_periodo');
     }
 
-    // Cálculo Bono 14 Guatemala: salario / 365 * días trabajados (jul-jun)
-    public static function calcularBono14(float $salarioBase, int $diasTrabajados): float
-    {
-        return round(($salarioBase / 365) * $diasTrabajados, 4);
-    }
-
-    // Cálculo Aguinaldo Guatemala: salario / 365 * días trabajados (dic-nov)
-    public static function calcularAguinaldo(float $salarioBase, int $diasTrabajados): float
-    {
-        return round(($salarioBase / 365) * $diasTrabajados, 4);
-    }
-
-    // Cálculo Indemnización Guatemala: salario / 365 * días trabajados
-    public static function calcularIndemnizacion(float $salarioBase, int $diasTrabajados): float
-    {
-        return round(($salarioBase / 365) * $diasTrabajados, 4);
-    }
-
     public function marcarComoPagado(): void
     {
         $this->update([

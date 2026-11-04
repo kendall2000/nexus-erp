@@ -3,14 +3,19 @@
     $dinero = fn ($n) => number_format((float) $n, 2);
     $cantidad = fn ($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.');
     $total = (float) $lineas->sum('monto_calculado');
+    $borrador = $lineas->contains(fn ($l) => $l->estado === 'CALCULADO');
 @endphp
 <x-print-layout :titulo="'Finiquito — '.$e->nombre_completo" :empresa="$empresa" :volver-url="route('prestaciones.index', ['anio' => $salida->year])">
     <x-slot:encabezado>
         <span class="badge badge-phoenix badge-phoenix-primary fs--1">FINIQUITO LABORAL</span>
+        @if ($borrador)<span class="badge badge-phoenix badge-phoenix-danger fs--1 ms-1">BORRADOR</span>@endif
         <p class="fs--1 text-700 mb-0 mt-2">{{ $periodo }}</p>
         <p class="fs--2 text-600 mb-0">Emitido el {{ now()->format('d/m/Y') }}</p>
     </x-slot:encabezado>
 
+    @if ($borrador)
+        <div class="alert alert-soft-danger fs--1 py-2 mb-3"><strong>Borrador:</strong> hay montos sin aprobar. No es válido como constancia de pago hasta que toda la liquidación esté aprobada.</div>
+    @endif
     <div class="row g-3 fs--1 mb-4">
         <div class="col-sm-6">
             <h6 class="text-700 text-uppercase fs--2 mb-1">Colaborador</h6>

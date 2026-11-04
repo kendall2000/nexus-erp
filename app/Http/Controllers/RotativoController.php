@@ -81,6 +81,10 @@ class RotativoController extends Controller
         if ($dias > 999) {
             throw ValidationException::withMessages(['fecha_fin' => 'La cobertura es demasiado larga: regístrala por tramos.']);
         }
+        $ingreso = Empleado::query()->whereKey($datos['id_rotativo'])->value('fecha_ingreso');
+        if ($ingreso && $datos['fecha_inicio'] < Carbon::parse($ingreso)->toDateString()) {
+            throw ValidationException::withMessages(['fecha_inicio' => 'El rotativo ingresó el '.Carbon::parse($ingreso)->format('d/m/Y').': la cobertura no puede empezar antes.']);
+        }
 
         $cobertura = DB::transaction(function () use ($request, $datos, $dias) {
             // Bloquea al rotativo para que dos registros simultáneos no lo dejen en dos puestos a la vez.

@@ -55,9 +55,14 @@ class NominaReprocesoTest extends TestCase
 
         $this->patch(route('nomina.cerrar', $a))->assertSessionHasNoErrors();
         $liquidoAntes = (float) $this->detalle($b, $ana)->liquido_pagar;
-        $this->patch(route('nomina.cerrar', $b))->assertSessionHasNoErrors()->assertSessionHas('aviso');
 
-        // B ya no descuenta nada: el préstamo de Q100 se cobró una sola vez.
+        // B ya no puede cerrarse tal cual: el préstamo cambió desde su cálculo. Se avisa y no se toca nada.
+        $this->patch(route('nomina.cerrar', $b))->assertSessionHasErrors(['periodo' => 'Hubo cambios desde el último cálculo (Ana López). Vuelve a procesar el periodo, revísalo y ciérralo.']);
+        $this->assertSame(['EN_PROCESO', 100.0], [DB::table('periodo_nomina')->where('id_periodo', $b)->value('estado'), $this->prestamoDe($b, $ana)]);
+
+        // Reprocesado, B ya no descuenta nada: el préstamo de Q100 se cobró una sola vez.
+        $this->patch(route('nomina.procesar', $b))->assertSessionHasNoErrors();
+        $this->patch(route('nomina.cerrar', $b))->assertSessionHasNoErrors();
         $this->assertSame(0.0, $this->prestamoDe($b, $ana));
         $this->assertEqualsWithDelta($liquidoAntes + 100, (float) $this->detalle($b, $ana)->liquido_pagar, 0.001);
         $this->assertEqualsWithDelta((float) DB::table('detalle_nomina')->where('id_periodo', $b)->sum('liquido_pagar'), (float) DB::table('periodo_nomina')->where('id_periodo', $b)->value('total_neto'), 0.001);

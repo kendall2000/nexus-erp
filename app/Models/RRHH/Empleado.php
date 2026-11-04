@@ -229,23 +229,6 @@ class Empleado extends Model
         return $this->asignacionesActivas()->exists();
     }
 
-    public function getSalarioBase(): float
-    {
-        $salario = $this->salarioActual;
-        return $salario ? $salario->salario_nuevo : 0;
-    }
-
-    public function calcularIgss(): float
-    {
-        // Cuota empleado IGSS Guatemala: 4.83%
-        return round($this->getSalarioBase() * 0.0483, 4);
-    }
-
-    public function calcularIgssPatronal(): float
-    {
-        // Cuota patronal IGSS Guatemala: 12.67%
-        return round($this->getSalarioBase() * 0.1267, 4);
-    }
 
     public function darDeBaja(string $motivo, ?string $fecha = null): void
     {
