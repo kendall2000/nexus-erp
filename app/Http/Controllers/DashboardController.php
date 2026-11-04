@@ -22,17 +22,24 @@ class DashboardController extends Controller
     {
         $usuario = $request->user();
         $idEmpresa = $usuario->id_empresa;
-
-        $tarjetas = [
-            ['titulo' => 'Clientes activos', 'icono' => 'briefcase', 'color' => 'primary', 'enlace' => $usuario->puede('clientes.ver') ? url('/sistema/clientes') : null,
-                'valor' => Cliente::where('id_empresa', $idEmpresa)->where('activo', 1)->count()],
-            ['titulo' => 'Empleados', 'icono' => 'users', 'color' => 'success', 'enlace' => $usuario->puede('empleados.ver') ? url('/sistema/empleados') : null,
-                'valor' => Empleado::where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')->count()],
-            ['titulo' => 'Contratos vigentes', 'icono' => 'file-text', 'color' => 'info', 'enlace' => $usuario->puede('contratos.ver') ? url('/sistema/contratos') : null,
-                'valor' => ContratoServicio::where('id_empresa', $idEmpresa)->where('estado', 'VIGENTE')->count()],
-            ['titulo' => 'Tickets abiertos', 'icono' => 'headphones', 'color' => 'warning', 'enlace' => $usuario->puede('tickets.ver') ? url('/sistema/tickets') : null,
-                'valor' => Ticket::where('id_empresa', $idEmpresa)->whereNotIn('estado', ['CERRADO'])->count()],
+        // Cada bloque solo se calcula (y llega al navegador) si puede ver su módulo:
+        // los montos de facturación y cartera no son para todos los usuarios.
+        $ver = [
+            'finanzas' => $usuario->puede('facturas.ver'),
+            'presupuesto' => $usuario->puede('facturas.ver') && $usuario->puede('presupuesto.ver'),
+            'oportunidades' => $usuario->puede('oportunidades.ver'),
+            'inventario' => $usuario->puede('productos.ver'),
+            'tickets' => $usuario->puede('tickets.ver'),
         ];
+
+        $tarjetas = collect([
+            ['clientes', 'Clientes activos', 'briefcase', 'primary', fn () => Cliente::where('id_empresa', $idEmpresa)->where('activo', 1)->count()],
+            ['empleados', 'Empleados', 'users', 'success', fn () => Empleado::where('id_empresa', $idEmpresa)->where('estado', 'ACTIVO')->count()],
+            ['contratos', 'Contratos vigentes', 'file-text', 'info', fn () => ContratoServicio::where('id_empresa', $idEmpresa)->where('estado', 'VIGENTE')->count()],
+            ['tickets', 'Tickets abiertos', 'headphones', 'warning', fn () => Ticket::where('id_empresa', $idEmpresa)->whereNotIn('estado', ['CERRADO'])->count()],
+        ])->filter(fn ($t) => $usuario->puede($t[0].'.ver'))
+            ->map(fn ($t) => ['titulo' => $t[1], 'icono' => $t[2], 'color' => $t[3], 'enlace' => url('/sistema/'.$t[0]), 'valor' => $t[4]()])
+            ->values()->all();
 
         $facturasRecientes = $usuario->puede('facturas.ver')
             ? Factura::where('id_empresa', $idEmpresa)->with('cliente')->orderByDesc('fecha_emision')->orderByDesc('id_factura')->limit(6)->get()
@@ -42,16 +49,16 @@ class DashboardController extends Controller
             ? Ticket::where('id_empresa', $idEmpresa)->whereNotIn('estado', ['CERRADO'])->with(['cliente', 'asignadoA'])->orderByDesc('id_ticket')->limit(6)->get()
             : collect();
 
-        $saldoPorCobrar = (float) Factura::where('id_empresa', $idEmpresa)
+        $saldoPorCobrar = ! $ver['finanzas'] ? null : (float) Factura::where('id_empresa', $idEmpresa)
             ->whereIn('estado', Cliente::ESTADOS_CON_SALDO)
             ->sum('saldo_pendiente');
 
-        $facturadoMes = (float) Factura::where('id_empresa', $idEmpresa)
+        $facturadoMes = ! $ver['finanzas'] ? null : (float) Factura::where('id_empresa', $idEmpresa)
             ->whereNotIn('estado', ['BORRADOR', 'ANULADA'])
             ->whereBetween('fecha_emision', [now()->startOfMonth(), now()->endOfMonth()])
             ->sum('total');
 
-        $oportunidadesAbiertas = Oportunidad::where('id_empresa', $idEmpresa)
+        $oportunidadesAbiertas = ! $ver['oportunidades'] ? null : Oportunidad::where('id_empresa', $idEmpresa)
             ->whereHas('etapa', fn ($q) => $q->where('es_ganada', false)->where('es_perdida', false))
             ->count();
 
@@ -97,7 +104,7 @@ class DashboardController extends Controller
             $numMes = (int) $mesObj->format('n');
             $anioMes = (int) $mesObj->format('Y');
 
-            $colMes = 'pre_' . PresupuestoAnual::MESES[$numMes];
+            $colMes = 'pre_'.PresupuestoAnual::MESES[$numMes];
             $proy = (float) PresupuestoAnual::where('id_empresa', $idEmpresa)
                 ->where('anio', $anioMes)
                 ->sum($colMes);
@@ -122,6 +129,7 @@ class DashboardController extends Controller
             ->map(function ($p) {
                 $actual = (float) ($p->stock_actual ?? 0);
                 $minimo = (float) $p->stock_minimo;
+
                 return [
                     'nombre' => $p->codigo ?: $p->nombre,
                     'nombre_completo' => $p->nombre,
@@ -160,20 +168,22 @@ class DashboardController extends Controller
             'saldoPorCobrar' => $saldoPorCobrar,
             'facturadoMes' => $facturadoMes,
             'oportunidadesAbiertas' => $oportunidadesAbiertas,
-            'analitica' => [
-                'facturacionVsCobranza' => [
+            'ver' => $ver,
+            // Solo lo que puede ver: el resto ni siquiera se envía al navegador.
+            'analitica' => array_filter([
+                'facturacionVsCobranza' => $ver['finanzas'] ? [
                     'semanas' => $semanasLabels,
                     'facturacion' => $facturacionSemanas,
                     'cobranza' => $cobranzaSemanas,
-                ],
-                'flujoCaja' => [
+                ] : null,
+                'flujoCaja' => $ver['presupuesto'] ? [
                     'meses' => $mesesFlujo,
                     'proyectado' => $flujoProyectado,
                     'real' => $flujoReal,
-                ],
-                'inventarioBajoStock' => $productosBajoStock,
-                'ticketsPrioridad' => $ticketsPrioridad,
-            ],
+                ] : null,
+                'inventarioBajoStock' => $ver['inventario'] ? $productosBajoStock : null,
+                'ticketsPrioridad' => $ver['tickets'] ? $ticketsPrioridad : null,
+            ], fn ($v) => $v !== null),
         ]);
     }
 }

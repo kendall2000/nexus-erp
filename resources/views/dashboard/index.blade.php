@@ -37,6 +37,7 @@
 
         {{-- Cintas de Métricas Rápidas estilo Phoenix index.html --}}
         <div class="row align-items-center g-4 mb-4 border-top border-bottom border-200 py-4 bg-white mx-n4 px-4 mx-lg-n6 px-lg-6">
+            @if ($ver['finanzas'])
             <div class="col-12 col-sm-6 col-md-4 col-xl-3">
                 <div class="d-flex align-items-center">
                     <span class="fa-stack" style="min-height: 48px;min-width: 48px;">
@@ -63,6 +64,8 @@
                     </div>
                 </div>
             </div>
+            @endif
+            @if ($ver['oportunidades'])
             <div class="col-12 col-sm-6 col-md-4 col-xl-3">
                 <div class="d-flex align-items-center">
                     <span class="fa-stack" style="min-height: 48px;min-width: 48px;">
@@ -76,6 +79,7 @@
                     </div>
                 </div>
             </div>
+            @endif
             <div class="col-12 col-sm-6 col-md-4 col-xl-3">
                 <div class="d-flex align-items-center">
                     <span class="fa-stack" style="min-height: 48px;min-width: 48px;">
@@ -120,6 +124,7 @@
 
         {{-- ── SECCIÓN ANALÍTICA ECHARTS: FILA 1 (Facturación vs Cobranza & Flujo de Caja) ── --}}
         <div class="row g-4 mb-4">
+            @if ($ver['finanzas'])
             {{-- Gráfico 1: Facturación vs Cobranza del Mes --}}
             <div class="col-12 col-xl-6">
                 <div class="card h-100 border border-200 shadow-none">
@@ -136,6 +141,8 @@
                 </div>
             </div>
 
+            @endif
+            @if ($ver['presupuesto'])
             {{-- Gráfico 2: Flujo de Caja Proyectado vs Real --}}
             <div class="col-12 col-xl-6">
                 <div class="card h-100 border border-200 shadow-none">
@@ -151,10 +158,12 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- ── SECCIÓN ANALÍTICA ECHARTS: FILA 2 (Inventario Bajo Stock & Tickets por Prioridad) ── --}}
         <div class="row g-4 mb-4">
+            @if ($ver['inventario'])
             {{-- Gráfico 3: Estado de Inventario bajo Stock Mínimo --}}
             <div class="col-12 col-xl-7">
                 <div class="card h-100 border border-200 shadow-none">
@@ -179,6 +188,8 @@
                 </div>
             </div>
 
+            @endif
+            @if ($ver['tickets'])
             {{-- Gráfico 4: Tickets Pendientes por Prioridad --}}
             <div class="col-12 col-xl-5">
                 <div class="card h-100 border border-200 shadow-none">
@@ -194,6 +205,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- Tablas operativas principales en estilo Phoenix cards --}}

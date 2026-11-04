@@ -191,4 +191,19 @@ class SeguridadAccesoCuentaTest extends TestCase
         $cookie = collect($respuesta->headers->getCookies())->first(fn ($c) => str_starts_with($c->getName(), 'remember_web_'));
         $this->assertEqualsWithDelta(now()->addDays(30)->timestamp, $cookie->getExpiresTime(), 60);
     }
+
+    public function test_el_dashboard_no_muestra_montos_sin_permiso(): void
+    {
+        $vendedor = $this->crearUsuario(['username' => 'ventas', 'email' => 'ventas@nexus.test'], 'Ventas');
+        DB::table('factura')->insert(['id_empresa' => 1, 'id_cliente' => DB::table('cliente')->insertGetId(['id_empresa' => 1, 'razon_social' => 'Cliente', 'activo' => 1]), 'id_serie' => 1, 'numero_completo' => 'A-1', 'estado' => 'EMITIDA', 'total' => 98765.43, 'saldo_pendiente' => 98765.43, 'fecha_emision' => now()]);
+
+        $respuesta = $this->actingAs($vendedor)->get(route('dashboard'))->assertOk();
+
+        $respuesta->assertDontSee('Cartera por cobrar')->assertDontSee('98,765.43')->assertDontSee('98765.43');
+        $this->assertSame([], $respuesta->viewData('tarjetas'));
+        $this->assertSame([], $respuesta->viewData('analitica')); // nada llega al @json de las gráficas
+
+        $this->darPermisos($vendedor, ['facturas.ver']);
+        $this->actingAs($vendedor->fresh())->get(route('dashboard'))->assertSee('Cartera por cobrar')->assertSee('98,765.43');
+    }
 }
