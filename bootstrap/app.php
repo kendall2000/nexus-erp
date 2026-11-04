@@ -37,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
             RequiereDosFactores::class,
         ]);
 
+        // El navegador manda los avisos de la CSP sin token CSRF (ver ReporteCspController).
+        $middleware->validateCsrfTokens(except: ['csp-reporte']);
+
         $middleware->alias(['admin' => SoloAdministrador::class, 'permiso' => TienePermiso::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

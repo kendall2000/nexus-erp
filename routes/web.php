@@ -3,12 +3,22 @@
 use App\Http\Controllers\ConsolidadoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpresaActivaController;
+use App\Http\Controllers\ReporteCspController;
+use App\Http\Middleware\ContrasenaVencida;
+use App\Http\Middleware\EmpresaActiva;
+use App\Http\Middleware\RequiereDosFactores;
+use App\Http\Middleware\UsuarioActivo;
 use Illuminate\Support\Facades\Route;
 
 // Login, logout, recuperar y cambiar contraseña y verificación en dos pasos:
 // las rutas las registra Fortify (config/fortify.php).
 
 Route::redirect('/', '/sistema/dashboard');
+
+// Avisos de la CSP que manda el navegador (con o sin sesión; sin las redirecciones de la cuenta).
+Route::post('/csp-reporte', [ReporteCspController::class, 'guardar'])
+    ->withoutMiddleware([UsuarioActivo::class, EmpresaActiva::class, ContrasenaVencida::class, RequiereDosFactores::class])
+    ->middleware('throttle:60,1')->name('csp.reporte');
 
 Route::middleware('auth')->group(function () {
 
