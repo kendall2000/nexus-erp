@@ -32,6 +32,18 @@ class Sistema
         return $atributos->get('sistema.config');
     }
 
+    /**
+     * URL de un JS o CSS propio de public/ con «?v=» según la fecha del archivo: al desplegar
+     * una versión nueva, el navegador la descarga en vez de usar la que tenía en caché.
+     */
+    public static function recurso(string $ruta): string
+    {
+        static $versiones = [];
+        $version = $versiones[$ruta] ??= (string) (@filemtime(public_path($ruta)) ?: '');
+
+        return asset($ruta).($version !== '' ? '?v='.$version : '');
+    }
+
     public static function nombre(): string
     {
         return self::config()->nombreSistema ?: 'Nexus ERP';
