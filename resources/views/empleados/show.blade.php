@@ -47,9 +47,11 @@
                     <button class="btn btn-phoenix-danger btn-icon" type="submit" title="Eliminar"><span class="fas fa-trash"></span></button>
                 </form>
             @endif
-            <button class="btn btn-phoenix-secondary btn-sm" type="button" data-auditoria-tabla="empleado" data-auditoria-id="{{ $e->id_empleado }}" title="Ver historial de cambios">
-                <span class="fas fa-history me-1"></span>Bitácora
-            </button>
+            @if (auth()->user()->puede('bitacora.ver'))
+                <button class="btn btn-phoenix-secondary btn-sm" type="button" data-auditoria-tabla="empleado" data-auditoria-id="{{ $e->id_empleado }}" title="Ver historial de cambios">
+                    <span class="fas fa-history me-1"></span>Bitácora
+                </button>
+            @endif
         </x-slot:acciones>
     </x-page-header>
 

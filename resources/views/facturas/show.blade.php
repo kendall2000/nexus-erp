@@ -76,9 +76,11 @@
                         </button>
                     </form>
                 @endif
-                <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="factura" data-auditoria-id="{{ $f->id_factura }}">
-                    <span class="fas fa-history me-2"></span>Bitácora
-                </button>
+                @if (auth()->user()->puede('bitacora.ver'))
+                    <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="factura" data-auditoria-id="{{ $f->id_factura }}">
+                        <span class="fas fa-history me-2"></span>Bitácora
+                    </button>
+                @endif
             </div>
         </div>
 

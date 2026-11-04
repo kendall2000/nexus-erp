@@ -93,7 +93,7 @@ Route::prefix('sistema/roles')->name('roles.')->controller(RolController::class)
 
 Route::prefix('sistema/bitacora')->name('bitacora.')->controller(BitacoraController::class)->group(function () {
     Route::get('/', 'index')->middleware('permiso:bitacora.ver')->name('index');
-    Route::get('rapido', 'rapido')->name('rapido');
+    Route::get('rapido', 'rapido')->middleware('permiso:bitacora.ver')->name('rapido');
     Route::get('exportar', 'exportar')->middleware('permiso:bitacora.exportar')->name('exportar');
     Route::get('{cambio}', 'show')->whereNumber('cambio')->middleware('permiso:bitacora.ver')->name('show');
 });

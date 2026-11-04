@@ -3,18 +3,17 @@
 namespace App\Models\Core;
 
 use App\Models\Concerns\PerteneceAEmpresa;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Support\MatrizPermisos;
 use App\Support\Sistema;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class Usuario extends Authenticatable
 {
-    use PerteneceAEmpresa, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use Notifiable, PerteneceAEmpresa, SoftDeletes, TwoFactorAuthenticatable;
 
     /** @var list<string>|null Códigos de permiso calculados (ver codigosPermiso). */
     private ?array $codigosPermiso = null;
@@ -24,9 +23,11 @@ class Usuario extends Authenticatable
 
     private ?bool $esAdmin = null;
 
-    protected $table      = 'usuario';
+    protected $table = 'usuario';
+
     protected $primaryKey = 'id_usuario';
-    public $timestamps    = true;
+
+    public $timestamps = true;
 
     // SoftDeletes usa 'deleted_at'
     const DELETED_AT = 'deleted_at';
@@ -56,13 +57,13 @@ class Usuario extends Authenticatable
     ];
 
     protected $casts = [
-        'activo'            => 'boolean',
-        'ultimo_login'      => 'datetime',
-        'bloqueado_hasta'   => 'datetime',
-        'token_reset_exp'   => 'datetime',
-        'created_at'        => 'datetime',
-        'updated_at'        => 'datetime',
-        'deleted_at'        => 'datetime',
+        'activo' => 'boolean',
+        'ultimo_login' => 'datetime',
+        'bloqueado_hasta' => 'datetime',
+        'token_reset_exp' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
         'intentos_fallidos' => 'integer',
         'two_factor_confirmed_at' => 'datetime',
         'password_cambiado_at' => 'datetime',
@@ -124,7 +125,7 @@ class Usuario extends Authenticatable
 
     public function notificaciones()
     {
-        return $this->hasMany(\App\Models\Core\Notificacion::class, 'id_usuario');
+        return $this->hasMany(Notificacion::class, 'id_usuario');
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -144,10 +145,13 @@ class Usuario extends Authenticatable
     /** Tiene un rol de acceso total activo (Administrador o Superadmin): pasa todas las validaciones de permisos. */
     public function esAdministrador(): bool
     {
+        // Se compara en PHP con Rol::esNombreDeAccesoTotal, no en SQL: la colación de MySQL
+        // ignora acentos y daría acceso total a «Súperadmin», que la validación (en PHP)
+        // aceptaba como rol normal.
         return $this->roles()
             ->where('rol.activo', true)
-            ->whereIn(DB::raw('LOWER(rol.nombre)'), Rol::nombresAccesoTotal())
-            ->exists();
+            ->pluck('rol.nombre')
+            ->contains(fn ($nombre) => Rol::esNombreDeAccesoTotal((string) $nombre));
     }
 
     /** Alguno de sus roles activos exige la verificación en dos pasos. */
@@ -210,7 +214,8 @@ class Usuario extends Authenticatable
         if ($this->esAdministradorEnCache()) {
             return true;
         }
-        $delOtro = MatrizPermisos::idsDe($otro);
+        // Cuenta también los roles desactivados del otro (ver MatrizPermisos::idsParaGestion).
+        $delOtro = MatrizPermisos::idsParaGestion($otro);
 
         return $delOtro !== null && ! array_diff($delOtro, $this->idsPermisoPropios());
     }
@@ -248,9 +253,9 @@ class Usuario extends Authenticatable
     public function registrarLogin(): void
     {
         $this->update([
-            'ultimo_login'      => now(),
+            'ultimo_login' => now(),
             'intentos_fallidos' => 0,
-            'bloqueado_hasta'   => null,
+            'bloqueado_hasta' => null,
         ]);
     }
 
@@ -259,7 +264,7 @@ class Usuario extends Authenticatable
         $intentos = $this->intentos_fallidos + 1;
         $this->update([
             'intentos_fallidos' => $intentos,
-            'bloqueado_hasta'   => $intentos >= 5 ? now()->addMinutes(30) : null,
+            'bloqueado_hasta' => $intentos >= 5 ? now()->addMinutes(30) : null,
         ]);
     }
 

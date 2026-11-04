@@ -32,6 +32,21 @@ window.NexusVue = {
 };
 
 /**
+ * Escapa texto para meterlo en HTML. Los avisos y la bitácora muestran datos que
+ * escriben los usuarios (nombres de clientes, archivos, valores de campos): sin esto,
+ * un cliente llamado «<img src=x onerror=…>» ejecutaría código a quien lo viera.
+ */
+window.NexusHtml = {
+    escapar(valor) {
+        return String(valor === null || valor === undefined ? '' : valor).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    },
+    // Para valores que van dentro de un atributo class: solo letras, números y guiones.
+    clase(valor) {
+        return String(valor || '').replace(/[^a-z0-9-]/gi, '');
+    }
+};
+
+/**
  * Toast Notifier de Phoenix para notificaciones elegantes flotantes
  */
 window.NexusToast = {
@@ -62,12 +77,12 @@ window.NexusToast = {
             <div id="${id}" class="toast align-items-center border-0 shadow-lg mb-3" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-header border-bottom border-200 py-2">
                     <span class="fas ${icon} me-2 fs--1"></span>
-                    <strong class="me-auto fs--1 text-1000">${toastTitle}</strong>
+                    <strong class="me-auto fs--1 text-1000">${NexusHtml.escapar(toastTitle)}</strong>
                     <small class="text-500 fs--2">Ahora</small>
                     <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
                 <div class="toast-body py-2 fs--1 text-800">
-                    ${message}
+                    ${NexusHtml.escapar(message)}
                 </div>
             </div>
         `;
@@ -149,10 +164,10 @@ window.NexusAuditoria = {
                     item.campos.forEach(c => {
                         camposHtml += `
                             <tr>
-                                <td class="text-700 fw-bold bg-100 py-1" style="width: 35%;">${c.campo}</td>
+                                <td class="text-700 fw-bold bg-100 py-1" style="width: 35%;">${NexusHtml.escapar(c.campo)}</td>
                                 <td class="py-1">
-                                    ${c.antes !== null && c.antes !== undefined ? `<span class="text-danger text-decoration-line-through me-1">${c.antes}</span>` : ''}
-                                    <span class="text-success fw-semi-bold">${c.despues !== null && c.despues !== undefined ? c.despues : '—'}</span>
+                                    ${c.antes !== null && c.antes !== undefined ? `<span class="text-danger text-decoration-line-through me-1">${NexusHtml.escapar(c.antes)}</span>` : ''}
+                                    <span class="text-success fw-semi-bold">${c.despues !== null && c.despues !== undefined ? NexusHtml.escapar(c.despues) : '—'}</span>
                                 </td>
                             </tr>
                         `;
@@ -163,13 +178,13 @@ window.NexusAuditoria = {
                 html += `
                     <div class="border-bottom border-200 pb-3 mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="badge badge-phoenix badge-phoenix-${item.color} fs--2">${item.accion_nombre}</span>
-                            <span class="text-600 fs--2">${item.fecha}</span>
+                            <span class="badge badge-phoenix badge-phoenix-${window.NexusHtml.clase(item.color)} fs--2">${NexusHtml.escapar(item.accion_nombre)}</span>
+                            <span class="text-600 fs--2">${NexusHtml.escapar(item.fecha)}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2 mt-1">
                             <span class="fas fa-user-circle text-primary fs--1"></span>
-                            <span class="text-1000 fs--1 fw-bold">${item.usuario}</span>
-                            ${item.ip ? `<span class="text-500 fs--2">(${item.ip})</span>` : ''}
+                            <span class="text-1000 fs--1 fw-bold">${NexusHtml.escapar(item.usuario)}</span>
+                            ${item.ip ? `<span class="text-500 fs--2">(${NexusHtml.escapar(item.ip)})</span>` : ''}
                         </div>
                         ${camposHtml}
                     </div>
@@ -209,12 +224,12 @@ window.NexusConfirm = {
         document.getElementById('confirmModalMensaje').textContent = mensaje || '¿Estás seguro de continuar con esta operación?';
         
         const btnEjecutar = document.getElementById('confirmModalBotonEjecutar');
-        btnEjecutar.innerHTML = `<span class="fas fa-check me-1"></span>${botonTexto || 'Confirmar'}`;
-        btnEjecutar.className = `btn btn-sm ${botonClase || 'btn-danger'}`;
+        btnEjecutar.innerHTML = `<span class="fas fa-check me-1"></span>${NexusHtml.escapar(botonTexto || 'Confirmar')}`;
+        btnEjecutar.className = `btn btn-sm ${window.NexusHtml.clase(botonClase) || 'btn-danger'}`;
 
         const iconoEl = document.getElementById('confirmModalIcono');
         if (icono) {
-            iconoEl.className = `fas ${icono} me-2 fs-0`;
+            iconoEl.className = `fas ${window.NexusHtml.clase(icono)} me-2 fs-0`;
         } else {
             iconoEl.className = 'fas fa-exclamation-triangle text-danger me-2 fs-0';
         }

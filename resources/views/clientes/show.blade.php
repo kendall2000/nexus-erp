@@ -55,9 +55,11 @@
                             <span class="fas fa-file-invoice-dollar me-2"></span>Emitir factura
                         </a>
                     @endif
-                    <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="cliente" data-auditoria-id="{{ $c->id_cliente }}">
-                        <span class="fas fa-history me-2"></span>Bitácora
-                    </button>
+                    @if (auth()->user()->puede('bitacora.ver'))
+                        <button class="btn btn-phoenix-secondary" type="button" data-auditoria-tabla="cliente" data-auditoria-id="{{ $c->id_cliente }}">
+                            <span class="fas fa-history me-2"></span>Bitácora
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>

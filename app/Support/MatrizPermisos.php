@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Core\Accion;
 use App\Models\Core\Modulo;
+use App\Models\Core\Rol;
 use App\Models\Core\Usuario;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class MatrizPermisos
 {
     /**
      * @return array{acciones: Collection<int, Accion>, grupos: Collection<string, Collection<int, array{modulo: Modulo, permisos: array<int, int>}>>}
-     *                  permisos: id_accion => id_permiso
+     *                                                                                                                                                 permisos: id_accion => id_permiso
      */
     public static function datos(): array
     {
@@ -58,6 +59,27 @@ class MatrizPermisos
             ->join('rol', 'rol.id_rol', '=', 'rol_permiso.id_rol')
             ->where('usuario_rol.id_usuario', $usuario->id_usuario)->where('rol.activo', true)
             ->pluck('rol_permiso.id_permiso')->map(fn ($id) => (int) $id)->unique()->values();
+    }
+
+    /**
+     * Para decidir si alguien puede gestionar a $usuario: sus permisos contando TODOS sus
+     * roles, también los desactivados, más los extras; null si alguno de sus roles (activo
+     * o no) es de acceso total. Si solo se contaran los activos, quien puede editar roles
+     * desactivaría el rol de un superior, lo vería «sin permisos», le cambiaría la
+     * contraseña y reactivaría el rol para entrar como él.
+     *
+     * @return list<int>|null
+     */
+    public static function idsParaGestion(Usuario $usuario): ?array
+    {
+        $roles = DB::table('usuario_rol')->join('rol', 'rol.id_rol', '=', 'usuario_rol.id_rol')
+            ->where('usuario_rol.id_usuario', $usuario->id_usuario)->get(['rol.id_rol', 'rol.nombre']);
+        if ($roles->contains(fn ($rol) => Rol::esNombreDeAccesoTotal((string) $rol->nombre))) {
+            return null;
+        }
+
+        return DB::table('rol_permiso')->whereIn('id_rol', $roles->pluck('id_rol'))->pluck('id_permiso')
+            ->merge(self::idsExtras($usuario))->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     /** @return Collection<int, int> ids de los permisos extra del usuario. */

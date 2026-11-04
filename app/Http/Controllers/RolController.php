@@ -63,6 +63,10 @@ class RolController extends Controller
         }
 
         $datos = $request->datosLimpios($rol);
+        if ($this->tienePermisosAjenos($request, $rol)
+            && ((bool) $datos['activo'] !== (bool) $rol->activo || (bool) $datos['requiere_2fa'] !== (bool) $rol->requiere_2fa)) {
+            return back()->withInput()->withErrors(['rol' => 'Este rol tiene permisos que tú no tienes: no puedes desactivarlo ni cambiar su verificación en dos pasos. Pídeselo al Administrador.']);
+        }
         $permisos = $this->permisosElegidos($request);
 
         // Los permisos del rol que quien edita no tiene no aparecen como editables: se conservan.
@@ -117,6 +121,21 @@ class RolController extends Controller
             'marcados' => $rol->exists ? $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all() : [],
             'propios' => MatrizPermisos::idsDe($request->user()),
         ]);
+    }
+
+    /**
+     * El rol tiene permisos que quien edita no tiene. Desactivarlo dejaría a sus usuarios
+     * «sin permisos» y gestionables, y quitarle los 2 pasos debilitaría cuentas superiores.
+     */
+    private function tienePermisosAjenos(Request $request, Rol $rol): bool
+    {
+        $propios = MatrizPermisos::idsDe($request->user());
+        if ($propios === null) {
+            return false; // Administrador
+        }
+        $delRol = $rol->permisos()->pluck('permiso.id_permiso')->map(fn ($id) => (int) $id)->all();
+
+        return (bool) array_diff($delRol, $propios);
     }
 
     /** Motivo por el que el usuario actual no puede modificar este rol (null si puede). */
